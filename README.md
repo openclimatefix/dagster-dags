@@ -25,7 +25,7 @@ You can start writing assets in `dags/assets.py`. The assets are automatically l
 
 ### Adding new Python dependencies
 
-You can specify new Python dependencies in `setup.py`.
+You can specify new Python dependencies in `pyproject.toml`.
 
 ### Unit testing
 
