@@ -1,4 +1,0 @@
-GLOBAL_TIME_LIST=['00:00:00','12:00:00']
-CLASS='od'   
-STREAM='oper'
-TYPE='fc'
