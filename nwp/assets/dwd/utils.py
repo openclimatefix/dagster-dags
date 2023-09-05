@@ -1,4 +1,4 @@
-"""Utilities for downloading the DWD ICON models"""
+"""Utilities for downloading the DWD ICON models."""
 import bz2
 import os
 from datetime import datetime, timedelta
@@ -9,13 +9,14 @@ import requests
 
 
 def get_run(run: str, delay: int = 0):
-    """
-    Get run name
+    """Get run name.
 
     Args:
+    ----
         run: Run number
 
     Returns:
+    -------
         Run date and run number
     """
     now = datetime.now() - timedelta(days=delay)
@@ -50,12 +51,10 @@ def find_file_name(
     if (vars_2d is None) and (vars_3d is None):
         raise ValueError("You need to specify at least one 2D or one 3D variable")
 
-    if vars_2d is not None:
-        if type(vars_2d) is not list:
-            vars_2d = [vars_2d]
-    if vars_3d is not None:
-        if type(vars_3d) is not list:
-            vars_3d = [vars_3d]
+    if vars_2d is not None and type(vars_2d) is not list:
+        vars_2d = [vars_2d]
+    if vars_3d is not None and type(vars_3d) is not list:
+        vars_3d = [vars_3d]
 
     urls = []
     for f_time in f_times:
@@ -84,13 +83,9 @@ def find_file_name(
 
 def download_extract_files(urls: list, folder: str):
     """Given a list of urls download and bunzip2 them.
-    Return a list of the path of the extracted files
+    Return a list of the path of the extracted files.
     """
-
-    if type(urls) is list:
-        urls_list = urls
-    else:
-        urls_list = [urls]
+    urls_list = urls if type(urls) is list else [urls]
 
     # We only parallelize if we have a number of files
     # larger than the cpu count
@@ -108,13 +103,14 @@ def download_extract_files(urls: list, folder: str):
 
 
 def download_extract_url(url_and_folder):
-    """
-    Download and extract url if file isn't already downloaded
+    """Download and extract url if file isn't already downloaded.
 
     Args:
+    ----
         url_and_folder: Tuple of URL and folder
 
     Returns:
+    -------
 
     """
     url, folder = url_and_folder

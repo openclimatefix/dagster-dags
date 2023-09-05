@@ -1,6 +1,6 @@
+from datetime import timedelta
+
 from dagster import Config
-from datetime import datetime, timedelta
-import os
 
 
 class IconConfig(Config):
