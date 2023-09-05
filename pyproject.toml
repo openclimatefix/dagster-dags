@@ -1,4 +1,44 @@
+# --- PROJECT CONFIGURATION --- #
+
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=67", "wheel"]
 build-backend = "setuptools.build_meta"
+
+# Metadata (see https://peps.python.org/pep-0621/)
+[project]
+name = "dags"
+dynamic = ["version"] # Set automtically using git: https://setuptools-git-versioning.readthedocs.io/en/stable/
+description = "Dags for running jobs via Dagster on Leonardo"
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.10.0"
+license = {text = "MIT License"}
+authors = [
+    { name = "Sol Cotton", email = "sol@openclimatefix.org"}
+]
+classifiers = ["Programming Language :: Python :: 3"]
+dependencies = [
+    "dagster == 1.4.11",
+    "dagster-cloud == 1.4.11",
+    "numpy == 1.24.2",
+    "ocf-blosc2 == 0.0.3",
+    "pathlib == 1.0.1",
+    "requests == 2.31.0",
+    "xarray == 2023.2.0",
+    "zarr == 2.14.2"
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff == 0.0.259",
+    "unittest-xml-reporting == 3.2.0",
+    "dagster-webserver == 1.4.11",
+    "pytest == 7.4.1"
+]
+
+[metadata]
+name = dags
+
+[tool.setuptools.packages.find]
+exclude = ["*_tests"]
+
 
