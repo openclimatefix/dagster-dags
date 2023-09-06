@@ -29,7 +29,7 @@ dependencies = [
     "requests == 2.31.0",
     "xarray == 2023.2.0",
     "zarr == 2.14.2",
-    "satip",
+    "satip == 2.11.10",
 ]
 
 [project.optional-dependencies]
