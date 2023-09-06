@@ -1,15 +1,14 @@
-from dagster import asset  # import the `dagster` library
-from nwp.assets.dwd.common import IconConfig
-
 import os
+import shutil
 from glob import glob
 
 import xarray as xr
 import zarr
+from dagster import asset  # import the `dagster` library
 from huggingface_hub import HfApi
 from ocf_blosc2 import Blosc2
-import shutil
 
+from nwp.assets.dwd.common import IconConfig
 from nwp.assets.dwd.consts import (
     EU_PRESSURE_LEVELS,
     EU_VAR2D_LIST,
@@ -34,10 +33,7 @@ def does_files_exist(config, now_datetime):
     f"{now_datetime.year}{str(now_datetime.month).zfill(2)}{str(now_datetime.day).zfill(2)}"
     f"_{str(now_datetime.hour).zfill(2)}.zarr.zip"
     # Check if the current run exists or not
-    if path_in_repo in existing_files:
-        return True
-    else:
-        return False
+    return path_in_repo in existing_files
 
 
 @asset
