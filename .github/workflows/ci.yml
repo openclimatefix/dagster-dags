@@ -1,0 +1,50 @@
+name: Python CI
+
+on:
+  push:
+    branches: []
+    paths-ignore:
+      - 'README.md'
+  pull_request:
+    branches: []
+    paths-ignore:
+      - 'README.md'
+
+# Specify concurrency such that only one workflow can run at a time
+# * Different workflow files are not affected
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Define a dependencies job that runs on all branches and PRs
+  # * Installs dependencies and caches them
+  build-venv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Restore cached virtualenv, if available
+      # * The pyproject.toml hash is part of the cache key, invalidating
+      #   the cache if the file changes
+      - name: Restore cached virtualenv
+        id: restore-cache
+  uses: actions/cache/restore@v3
+        with:
+          path: ./venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/pyproject.toml') }}
+
+      # Should mirror the build-venv stage in the Containerfile
+      - name: Build venv
+        run: |
+          apt -qq update && apt -qq install -y build-essential
+          python -m venv ./venv
+          ./venv/bin/pip install --upgrade -q pip wheel setuptools
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+
+      # Should mirror the build-reqs stage in the Containerfile
+      # * Except this installs the dev dependencies and binaries as well
+      - name: Install all dependencies
+        run: |
+          ./venv/bin/pip install -q .[dev]
