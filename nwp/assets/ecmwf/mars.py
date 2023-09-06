@@ -4,6 +4,7 @@ from ecmwfapi import ECMWFService
 
 server = ECMWFService("mars")
 
+
 @asset
 def download_mars_file():
     server.execute(

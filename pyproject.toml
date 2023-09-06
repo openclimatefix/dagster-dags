@@ -18,9 +18,11 @@ authors = [
 ]
 classifiers = ["Programming Language :: Python :: 3"]
 dependencies = [
+    "ecmwf-api-client == 1.6.3",
     "dagit == 1.4.11",
     "dagster == 1.4.11",
     "dagster-cloud == 1.4.11",
+    "huggingface-hub == 0.16.4",
     "numpy == 1.24.2",
     "ocf-blosc2 == 0.0.3",
     "pathlib == 1.0.1",
