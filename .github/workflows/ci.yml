@@ -48,3 +48,43 @@ jobs:
       - name: Install all dependencies
         run: |
           ./venv/bin/pip install -q .[dev]
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+
+      # Cache the virtualenv for future runs
+      - name: Cache virtualenv
+        uses: actions/cache/save@v3
+        with:
+          path: ./venv
+          key: ${{ steps.restore-cache.outputs.cache-primary-key }}
+        if: steps.restore-cache.outputs.cache-hit != 'true'
+
+  # Define a unittest job that runs on all branches and PRs
+  test-unit:
+    runs-on: ubuntu-latest
+    needs: build-venv
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Restore cached virtualenv
+      - name: Restore cached virtualenv
+        uses: actions/cache/restore@v3
+        with:
+          path: ./venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('**/pyproject.toml') }}
+
+      # Run unittests
+      # * Produce JUnit XML report
+      - name: Run unit tests
+        run: ./venv/bin/python -m pytest --junitxml=ut-report.xml dags_tests 
+
+      # Create test summary to be visualised on the job summary screen on GitHub
+      # * Runs even if previous steps fail
+      - name: Create test summary
+        uses: test-summary/action@v2
+        with:
+          paths: "*t-report.xml"
+          show: "fail, skip"
+        if: always()
+
