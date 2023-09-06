@@ -30,7 +30,7 @@ jobs:
       #   the cache if the file changes
       - name: Restore cached virtualenv
         id: restore-cache
-  uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v3
         with:
           path: ./venv
           key: ${{ runner.os }}-venv-${{ hashFiles('**/pyproject.toml') }}
