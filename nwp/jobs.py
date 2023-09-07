@@ -1,6 +1,10 @@
-from dagster import AssetSelection, ScheduleDefinition, define_asset_job, schedule
+from dagster import AssetSelection, ScheduleDefinition, define_asset_job, schedule, job, RunConfig
 
 from nwp.assets.dwd.common import IconConfig
+from nwp.assets.ecmwf.mars import nwp_consumer_docker_op, NWPConsumerConfig
+
+import datetime as dt
+
 
 base_path = "/mnt/storage_b/data/ocf/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/DWD"
 
@@ -21,31 +25,42 @@ schedule_jobs = []
 for r in ["00", "06", "12", "18"]:
     for model in ["global", "eu"]:
         for delay in [0, 1]:
-            asset_job = define_asset_job(f"download_{model}_run_{r}_{'today' if delay == 0 else 'yesterday'}", AssetSelection.all(),
-                                         config={
-                                             'ops': {"download_model_files": {"config": build_config_on_runtime(model, r, delay)},
-                                                     "process_model_files": {"config": build_config_on_runtime(model, r, delay)},
-                                                     "upload_model_files_to_hf": {
-                                                         "config": build_config_on_runtime(model, r, delay)}, }})
-            if delay == 0:
-                if r == "00":
-                    schedule = ScheduleDefinition(job=asset_job, cron_schedule="30 4 * * *")
-                elif r == "06":
-                    schedule = ScheduleDefinition(job=asset_job, cron_schedule="30 10 * * *")
-                elif r == "12":
-                    schedule = ScheduleDefinition(job=asset_job, cron_schedule="30 16 * * *")
-                elif r == "18":
-                    schedule = ScheduleDefinition(job=asset_job, cron_schedule="30 22 * * *")
-            elif delay == 1:
-                if r == "00":
-                    schedule = ScheduleDefinition(job=asset_job, cron_schedule="1 0 * * *")
-                elif r == "06":
-                    schedule = ScheduleDefinition(job=asset_job, cron_schedule="0 2 * * *")
-                elif r == "12":
-                    schedule = ScheduleDefinition(job=asset_job, cron_schedule="0 6 * * *")
-                elif r == "18":
-                    schedule = ScheduleDefinition(job=asset_job, cron_schedule="0 8 * * *")
-
+            asset_job = define_asset_job(
+                name=f"download_{model}_run_{r}_{'today' if delay == 0 else 'yesterday'}",
+                selection=AssetSelection.all(),
+                config={'ops': {
+                    "download_model_files": {"config": build_config_on_runtime(model, r, delay)},
+                    "process_model_files": {"config": build_config_on_runtime(model, r, delay)},
+                    "upload_model_files_to_hf": {"config": build_config_on_runtime(model, r, delay)},
+                    }}
+                )
+            match (delay, r):
+                case (0, "00"): 
+                    schedule_jobs.append(ScheduleDefinition(job=asset_job, cron_schedule="30 4 * * *"))
+                case (0, "06"):
+                    schedule_jobs.append(ScheduleDefinition(job=asset_job, cron_schedule="30 10 * * *"))
+                case (0, "12"):
+                    schedule_jobs.append(ScheduleDefinition(job=asset_job, cron_schedule="30 16 * * *"))
+                case (0, "18"):
+                    schedule_jobs.append(ScheduleDefinition(job=asset_job, cron_schedule="30 22 * * *"))
+                case (1, "00"):
+                    schedule_jobs.append(ScheduleDefinition(job=asset_job, cron_schedule="1 0 * * *"))
+                case (1, "06"):
+                    schedule_jobs.append(ScheduleDefinition(job=asset_job, cron_schedule="0 2 * * *"))
+                case (1, "12"):
+                    schedule_jobs.append(ScheduleDefinition(job=asset_job, cron_schedule="0 6 * * *"))
+                case (1, "18"):
+                    schedule_jobs.append(ScheduleDefinition(job=asset_job, cron_schedule="0 8 * * *"))
+            
             asset_jobs.append(asset_job)
-            schedule_jobs.append(schedule)
+
+@job(config=RunConfig(
+    ops={"nwp_consumer_docker_op": NWPConsumerConfig(
+        date_from="2021-01-01",
+        date_to="2021-01-01",
+        source="ecmwf-mars"
+        )}
+    ))
+def get_ecmwf_data():
+    nwp_consumer_docker_op()
 

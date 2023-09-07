@@ -1,25 +1,32 @@
-
-from dagster import Output, asset
-from ecmwfapi import ECMWFService
-
-server = ECMWFService("mars")
+from dagster_docker import execute_docker_container
+from dagster import Config, OpExecutionContext, op
+import datetime as dt
 
 
-@asset
-def download_mars_file():
-    server.execute(
-        req={
-            "class": "od",
-            "date": "20230815/to/20230816",
-            "expver": "1",
-            "levtype": "sfc",
-            "param": "28.228/49.128/123.128/165.128/166.128/239.228/246.228/247.228",
-            "step": "0/t0/48/by/1",
-            "stream": "oper",
-            "time": "00:00:00,12:00:00",
-            "type": "fc",
-        },
-        target="20230815.grib"
+class NWPConsumerConfig(Config):
+    date_from: str
+    date_to: str
+    source: str
+
+@op
+def nwp_consumer_docker_op(context: OpExecutionContext, config: NWPConsumerConfig):
+    execute_docker_container(
+            context=context,
+            image="ghcr.io/openclimatefix/nwp-consumer",
+            command=[
+                "consume", f'--source={config.source}', 
+                f'--from={config.date_from}', 
+                f'--to={config.date_to}'
+            ],
+            env_vars=["ECMWF_API_KEY", "ECMWF_API_URL", "ECMWF_API_EMAIL"],
+            container_kwargs={
+                "volumes": [
+                    '/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/raw:/tmp/raw',
+                    '/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/zarr:/tmp/zarr',
+                    '/tmp/nwpc:/tmp/nwpc'
+                ]
+            }
     )
 
-    return Output(None, metadata={"filepath": "20230815.grib"})
+    pass
+
