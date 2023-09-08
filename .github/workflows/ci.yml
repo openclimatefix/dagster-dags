@@ -38,7 +38,7 @@ jobs:
       # Should mirror the build-venv stage in the Containerfile
       - name: Build venv
         run: |
-          apt -qq update && apt -qq install -y build-essential
+          apt -qq update && apt -qq install -y build-essential libgeos-dev
           python -m venv ./venv
           ./venv/bin/pip install --upgrade -q pip wheel setuptools
         if: steps.restore-cache.outputs.cache-hit != 'true'
