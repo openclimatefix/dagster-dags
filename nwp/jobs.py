@@ -1,4 +1,4 @@
-from dagster import AssetSelection, ScheduleDefinition, define_asset_job, schedule, job, RunConfig
+from dagster import AssetSelection, ScheduleDefinition, define_asset_job, schedule, job, RunConfig, ScheduleEvaluationContext
 
 from nwp.assets.dwd.common import IconConfig
 from nwp.assets.ecmwf.mars import nwp_consumer_docker_op, NWPConsumerConfig
@@ -6,15 +6,15 @@ from nwp.assets.ecmwf.mars import nwp_consumer_docker_op, NWPConsumerConfig
 import datetime as dt
 
 
-base_path = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/DWD"
+base_path = "/mnt/storage_b/data/ocf/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/DWD"
 
 
 def build_config_on_runtime(model, run, delay=0):
     config = IconConfig(model=model,
                         run=run,
                         delay=delay,
-                        folder=f"{base_path}/{'ICON_Global' if model == 'global' else 'ICON_EU'}/{run}",
-                        zarr_path=f"{base_path}/{'ICON_Global' if model == 'global' else 'ICON_EU'}/{run}/{run}.zarr.zip")
+                        folder=f"{base_path}/ICON_Global/{run}",
+                        zarr_path=f"{base_path}/ICON_Global/{run}/{run}.zarr.zip")
     config_dict = {"delay": config.delay, "folder": config.folder, "model": config.model, "run": config.run,
                    "zarr_path": config.zarr_path}
     return config_dict
@@ -54,13 +54,24 @@ for r in ["00", "06", "12", "18"]:
             
             asset_jobs.append(asset_job)
 
-@job(config=RunConfig(
-    ops={"nwp_consumer_docker_op": NWPConsumerConfig(
-        date_from="2021-01-01",
-        date_to="2021-01-01",
-        source="ecmwf-mars"
-        )}
-    ))
+@job
 def get_ecmwf_data():
     nwp_consumer_docker_op()
+
+@schedule(job=get_ecmwf_data, cron_schedule="0 13 * * *")
+def ecmwf_daily_schedule(context: ScheduleEvaluationContext):
+    scheduled_date = context.scheduled_execution_time.strftime("%Y-%m-%d")
+    return RunRequest(
+        run_key=None,
+        run_config={
+            "ops": {"nwp_consumer_docker_op": NWPConsumerConfig(
+                date_from=scheduled_date,
+                date_to=scheduled_date,
+                source="ecmwf-mars"
+                )}
+            },
+        tags={"date": scheduled_date},
+    )
+
+schedule_jobs.append(ecmwf_daily_schedule)
 
