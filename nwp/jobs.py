@@ -56,7 +56,7 @@ def nwp_consumer_docker_job():
     nwp_consumer_docker_op()
 
 @schedule(job=nwp_consumer_docker_job, cron_schedule="0 13 * * *")
-def ecmwf_daily_schedule(context: ScheduleEvaluationContext):
+def ecmwf_daily_local_archive_schedule(context: ScheduleEvaluationContext):
     scheduled_date = context.scheduled_execution_time.strftime("%Y-%m-%d")
     return RunRequest(
         run_key=None,
@@ -75,5 +75,5 @@ def ecmwf_daily_schedule(context: ScheduleEvaluationContext):
         tags={"date": scheduled_date},
     )
 
-schedules.append(ecmwf_daily_schedule)
+schedules.append(ecmwf_daily_local_archive_schedule)
 
