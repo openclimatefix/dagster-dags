@@ -7,6 +7,7 @@ class NWPConsumerConfig(Config):
     date_from: str
     date_to: str
     source: str
+    docker_volumes: list[str]
 
 @op
 def nwp_consumer_docker_op(context: OpExecutionContext, config: NWPConsumerConfig):
@@ -18,13 +19,14 @@ def nwp_consumer_docker_op(context: OpExecutionContext, config: NWPConsumerConfi
                 f'--from={config.date_from}', 
                 f'--to={config.date_to}'
             ],
-            env_vars=["ECMWF_API_KEY", "ECMWF_API_URL", "ECMWF_API_EMAIL"],
+            env_vars=[
+                "ECMWF_API_KEY", "ECMWF_API_URL", "ECMWF_API_EMAIL",
+                "CEDA_FTP_USER", "CEDA_FTP_PASS",
+                "METOFFICE_ORDER_ID", "METOFFICE_CLIENT_ID", "METOFFICE_CLIENT_SECRET",
+                "AWS_S3_BUCKET", "AWS_REGION", "AWS_ACCESS_KEY", "AWS_ACCESS_SECRET",
+            ],
             container_kwargs={
-                "volumes": [
-                    '/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/raw:/tmp/raw',
-                    '/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/zarr:/tmp/zarr',
-                    '/tmp/nwpc:/tmp/nwpc'
-                ]
+                "volumes": docker_volumes
             }
     )
 
