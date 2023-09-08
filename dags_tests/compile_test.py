@@ -1,10 +1,7 @@
 from dagster import Definitions, load_assets_from_modules 
-from nwp import assets, jobs
+from nwp import defs
 
 def test_compiles():
-    all_assets = load_assets_from_modules([assets])
-    defs = Definitions(
-            assets=all_assets,
-            jobs=jobs.asset_jobs,
-            schedules=jobs.schedule_jobs
-    )
+    job_names = [d.name for d in list(defs.get_all_job_defs())]
+    assert "get_ecmwf_data" in job_names
+    assert len(job_names) == 18

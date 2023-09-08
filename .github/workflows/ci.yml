@@ -47,7 +47,7 @@ jobs:
       # * Except this installs the dev dependencies and binaries as well
       - name: Install all dependencies
         run: |
-          ./venv/bin/pip install -q .[dev]
+          ./venv/bin/pip install -q --no-binary=dags .[dev]
         if: steps.restore-cache.outputs.cache-hit != 'true'
 
       # Cache the virtualenv for future runs
