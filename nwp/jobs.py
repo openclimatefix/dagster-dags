@@ -11,8 +11,8 @@ def build_config_on_runtime(model, run, delay=0):
     config = IconConfig(model=model,
                         run=run,
                         delay=delay,
-                        folder=f"{base_path}/{'ICON_Global' if model == 'global' else 'ICON_EU'}/{run}",
-                        zarr_path=f"{base_path}/{'ICON_Global' if model == 'global' else 'ICON_EU'}/{run}/{run}.zarr.zip")
+                        folder=f"{dwd_base_path}/{'ICON_Global' if model == 'global' else 'ICON_EU'}/{run}",
+                        zarr_path=f"{dwd_base_path}/{'ICON_Global' if model == 'global' else 'ICON_EU'}/{run}/{run}.zarr.zip")
     config_dict = {"delay": config.delay, "folder": config.folder, "model": config.model, "run": config.run,
                    "zarr_path": config.zarr_path}
     return config_dict
