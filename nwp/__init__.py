@@ -7,6 +7,5 @@ all_assets = load_assets_from_modules([assets])
 
 defs = Definitions(
     assets=all_assets,
-    jobs=[jobs.get_ecmwf_data],
-    schedules=jobs.schedule_jobs,
+    schedules=jobs.schedules,
 )
