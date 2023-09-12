@@ -1,9 +1,10 @@
 """
 EO:EUM:DAT:MSG:HRSEVIRI-IODC
 """
-from satip.eumetsat import DownloadManager
+from satip.eumetsat import DownloadManager, eumetsat_filename_to_datetime
 from satip.utils import filter_dataset_ids_on_current_files
 import pandas as pd
+import os
 
 from dagster import Config
 
@@ -22,6 +23,9 @@ def download_product_range(api_key: str, api_secret: str, data_dir: str, product
     date_range = pd.date_range(start=start_str,
                                end=end_str,
                                freq="30min")
+    filenames_downloaded = []
+    for filename in os.listdir(data_dir):
+        filenames_downloaded.append(filename.split("/")[-1])
     for date in date_range:
         start_date = pd.Timestamp(date) - pd.Timedelta("1min")
         end_date = pd.Timestamp(date) + pd.Timedelta("1min")
@@ -29,5 +33,10 @@ def download_product_range(api_key: str, api_secret: str, data_dir: str, product
             start_date=start_date.tz_localize(None).strftime("%Y-%m-%d-%H-%M-%S"),
             end_date=end_date.tz_localize(None).strftime("%Y-%m-%d-%H-%M-%S"),
         )
-        datasets = filter_dataset_ids_on_current_files(datasets, data_dir)
+        # TODO Change this to actually filter, this only works for live service
+        filtered_datasets = []
+        for dataset in datasets:
+            if dataset["id"] not in filenames_downloaded:
+                filtered_datasets.append(dataset)
+        datasets = filtered_datasets
         download_manager.download_datasets(datasets, product_id=product_id)
