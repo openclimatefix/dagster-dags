@@ -33,7 +33,6 @@ def download_product_range(api_key: str, api_secret: str, data_dir: str, product
             start_date=start_date.tz_localize(None).strftime("%Y-%m-%d-%H-%M-%S"),
             end_date=end_date.tz_localize(None).strftime("%Y-%m-%d-%H-%M-%S"),
         )
-        # TODO Change this to actually filter, this only works for live service
         filtered_datasets = []
         for dataset in datasets:
             if dataset["id"] not in filenames_downloaded:

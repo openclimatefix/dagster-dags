@@ -2,13 +2,14 @@ import pandas as pd
 from dagster import AssetSelection, define_asset_job, EnvVar
 
 from sat.assets.eumetsat.common import EumetsatConfig
+from sat.assets import download_eumetsat_iodc_data
 
 base_path = "/mnt/storage_c/IODC/"
 
 
 
 asset_jobs = []
-asset_job = define_asset_job(f"download_iodc_raw_files", AssetSelection.all(),
+asset_job = define_asset_job(f"download_iodc_raw_files", AssetSelection.assets(download_eumetsat_iodc_data),
                              config={
                                  'ops': {"download_eumetsat_iodc_data": {"config": EumetsatConfig(api_key=EnvVar("EUMETSAT_API_KEY"),
                                                                                                   api_secret=EnvVar("EUMETSAT_API_SECRET"),
