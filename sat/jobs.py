@@ -10,7 +10,7 @@ config = EumetsatConfig(api_key=EnvVar("EUMETSAT_API_KEY"),
                         api_secret=EnvVar("EUMETSAT_API_SECRET"),
                         data_dir=base_path,
                         start_date="2017-02-01",
-                        end_date=pd.Timestamp().utcnow().strftime('%Y-%m-%d'))
+                        end_date=pd.Timestamp.utcnow().strftime('%Y-%m-%d'))
 
 asset_jobs = []
 asset_job = define_asset_job(f"download_iodc_raw_files", AssetSelection.assets(download_eumetsat_iodc_data),
