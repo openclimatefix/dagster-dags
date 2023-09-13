@@ -16,7 +16,7 @@ asset_jobs = []
 asset_job = define_asset_job(f"download_iodc_raw_files", AssetSelection.assets(download_eumetsat_iodc_data),
                              config={
                                  'ops': {"download_eumetsat_iodc_data": {
-                                     "config": {"api_key": EnvVar("EUMETSAT_API_KEY"), "api_secret": EnvVar("EUMETSAT_API_SECRET"), "data_dir": config.data_dir,
+                                     "config": {"api_key": {'env': 'EUMETSAT_API_KEY'}, "api_secret": {'env': 'EUMETSAT_API_SECRET'}, "data_dir": config.data_dir,
                                                 "start_date": config.start_date, "end_date": config.end_date}}, }, })
 
 asset_jobs.append(asset_job)
