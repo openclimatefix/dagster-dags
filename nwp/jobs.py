@@ -1,9 +1,19 @@
-from dagster import AssetSelection, ScheduleDefinition, define_asset_job, schedule, job, RunConfig, ScheduleEvaluationContext
+import datetime as dt
+
+from dagster import (
+    AssetSelection,
+    DailyPartitionsDefinition,
+    ScheduleDefinition,
+    build_schedule_from_partitioned_job,
+    define_asset_job,
+    job,
+    partitioned_config,
+)
 
 from nwp.assets.dwd.common import IconConfig
-from nwp.assets.ecmwf.mars import nwp_consumer_docker_op, NWPConsumerConfig
+from nwp.assets.ecmwf.mars import nwp_consumer_docker_op
 
-import datetime as dt
+schedules = []
 
 dwd_base_path = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/DWD"
 
@@ -31,7 +41,7 @@ for r in ["00", "06", "12", "18"]:
                     }}
                 )
             match (delay, r):
-                case (0, "00"): 
+                case (0, "00"):
                     schedules.append(ScheduleDefinition(job=asset_job, cron_schedule="30 4 * * *"))
                 case (0, "06"):
                     schedules.append(ScheduleDefinition(job=asset_job, cron_schedule="30 10 * * *"))
@@ -47,30 +57,20 @@ for r in ["00", "06", "12", "18"]:
                     schedules.append(ScheduleDefinition(job=asset_job, cron_schedule="0 6 * * *"))
                 case (1, "18"):
                     schedules.append(ScheduleDefinition(job=asset_job, cron_schedule="0 8 * * *"))
-            
-@job
-def nwp_consumer_docker_job():
+
+
+@partitioned_config(partitions_def=DailyPartitionsDefinition(start_date=dt.datetime(2021, 1, 1)))
+def ecmwf_daily_partitioned_config(start: dt.datetime, _end: dt.datetime):
+    return {"ops": {"nwp_consumer_docker_op": {"config": {
+        "date_from": start.strftime("%Y-%m-%d"),
+        "date_to": start.strftime("%Y-%m-%d"),
+        "source": "ecmwf-mars",
+        "env_vars": ["ECMWF_API_URL", "ECMWF_API_KEY", "ECMWF_API_EMAIL"],
+        "docker_volumes": ['/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF:/tmp']
+    }}}}
+
+@job(config=ecmwf_daily_partitioned_config)
+def ecmwf_daily_local_archive():
     nwp_consumer_docker_op()
 
-@schedule(job=nwp_consumer_docker_job, cron_schedule="0 13 * * *")
-def ecmwf_daily_local_archive_schedule(context: ScheduleEvaluationContext):
-    scheduled_date = context.scheduled_execution_time.strftime("%Y-%m-%d")
-    return RunRequest(
-        run_key=None,
-        run_config={
-            "ops": {"nwp_consumer_docker_op": NWPConsumerConfig(
-                date_from=scheduled_date,
-                date_to=scheduled_date,
-                source="ecmwf-mars",
-                docker_volumes=[
-                    '/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/raw:/tmp/raw',
-                    '/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/zarr:/tmp/zarr',
-                    '/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/tmp:/tmp/nwpc'
-                ]
-                )}
-            },
-        tags={"date": scheduled_date},
-    )
-
-schedules.append(ecmwf_daily_local_archive_schedule)
-
+schedules.append(build_schedule_from_partitioned_job(ecmwf_daily_local_archive, hour_of_day=13))

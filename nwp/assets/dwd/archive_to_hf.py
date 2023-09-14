@@ -4,7 +4,7 @@ from glob import glob
 
 import xarray as xr
 import zarr
-from dagster import asset  # import the `dagster` library
+from dagster import asset
 from huggingface_hub import HfApi
 from ocf_blosc2 import Blosc2
 
@@ -221,3 +221,4 @@ def upload_model_files_to_hf(config: IconConfig):
         repo_type="dataset",
     )
     shutil.rmtree(config.folder)
+
