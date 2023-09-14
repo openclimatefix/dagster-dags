@@ -1,6 +1,7 @@
 import datetime as dt
 
 from dagster import (
+    daily_partitioned_config,
     AssetSelection,
     DailyPartitionsDefinition,
     ScheduleDefinition,
@@ -59,7 +60,7 @@ for r in ["00", "06", "12", "18"]:
                     schedules.append(ScheduleDefinition(job=asset_job, cron_schedule="0 8 * * *"))
 
 
-@partitioned_config(partitions_def=DailyPartitionsDefinition(start_date=dt.datetime(2021, 1, 1)))
+@daily_partitioned_config(start_date=dt.datetime(2021, 1, 1))
 def ecmwf_daily_partitioned_config(start: dt.datetime, _end: dt.datetime):
     return {"ops": {"nwp_consumer_docker_op": {"config": {
         "date_from": start.strftime("%Y-%m-%d"),
