@@ -4,7 +4,7 @@ from glob import glob
 
 import xarray as xr
 import zarr
-from dagster import asset
+from dagster import op
 from huggingface_hub import HfApi
 from ocf_blosc2 import Blosc2
 
@@ -36,7 +36,7 @@ def does_files_exist(config, now_datetime):
     return path_in_repo in existing_files
 
 
-@asset
+@op
 def download_model_files(config: IconConfig):
     model = config.model
     run = config.run
@@ -74,7 +74,7 @@ def download_model_files(config: IconConfig):
     )
 
 
-@asset(deps=[download_model_files])
+@op
 def process_model_files(
         config: IconConfig
 ):
@@ -199,7 +199,7 @@ def process_model_files(
         ds.chunk(chunking).to_zarr(store, encoding=encoding, compute=True)
 
 
-@asset(deps=[process_model_files])
+@op
 def upload_model_files_to_hf(config: IconConfig):
     _, _, now = get_run(config.run, delay=config.delay)
     if does_files_exist(config, now):

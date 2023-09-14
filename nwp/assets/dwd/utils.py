@@ -7,6 +7,17 @@ from multiprocessing import Pool, cpu_count
 
 import requests
 
+dwd_base_path = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/DWD"
+
+def build_config(model, run, delay=0):
+    config = IconConfig(model=model,
+                        run=run,
+                        delay=delay,
+                        folder=f"{dwd_base_path}/{'ICON_Global' if model == 'global' else 'ICON_EU'}/{run}",
+                        zarr_path=f"{dwd_base_path}/{'ICON_Global' if model == 'global' else 'ICON_EU'}/{run}/{run}.zarr.zip")
+    config_dict = {"delay": config.delay, "folder": config.folder, "model": config.model, "run": config.run,
+                   "zarr_path": config.zarr_path}
+    return config_dict
 
 def get_run(run: str, delay: int = 0):
     """Get run name.
