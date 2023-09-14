@@ -150,3 +150,5 @@ zarr
 .DS_Store
 *.swp
 
+# Dagster
+tmp*
