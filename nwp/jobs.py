@@ -87,6 +87,7 @@ def ecmwf_daily_partitioned_config(start: dt.datetime, _end: dt.datetime):
         date_to=start.strftime("%Y-%m-%d"),
         source="ecmwf-mars",
         env_vars=["ECMWF_API_URL", "ECMWF_API_KEY", "ECMWF_API_EMAIL"],
+        docker_volumes=[],
         zarr_dir='/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/zarr',
         raw_dir='/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/raw',
     )
