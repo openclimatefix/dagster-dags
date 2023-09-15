@@ -1,24 +1,28 @@
 import datetime as dt
+import json
 
 from dagster import (
-    daily_partitioned_config,
     AssetSelection,
-    DailyPartitionsDefinition,
     ScheduleDefinition,
     build_schedule_from_partitioned_job,
+    daily_partitioned_config,
     define_asset_job,
     job,
-    partitioned_config,
 )
 
 from nwp.assets.dwd.common import IconConfig
-from nwp.assets.ecmwf.mars import nwp_consumer_docker_op
+from nwp.assets.ecmwf.mars import (
+    NWPConsumerConfig,
+    nwp_consumer_convert_op,
+    nwp_consumer_download_op,
+)
 
 schedules = []
 
 dwd_base_path = "/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/DWD"
 
-def build_config_on_runtime(model, run, delay=0):
+def build_config_on_runtime(model: str, run: str, delay: int = 0) -> dict:
+    """Create a config dict for the DWD ICON model."""
     config = IconConfig(model=model,
                         run=run,
                         delay=delay,
@@ -62,16 +66,24 @@ for r in ["00", "06", "12", "18"]:
 
 @daily_partitioned_config(start_date=dt.datetime(2021, 1, 1))
 def ecmwf_daily_partitioned_config(start: dt.datetime, _end: dt.datetime):
-    return {"ops": {"nwp_consumer_docker_op": {"config": {
-        "date_from": start.strftime("%Y-%m-%d"),
-        "date_to": start.strftime("%Y-%m-%d"),
-        "source": "ecmwf-mars",
-        "env_vars": ["ECMWF_API_URL", "ECMWF_API_KEY", "ECMWF_API_EMAIL"],
-        "docker_volumes": ['/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF:/tmp']
-    }}}}
+    config: NWPConsumerConfig = NWPConsumerConfig(
+        date_from=start.strftime("%Y-%m-%d"),
+        date_to=start.strftime("%Y-%m-%d"),
+        source="ecmwf-mars",
+        env_vars=["ECMWF_API_URL", "ECMWF_API_KEY", "ECMWF_API_EMAIL"],
+        docker_volumes=['/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF:/tmp'],
+        zarr_dir='/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/zarr',
+        raw_dir='/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/raw',
+    )
+    return {"ops": {
+        "nwp_consumer_download_op": {"config": json.loads(config.json())},
+        "nwp_consumer_convert_op": {"config": json.loads(config.json())},
+        "nwp_consumer_docker_op": {"config": json.loads(config.json())},
+    }}
 
 @job(config=ecmwf_daily_partitioned_config)
 def ecmwf_daily_local_archive():
-    nwp_consumer_docker_op()
+    nwp_consumer_convert_op(nwp_consumer_download_op())
 
 schedules.append(build_schedule_from_partitioned_job(ecmwf_daily_local_archive, hour_of_day=13))
+
