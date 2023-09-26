@@ -21,6 +21,8 @@ jobs:
   # * Installs dependencies and caches them
   build-venv:
     runs-on: ubuntu-latest
+    container: quay.io/condaforge/miniforge3:latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -38,16 +40,17 @@ jobs:
       # Should mirror the build-venv stage in the Containerfile
       - name: Build venv
         run: |
-          sudo apt -qq update && sudo apt -qq install -y build-essential libgeos-dev
-          python -m venv ./venv
-          ./venv/bin/pip install --upgrade -q pip wheel setuptools
+          apt -qq update && apt -qq install -y build-essential
+          conda create -p ./venv python=3.10
+          ./venv/bin/python -m pip install --upgrade -q pip wheel setuptools
         if: steps.restore-cache.outputs.cache-hit != 'true'
 
       # Should mirror the build-reqs stage in the Containerfile
       # * Except this installs the dev dependencies and binaries as well
       - name: Install all dependencies
         run: |
-          ./venv/bin/pip install -q --no-binary=dags .[dev]
+          conda install -p ./venv -q -y eccodes zarr
+          ./venv/bin/python -m pip install -q .[dev]
         if: steps.restore-cache.outputs.cache-hit != 'true'
 
       # Cache the virtualenv for future runs
@@ -57,7 +60,7 @@ jobs:
           path: ./venv
           key: ${{ steps.restore-cache.outputs.cache-primary-key }}
         if: steps.restore-cache.outputs.cache-hit != 'true'
-
+  
   # Define a unittest job that runs on all branches and PRs
   test-unit:
     runs-on: ubuntu-latest
