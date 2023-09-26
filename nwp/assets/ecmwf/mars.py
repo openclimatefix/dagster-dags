@@ -1,4 +1,3 @@
-import docopt
 import nwp_consumer.cmd.main as consumer
 from dagster import Config, OpExecutionContext, op
 from dagster_docker import execute_docker_container
