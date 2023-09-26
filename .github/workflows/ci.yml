@@ -19,7 +19,7 @@ concurrency:
 jobs:
   # Define a dependencies job that runs on all branches and PRs
   # * Installs dependencies and caches them
-build-venv:
+  build-venv:
     runs-on: ubuntu-latest
     container: quay.io/condaforge/miniforge3:latest
 
