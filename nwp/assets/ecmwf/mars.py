@@ -1,7 +1,5 @@
-import os
-import subprocess
-import sys
-
+import docopt
+import nwp_consumer.cmd.main as consumer
 from dagster import Config, OpExecutionContext, op
 from dagster_docker import execute_docker_container
 
@@ -35,28 +33,35 @@ def nwp_consumer_docker_op(context: OpExecutionContext, config: NWPConsumerConfi
 
 @op
 def nwp_consumer_download_op(context: OpExecutionContext, config: NWPConsumerConfig):
-    process = subprocess.run(
-        [f"{os.path.dirname(sys.executable)}/nwp-consumer", "download",
-         f'--source={config.source}', f'--from={config.date_from}', f'--to={config.date_to}',
-         f'--rdir={config.raw_dir}', f'--zdir={config.zarr_dir}'],
-        capture_output=True,
-        text=True
-    )
-    print(process.stdout)
-    print(process.stderr)
-    process.check_returncode()
+    """Download the data from the source."""
+    consumer.run({
+        "download": True,
+        "convert": False,
+        "consume": False,
+        "check": False,
+        "--source": config.source,
+        "--sink": "local",
+        "--from": config.date_from,
+        "--to": config.date_to,
+        "--rdir": config.raw_dir,
+        "--zdir": config.zarr_dir,
+        "--create-latest": False,
+    })
     return config
 
 @op
 def nwp_consumer_convert_op(context: OpExecutionContext, downloadedConfig: NWPConsumerConfig):
-    process = subprocess.run(
-        [f"{os.path.dirname(sys.executable)}/nwp-consumer", "convert",
-         f'--source={downloadedConfig.source}', f'--from={downloadedConfig.date_from}',
-         f'--to={downloadedConfig.date_to}',
-         f'--rdir={downloadedConfig.raw_dir}', f'--zdir={downloadedConfig.zarr_dir}'],
-        capture_output=True,
-        text=True
-    )
-    print(process.stdout)
-    print(process.stderr)
-
+    """Convert the downloaded data to zarr format."""
+    consumer.run({
+        "download": False,
+        "convert": True,
+        "consume": False,
+        "check": False,
+        "--source": downloadedConfig.source,
+        "--sink": "local",
+        "--from": downloadedConfig.date_from,
+        "--to": downloadedConfig.date_to,
+        "--rdir": downloadedConfig.raw_dir,
+        "--zdir": downloadedConfig.zarr_dir,
+        "--create-latest": False,
+    })
