@@ -64,7 +64,7 @@ for r in ["00", "06", "12", "18"]:
                     schedules.append(ScheduleDefinition(job=asset_job, cron_schedule="0 8 * * *"))
 
 
-@daily_partitioned_config(start_date=dt.datetime(2021, 1, 1))
+@daily_partitioned_config(start_date=dt.datetime(2020, 1, 1))
 def ecmwf_daily_partitioned_config_docker(start: dt.datetime, _end: dt.datetime):
     config: NWPConsumerConfig = NWPConsumerConfig(
         date_from=start.strftime("%Y-%m-%d"),
@@ -94,6 +94,7 @@ def ecmwf_daily_partitioned_config(start: dt.datetime, _end: dt.datetime):
     return {"ops": {
         "nwp_consumer_download_op": {"config": json.loads(config.json())},
     }}
+
 @job(config=ecmwf_daily_partitioned_config)
 def ecmwf_daily_local_archive():
     nwp_consumer_convert_op(nwp_consumer_download_op())
