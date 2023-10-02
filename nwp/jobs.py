@@ -80,7 +80,7 @@ def ecmwf_daily_partitioned_config_docker(start: dt.datetime, _end: dt.datetime)
     }}
 
 
-@daily_partitioned_config(start_date=dt.datetime(2021, 1, 1))
+@daily_partitioned_config(start_date=dt.datetime(2020, 1, 1))
 def ecmwf_daily_partitioned_config(start: dt.datetime, _end: dt.datetime):
     config: NWPConsumerConfig = NWPConsumerConfig(
         date_from=start.strftime("%Y-%m-%d"),
