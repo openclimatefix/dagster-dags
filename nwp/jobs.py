@@ -65,39 +65,45 @@ for r in ["00", "06", "12", "18"]:
 
 
 @daily_partitioned_config(start_date=dt.datetime(2020, 1, 1))
-def ecmwf_daily_partitioned_config_docker(start: dt.datetime, _end: dt.datetime):
+def ecmwf_uk_daily_partitioned_config(start: dt.datetime, _end: dt.datetime) -> dict:
+    """Create a config dict for the nwp-consumer for uk data from ECMWF."""
     config: NWPConsumerConfig = NWPConsumerConfig(
         date_from=start.strftime("%Y-%m-%d"),
         date_to=start.strftime("%Y-%m-%d"),
         source="ecmwf-mars",
-        env_vars=["ECMWF_API_URL", "ECMWF_API_KEY", "ECMWF_API_EMAIL"],
-        docker_volumes=['/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF:/tmp'],
-        zarr_dir='/tmp/zarr',
-        raw_dir='/tmp/raw',
-    )
-    return {"ops": {
-        "nwp_consumer_docker_op": {"config": json.loads(config.json())},
-    }}
-
-
-@daily_partitioned_config(start_date=dt.datetime(2020, 1, 1))
-def ecmwf_daily_partitioned_config(start: dt.datetime, _end: dt.datetime):
-    config: NWPConsumerConfig = NWPConsumerConfig(
-        date_from=start.strftime("%Y-%m-%d"),
-        date_to=start.strftime("%Y-%m-%d"),
-        source="ecmwf-mars",
-        env_vars=["ECMWF_API_URL", "ECMWF_API_KEY", "ECMWF_API_EMAIL"],
-        docker_volumes=[],
-        zarr_dir='/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/zarr',
-        raw_dir='/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/raw',
+        env_overrides={"ECMWF_AREA": "uk"},
+        zarr_dir='/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/uk/zarr',
+        raw_dir='/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/uk/raw',
     )
     return {"ops": {
         "nwp_consumer_download_op": {"config": json.loads(config.json())},
     }}
 
-@job(config=ecmwf_daily_partitioned_config)
-def ecmwf_daily_local_archive():
+@job(config=ecmwf_uk_daily_partitioned_config)
+def ecmwf_uk_daily_local_archive() -> None:
+    """Download and convert ECMWF data for the UK."""
     nwp_consumer_convert_op(nwp_consumer_download_op())
 
-schedules.append(build_schedule_from_partitioned_job(ecmwf_daily_local_archive, hour_of_day=13))
+@daily_partitioned_config(start_date=dt.datetime(2020, 1, 1))
+def ecmwf_india_daily_partitioned_config(start: dt.datetime, _end: dt.datetime) -> dict:
+    """Create a config dict for the nwp-consumer for india data from ECMWF."""
+    config: NWPConsumerConfig = NWPConsumerConfig(
+        date_from=start.strftime("%Y-%m-%d"),
+        date_to=start.strftime("%Y-%m-%d"),
+        source="ecmwf-mars",
+        env_overrides={"ECMWF_AREA": "nw-india"},
+        zarr_dir='/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/india/zarr',
+        raw_dir='/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/india/raw',
+    )
+    return {"ops": {
+        "nwp_consumer_download_op": {"config": json.loads(config.json())},
+    }}
+
+@job(config=ecmwf_india_daily_partitioned_config)
+def ecmwf_india_daily_local_archive() -> None:
+    """Download and convert ECMWF data for India."""
+    nwp_consumer_convert_op(nwp_consumer_download_op())
+
+schedules.append(build_schedule_from_partitioned_job(ecmwf_uk_daily_local_archive, hour_of_day=13))
+schedules.append(build_schedule_from_partitioned_job(ecmwf_india_daily_local_archive, hour_of_day=14))
 
