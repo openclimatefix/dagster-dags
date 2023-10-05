@@ -79,7 +79,7 @@ def ecmwf_uk_daily_partitioned_config(start: dt.datetime, _end: dt.datetime) -> 
         "nwp_consumer_download_op": {"config": json.loads(config.json())},
     }}
 
-@job(config=ecmwf_uk_daily_partitioned_config)
+@job(config=ecmwf_uk_daily_partitioned_config, name="ecmwf_daily_local_archive")
 def ecmwf_uk_daily_local_archive() -> None:
     """Download and convert ECMWF data for the UK."""
     nwp_consumer_convert_op(nwp_consumer_download_op())
