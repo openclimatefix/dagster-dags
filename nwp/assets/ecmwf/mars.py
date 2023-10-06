@@ -1,22 +1,25 @@
-import nwp_consumer.cmd.main as consumer
 import contextlib
 import os
+
+import nwp_consumer.cmd.main as consumer
 from dagster import Config, OpExecutionContext, op
-from dagster_docker import execute_docker_container
+
 
 @contextlib.contextmanager
 def modify_env(vars: dict[str, str]):
     """Temporarily modify the environment."""
+    oldvars = os.environ.copy()
     for var in vars:
-        oldval = os.environ.get(var)
         newval = vars[var]
         os.environ[var] = newval
-        vars[var] = oldval
     try:
         yield
     finally:
         for var in vars:
-            os.environ[var] = oldval
+            if var in oldvars:
+                os.environ[var] = oldvars[var]
+            else:
+                del os.environ[var]
 
 class NWPConsumerConfig(Config):
     """Configuration for the NWP consumer."""
