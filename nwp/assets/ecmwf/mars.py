@@ -6,20 +6,19 @@ from dagster import Config, OpExecutionContext, op
 
 
 @contextlib.contextmanager
-def modify_env(vars: dict[str, str]):
+def modify_env(newvars: dict[str, str]):
     """Temporarily modify the environment."""
-    oldvars = os.environ.copy()
-    for var in vars:
-        newval = vars[var]
-        os.environ[var] = newval
+    oldvars: dict[str, str] = os.environ.copy()
+    for key in newvars:
+        os.environ[key] = newvars[key]
     try:
         yield
     finally:
-        for var in vars:
-            if var in oldvars:
-                os.environ[var] = oldvars[var]
+        for key in newvars:
+            if key in oldvars:
+                os.environ[key] = oldvars[key]
             else:
-                del os.environ[var]
+                del os.environ[key]
 
 class NWPConsumerConfig(Config):
     """Configuration for the NWP consumer."""
