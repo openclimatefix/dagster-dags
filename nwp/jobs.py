@@ -84,19 +84,29 @@ class NWPConsumerDagDefinition:
     """A class to define the NWPConsumerDagDefinition."""
 
     def __init__(
-        self, area: str, source: str, storage_path: str | None = None
+        self, source: str, storage_path: str | None = None, env_overrides: dict[str, str] | None = None
     ) -> "NWPConsumerDagDefinition":
         """Create a NWPConsumerDagDefinition."""
-        self.area = area
         self.source = source
+        area = env_overrides.get("ECMWF_AREA", "no-area")
         self.storage_path = \
             storage_path or \
-            f'/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/{self.area}'
+            f'/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/ECMWF/{area}'
+        self.env_overrides = env_overrides
 
 nwp_consumer_jobs: dict[str, NWPConsumerDagDefinition] = {
-    "uk": NWPConsumerDagDefinition(area="uk", source="ecmwf-mars"),
-    "india": NWPConsumerDagDefinition(area="nw-india", source="ecmwf-mars"),
-    "malta": NWPConsumerDagDefinition(area="malta", source="ecmwf-mars")
+    "uk": NWPConsumerDagDefinition(
+        source="ecmwf-mars",
+        env_overrides={"ECMWF_AREA": "uk"}
+    ),
+    "india": NWPConsumerDagDefinition(
+        source="ecmwf-mars",
+        env_overrides={"ECMWF_AREA": "nw-india", "ECMWF_HOURS": "84"}
+    ),
+    "malta": NWPConsumerDagDefinition(
+        source="ecmwf-mars",
+        env_overrides={"ECMWF_AREA": "malta"}
+    ),
 }
 
 
@@ -110,7 +120,7 @@ def gen_partitioned_config_func(dagdef: NWPConsumerDagDefinition) \
             date_from=time_window.start.strftime("%Y-%m-%d"),
             date_to=time_window.start.strftime("%Y-%m-%d"),
             source=dagdef.source,
-            env_overrides={"ECMWF_AREA": dagdef.area},
+            env_overrides=dagdef.env_overrides,
             zarr_dir=f"{dagdef.storage_path}/zarr",
             raw_dir=f"{dagdef.storage_path}/raw",
         )
