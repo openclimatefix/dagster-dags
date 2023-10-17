@@ -25,7 +25,7 @@ dependencies = [
     "dagster-docker == 0.20.11",
     "huggingface-hub == 0.16.4",
     "numpy >= 1.23.0",
-    "nwp-consumer == 0.1.21",
+    "nwp-consumer == 0.1.23",
     "ocf-blosc2 == 0.0.3",
     "pathlib == 1.0.1",
     "requests >= 2.28.0",
