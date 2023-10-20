@@ -157,9 +157,16 @@ def fetch_cams_forecast_for_day(context: dagster.OpExecutionContext, config: CAM
     if date < dt.datetime(2015, 1, 1):
         raise ValueError('CAMS data is only available from 2015-01-01 onwards.')
 
+    # If date is more than 30 days ago, use slow variables, else use fast ones
+    if (dt.datetime.now() - date).days > 30:
+        multi_variables: list[str] = SLOW_MULTI_VARIABLES
+        single_variables: list[str] = SLOW_SINGLE_VARIABLES
+    else:
+        multi_variables: list[str] = MULTI_LEVEL_NEW_VARIABLES
+        single_variables: list[str] = SINGLE_NEW_VARIABLES
     # Multi-level variables first
     for it in INIT_TIMES:
-        for var in MULTI_LEVEL_NEW_VARIABLES + SLOW_MULTI_VARIABLES:
+        for var in multi_variables:
             fname: str = f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib'
 
             c.retrieve(
@@ -197,7 +204,7 @@ def fetch_cams_forecast_for_day(context: dagster.OpExecutionContext, config: CAM
                 )
             )
 
-        for var in SINGLE_NEW_VARIABLES + SLOW_SINGLE_VARIABLES:
+        for var in single_variables:
             fname: str = f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib'
 
             c.retrieve(
