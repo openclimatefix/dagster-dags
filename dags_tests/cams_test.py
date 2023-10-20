@@ -1,7 +1,8 @@
-from nwp.assets.cams import fetch_cams_forecast_for_day
+import datetime as dt
 import unittest
 
-import datetime as dt
+from nwp.assets.cams import fetch_cams_forecast_for_day
+
 
 class TestCams(unittest.TestCase):
     def test_cams(self):

@@ -1,19 +1,16 @@
 import datetime as dt
-from nwp.assets.cams import (
-    fetch_cams_forecast_for_day,
-    CAMSConfig
-)
 import json
 from collections.abc import Callable
 from typing import Any
 
 import dagster
 
+from nwp.assets.cams import CAMSConfig, fetch_cams_forecast_for_day
 from nwp.assets.dwd.common import IconConfig
 from nwp.assets.ecmwf.mars import (
     NWPConsumerConfig,
     nwp_consumer_convert_op,
-    nwp_consumer_download_op
+    nwp_consumer_download_op,
 )
 
 jobs: list[dagster.JobDefinition] = []

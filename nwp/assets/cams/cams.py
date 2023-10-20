@@ -1,8 +1,7 @@
+import datetime as dt
+
 import cdsapi
 import dagster
-import os
-
-import datetime as dt
 
 c = cdsapi.Client()
 
@@ -80,7 +79,6 @@ class CAMSConfig(dagster.Config):
 @dagster.op
 def fetch_cams_forecast_for_day(context: dagster.OpExecutionContext, config: CAMSConfig):
     """Fetch CAMS forecast for a given day."""
-
     date: dt.datetime = dt.datetime.strptime(config.date, "%Y-%m-%d")
 
     if date < dt.datetime(2015, 1, 1):
