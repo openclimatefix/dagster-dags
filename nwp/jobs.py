@@ -1,4 +1,8 @@
 import datetime as dt
+from nwp.assets.cams import (
+    fetch_cams_forecast_for_day,
+    CAMSConfig
+)
 import json
 from collections.abc import Callable
 from typing import Any
@@ -77,6 +81,24 @@ for r in ["00", "06", "12", "18"]:
                     schedules.append(
                         dagster.ScheduleDefinition(job=asset_job, cron_schedule="0 8 * * *"))
 
+# --- CAMS jobs and schedules ----------------------------------------------
+
+@dagster.daily_partitioned_config(start_date=dt.datetime(2015, 1, 1))
+def CAMSDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[str, Any]:
+    config = CAMSConfig(
+        date=start.strftime("%Y-%m-%d"),
+        raw_dir="/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/CAMS/raw",
+    )
+    return {"ops": {"fetch_cams_forecast_for_day": {"config": json.loads(config.json())}}}
+
+
+@dagster.job(config=CAMSDailyPartitionConfig)
+def cams_daily_archive() -> None:
+    """Download CAMS data for a given day."""
+    fetch_cams_forecast_for_day()
+
+jobs.append(cams_daily_archive)
+schedules.append(dagster.build_schedule_from_partitioned_job(cams_daily_archive, hour_of_day=16))
 
 # --- NWP Consumer jobs and schedules --------------------------------------
 
