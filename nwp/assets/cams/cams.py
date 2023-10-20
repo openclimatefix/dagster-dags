@@ -2,7 +2,7 @@ import datetime as dt
 
 import cdsapi
 import dagster
-
+from dagster import AssetObservation
 
 VARIABLES: list[str] = [
             'aerosol_extinction_coefficient_1064nm', 'aerosol_extinction_coefficient_355nm', 'aerosol_extinction_coefficient_532nm',
