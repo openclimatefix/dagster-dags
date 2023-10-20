@@ -3,7 +3,6 @@ import datetime as dt
 import cdsapi
 import dagster
 
-c = cdsapi.Client()
 
 VARIABLES: list[str] = [
             'aerosol_extinction_coefficient_1064nm', 'aerosol_extinction_coefficient_355nm', 'aerosol_extinction_coefficient_532nm',
@@ -79,6 +78,9 @@ class CAMSConfig(dagster.Config):
 @dagster.op
 def fetch_cams_forecast_for_day(context: dagster.OpExecutionContext, config: CAMSConfig):
     """Fetch CAMS forecast for a given day."""
+    
+    c = cdsapi.Client()
+
     date: dt.datetime = dt.datetime.strptime(config.date, "%Y-%m-%d")
 
     if date < dt.datetime(2015, 1, 1):
