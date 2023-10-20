@@ -18,6 +18,7 @@ authors = [
 ]
 classifiers = ["Programming Language :: Python :: 3"]
 dependencies = [
+    "cdsapi == 0.6.1",
     "ecmwf-api-client == 1.6.3",
     "dagit == 1.4.11",
     "dagster == 1.4.11",
