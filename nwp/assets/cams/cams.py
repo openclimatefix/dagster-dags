@@ -1,5 +1,5 @@
 import datetime as dt
-
+import os
 import cdsapi
 import dagster
 from dagster import AssetObservation
@@ -230,4 +230,10 @@ def fetch_cams_forecast_for_day(context: dagster.OpExecutionContext, config: CAM
                     }
                 )
             )
+
+        # Validate that all files were downloaded
+        for var in multi_variables + single_variables:
+            fname: str = f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib'
+            if not os.path.isfile(fname):
+                raise FileNotFoundError(f"File {fname} was not downloaded.")
 
