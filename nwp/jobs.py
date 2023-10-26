@@ -107,7 +107,7 @@ def CAMSEUDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[st
     return {"ops": {"fetch_cams_eu_forecast_for_day": {"config": json.loads(config.json())}}}
 
 
-@dagster.job(config=CAMSDailyPartitionConfig)
+@dagster.job(config=CAMSEUDailyPartitionConfig)
 def cams_eu_daily_archive() -> None:
     """Download CAMS data for a given day."""
     fetch_cams_eu_forecast_for_day()
