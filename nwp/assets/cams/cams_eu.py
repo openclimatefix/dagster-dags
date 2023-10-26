@@ -10,7 +10,7 @@ INIT_TIMES: list[str] = [
     '00:00',
 ]
 
-VARIALES = [
+VARIABLES = [
     'alder_pollen', 'ammonia', 'birch_pollen',
     'carbon_monoxide', 'dust', 'grass_pollen',
     'nitrogen_dioxide', 'nitrogen_monoxide', 'non_methane_vocs',
@@ -103,7 +103,7 @@ def fetch_cams_eu_forecast_for_day(context: dagster.OpExecutionContext, config: 
 
 
         # Validate that all files were downloaded
-        for var in VARIALES:
+        for var in VARIABLES:
             fname: str = f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.nc'
             if not os.path.isfile(fname):
                 raise FileNotFoundError(f"File {fname} was not downloaded.")
