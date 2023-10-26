@@ -33,7 +33,7 @@ def fetch_cams_eu_forecast_for_day(context: dagster.OpExecutionContext, config: 
 
     # Multi-level variables first
     for it in INIT_TIMES:
-        for var in VARIALES:
+        for var in VARIABLES:
             fname: str = f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib'
 
             c.retrieve(
