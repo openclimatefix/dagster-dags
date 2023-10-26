@@ -4,7 +4,7 @@ import cdsapi
 import dagster
 from dagster import AssetObservation
 
-from nwp.assets.cams import CAMSConfig
+from nwp.assets.cams.utils import CAMSConfig
 
 SINGLE_NEW_VARIABLES: list[str] = [
     'ammonium_aerosol_optical_depth_550nm', 'black_carbon_aerosol_optical_depth_550nm', 'dust_aerosol_optical_depth_550nm',

@@ -3,7 +3,7 @@ import os
 import cdsapi
 import dagster
 from dagster import AssetObservation
-from nwp.assets.cams import CAMSConfig
+from nwp.assets.cams.utils import CAMSConfig
 
 
 INIT_TIMES: list[str] = [
