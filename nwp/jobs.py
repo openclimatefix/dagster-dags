@@ -50,7 +50,8 @@ for r in ["00", "06", "12", "18"]:
                         "config": build_config_on_runtime(model, r, delay)},
                     "upload_model_files_to_hf": {
                         "config": build_config_on_runtime(model, r, delay)},
-                    }}
+                    }},
+                tags={"source": "icon"}
                 )
             match (delay, r):
                 case (0, "00"):
@@ -89,7 +90,10 @@ def CAMSDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[str,
     return {"ops": {"fetch_cams_forecast_for_day": {"config": json.loads(config.json())}}}
 
 
-@dagster.job(config=CAMSDailyPartitionConfig)
+@dagster.job(
+    config=CAMSDailyPartitionConfig,
+    tags={"source": "cams"}
+)
 def cams_daily_archive() -> None:
     """Download CAMS data for a given day."""
     fetch_cams_forecast_for_day()
@@ -107,7 +111,10 @@ def CAMSEUDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[st
     return {"ops": {"fetch_cams_eu_forecast_for_day": {"config": json.loads(config.json())}}}
 
 
-@dagster.job(config=CAMSEUDailyPartitionConfig)
+@dagster.job(
+    config=CAMSEUDailyPartitionConfig,
+    tags={"source": "cams"}
+)
 def cams_eu_daily_archive() -> None:
     """Download CAMS data for a given day."""
     fetch_cams_eu_forecast_for_day()
@@ -182,7 +189,7 @@ for loc, dagdef in nwp_consumer_jobs.items():
     @dagster.job(
         name="ecmwf_daily_local_archive" if loc=="uk" else f"ecmwf_{loc}_daily_archive",
         config=config,
-        tags={"area": loc},
+        tags={"source": "ecmwf", "area": loc},
     )
     def ecmwf_daily_partitioned_archive() -> None:
         """Download and convert NWP data using the consumer according to input config."""
