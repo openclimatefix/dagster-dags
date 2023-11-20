@@ -167,68 +167,72 @@ def fetch_cams_forecast_for_day(context: dagster.OpExecutionContext, config: CAM
     for it in INIT_TIMES:
         for var in multi_variables:
             fname: str = f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib'
+            try:
+                c.retrieve(
+                    'cams-global-atmospheric-composition-forecasts',
+                    {
+                        'date': date.strftime("%Y-%m-%d/%Y-%m-%d"),
+                        'type': 'forecast',
+                        'format': 'grib',
+                        'variable': var,
+                        'pressure_level': [
+                            '1', '2', '3',
+                            '5', '7', '10',
+                            '20', '30', '50',
+                            '70', '100', '150',
+                            '200', '250', '300',
+                            '400', '500', '600',
+                            '700', '800', '850',
+                            '900', '925', '950',
+                            '1000',
+                        ],
+                        'leadtime_hour': MULTI_LEVEL_HOURS,
+                        "time": it,
+                    },
+                f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib')
 
-            c.retrieve(
-                'cams-global-atmospheric-composition-forecasts',
-                {
-                    'date': date.strftime("%Y-%m-%d/%Y-%m-%d"),
-                    'type': 'forecast',
-                    'format': 'grib',
-                    'variable': var,
-                    'pressure_level': [
-                        '1', '2', '3',
-                        '5', '7', '10',
-                        '20', '30', '50',
-                        '70', '100', '150',
-                        '200', '250', '300',
-                        '400', '500', '600',
-                        '700', '800', '850',
-                        '900', '925', '950',
-                        '1000',
-                    ],
-                    'leadtime_hour': MULTI_LEVEL_HOURS,
-                    "time": it,
-                },
-            f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib')
-
-            context.log_event(
-                AssetObservation(
-                    asset_key="cams_data",
-                    metadata={
-                        "path": fname,
-                        "date": date.strftime("%Y-%m-%d"),
-                        "variable": var,
-                        "init_time": it,
-                    }
+                context.log_event(
+                    AssetObservation(
+                        asset_key="cams_data",
+                        metadata={
+                            "path": fname,
+                            "date": date.strftime("%Y-%m-%d"),
+                            "variable": var,
+                            "init_time": it,
+                        }
+                    )
                 )
-            )
+            except Exception as e:
+                context.log.warning(f"Failed to download {fname}. Skipping. Error: {e}")
 
         for var in single_variables:
             fname: str = f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib'
+            try:
+                c.retrieve(
+                    'cams-global-atmospheric-composition-forecasts',
+                    {
+                        'date': date.strftime("%Y-%m-%d/%Y-%m-%d"),
+                        'type': 'forecast',
+                        'format': 'grib',
+                        'variable': var,
+                        'leadtime_hour': SINGLE_LEVEL_HOURS,
+                        "time": it,
+                    },
+                    f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib')
 
-            c.retrieve(
-                'cams-global-atmospheric-composition-forecasts',
-                {
-                    'date': date.strftime("%Y-%m-%d/%Y-%m-%d"),
-                    'type': 'forecast',
-                    'format': 'grib',
-                    'variable': var,
-                    'leadtime_hour': SINGLE_LEVEL_HOURS,
-                    "time": it,
-                },
-                f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib')
-
-            context.log_event(
-                AssetObservation(
-                    asset_key="cams_data",
-                    metadata={
-                        "path": fname,
-                        "date": date.strftime("%Y-%m-%d"),
-                        "variable": var,
-                        "init_time": it,
-                    }
+                context.log_event(
+                    AssetObservation(
+                        asset_key="cams_data",
+                        metadata={
+                            "path": fname,
+                            "date": date.strftime("%Y-%m-%d"),
+                            "variable": var,
+                            "init_time": it,
+                        }
+                    )
                 )
-            )
+            except Exception as e:
+                context.log.warning(f"Failed to download {fname}. Skipping. Error: {e}")
 
         # Validate that all files were downloaded
         for var in multi_variables + single_variables:
