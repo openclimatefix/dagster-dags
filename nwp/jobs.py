@@ -147,22 +147,22 @@ class NWPConsumerDagDefinition:
 
 # Create a dict of job names to their descriptions
 nwp_consumer_jobs: dict[str, NWPConsumerDagDefinition] = {
-    "ecmwf": NWPConsumerDagDefinition(
+    "ecmwf_daily_local_archive": NWPConsumerDagDefinition(
         source="ecmwf-mars",
         folder="ECMWF/uk",
         env_overrides={"ECMWF_AREA": "uk"}
     ),
-    "ecmwf_india": NWPConsumerDagDefinition(
+    "ecmwf_india_daily_archive": NWPConsumerDagDefinition(
         source="ecmwf-mars",
         folder="ECMWF/india",
         env_overrides={"ECMWF_AREA": "nw-india", "ECMWF_HOURS": "84"}
     ),
-    "ecmwf_malta": NWPConsumerDagDefinition(
+    "ecmwf_malta_daily_archive": NWPConsumerDagDefinition(
         source="ecmwf-mars",
         folder="ECMWF/malta",
         env_overrides={"ECMWF_AREA": "malta"}
     ),
-    "ceda_uk": NWPConsumerDagDefinition(
+    "ceda_uk_daily_archive": NWPConsumerDagDefinition(
         source="ceda",
         folder="CEDA/uk",
     ),
@@ -202,7 +202,7 @@ for dagname, dagdef in nwp_consumer_jobs.items():
     )
 
     @dagster.job(
-        name=f"{dagname}_daily_local_archive",
+        name=dagname,
         config=config,
         tags={"source": dagdef.source},
     )
