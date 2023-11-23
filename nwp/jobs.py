@@ -179,7 +179,7 @@ def gen_partitioned_config_func(dagdef: NWPConsumerDagDefinition) \
             date_from=time_window.start.strftime("%Y-%m-%d"),
             date_to=time_window.start.strftime("%Y-%m-%d"),
             source=dagdef.source,
-            env_overrides=dagdef.env_overrides,
+            env_overrides=dagdef.env_overrides or {},
             zarr_dir=f"{dagdef.storage_path}/zarr",
             raw_dir=f"{dagdef.storage_path}/raw",
         )
