@@ -179,7 +179,7 @@ def gen_partitioned_config_func(dagdef: NWPConsumerDagDefinition) \
 # Define the jobs and schedules from the above dict
 for loc, dagdef in nwp_consumer_jobs.items():
 
-    partitions_def = dagster.DailyPartitionsDefinition(start_date=dt.datetime(2020, 1, 1))
+    partitions_def = dagster.DailyPartitionsDefinition(start_date=dt.datetime(2017, 1, 1))
 
     config = dagster.PartitionedConfig(
         partitions_def=partitions_def,
