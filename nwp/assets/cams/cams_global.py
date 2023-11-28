@@ -158,11 +158,11 @@ def fetch_cams_forecast_for_day(context: dagster.OpExecutionContext, config: CAM
 
     # If date is more than 30 days ago, use slow variables, else use fast ones
     if (dt.datetime.now() - date).days > 30:
-        multi_variables: list[str] = SLOW_MULTI_VARIABLES
-        single_variables: list[str] = SLOW_SINGLE_VARIABLES
+        multi_variables: list[str] = config.dict().get("multi_variables", SLOW_MULTI_VARIABLES)
+        single_variables: list[str] = config.dict().get("single_variables", SLOW_SINGLE_VARIABLES)
     else:
-        multi_variables: list[str] = MULTI_LEVEL_NEW_VARIABLES
-        single_variables: list[str] = SINGLE_NEW_VARIABLES
+        multi_variables: list[str] = config.dict().get("multi_variables", MULTI_LEVEL_NEW_VARIABLES)
+        single_variables: list[str] = config.dict().get("single_variables", SINGLE_NEW_VARIABLES)
     # Multi-level variables first
     for it in INIT_TIMES:
         for var in multi_variables:
