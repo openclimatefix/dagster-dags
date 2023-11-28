@@ -27,13 +27,14 @@ def fetch_cams_eu_forecast_for_day(context: dagster.OpExecutionContext, config: 
     c = cdsapi.Client()
 
     date: dt.datetime = dt.datetime.strptime(config.date, "%Y-%m-%d")
+    variables_to_use = config.dict().get("variables", VARIABLES)
 
     if date < dt.datetime.utcnow() - dt.timedelta(days=1095):
         raise ValueError('CAMS data is only available from 3 years ago onwards.')
 
     # Multi-level variables first
     for it in INIT_TIMES:
-        for var in VARIABLES:
+        for var in variables_to_use:
             fname: str = f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.grib'
 
             c.retrieve(
@@ -103,7 +104,7 @@ def fetch_cams_eu_forecast_for_day(context: dagster.OpExecutionContext, config: 
 
 
         # Validate that all files were downloaded
-        for var in VARIABLES:
+        for var in variables_to_use:
             fname: str = f'{config.raw_dir}/{date.strftime("%Y%m%d")}{it[:2]}_{var}.nc'
             if not os.path.isfile(fname):
                 raise FileNotFoundError(f"File {fname} was not downloaded.")
