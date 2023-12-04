@@ -1,4 +1,3 @@
-import datetime
 import datetime as dt
 import json
 from collections.abc import Callable
@@ -87,7 +86,7 @@ for r in ["00", "06", "12", "18"]:
 
 @dagster.daily_partitioned_config(start_date=dt.datetime(2015, 1, 1))
 def CAMSDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[str, Any]:
-    if start < datetime.datetime.utcnow() - datetime.timedelta(days=30):
+    if start < dt.datetime.utcnow() - dt.timedelta(days=30):
         # Only use subset for tape-based backfill
         single_level_variables = ['total_absorption_aerosol_optical_depth_400nm', 'total_absorption_aerosol_optical_depth_440nm',
     'total_absorption_aerosol_optical_depth_469nm', 'total_absorption_aerosol_optical_depth_500nm', 'total_absorption_aerosol_optical_depth_532nm',
