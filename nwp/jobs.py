@@ -86,10 +86,23 @@ for r in ["00", "06", "12", "18"]:
 
 @dagster.daily_partitioned_config(start_date=dt.datetime(2015, 1, 1))
 def CAMSDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[str, Any]:
-    config = CAMSConfig(
-        date=start.strftime("%Y-%m-%d"),
-        raw_dir="/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/CAMS/raw",
-    )
+    if start < dt.datetime.utcnow() - dt.timedelta(days=30):
+        # Only use subset for tape-based backfill
+        single_level_variables = ['total_absorption_aerosol_optical_depth_400nm', 'total_absorption_aerosol_optical_depth_440nm',
+    'total_absorption_aerosol_optical_depth_469nm', 'total_absorption_aerosol_optical_depth_500nm', 'total_absorption_aerosol_optical_depth_532nm',
+    'total_absorption_aerosol_optical_depth_550nm', 'total_absorption_aerosol_optical_depth_645nm', 'total_absorption_aerosol_optical_depth_670nm',]
+        multi_level_variables = ['aerosol_extinction_coefficient_532nm',]
+        config = CAMSConfig(
+            date=start.strftime("%Y-%m-%d"),
+            raw_dir="/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/CAMS/raw",
+            single_variables=single_level_variables,
+            multi_variables=multi_level_variables,
+        )
+    else:
+        config = CAMSConfig(
+            date=start.strftime("%Y-%m-%d"),
+            raw_dir="/mnt/storage_b/data/ocf/solar_pv_nowcasting/nowcasting_dataset_pipeline/NWP/CAMS/raw",
+        )
     return {"ops": {"fetch_cams_forecast_for_day": {"config": json.loads(config.json())}}}
 
 
