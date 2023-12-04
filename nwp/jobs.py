@@ -86,7 +86,8 @@ for r in ["00", "06", "12", "18"]:
 
 @dagster.daily_partitioned_config(start_date=dt.datetime(2015, 1, 1))
 def CAMSDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[str, Any]:
-    if start < dt.datetime.now() - dt.timedelta(days=30):
+    date: dt.datetime = dt.datetime.strptime(start.strftime("%Y-%m-%d"), "%Y-%m-%d")
+    if (dt.datetime.now() - date).days > 30:
         # Only use subset for tape-based backfill
         single_level_variables = ['total_absorption_aerosol_optical_depth_400nm', 'total_absorption_aerosol_optical_depth_440nm',
     'total_absorption_aerosol_optical_depth_469nm', 'total_absorption_aerosol_optical_depth_500nm', 'total_absorption_aerosol_optical_depth_532nm',
