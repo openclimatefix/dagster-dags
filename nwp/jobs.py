@@ -89,9 +89,8 @@ def CAMSDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[str,
     date: dt.datetime = dt.datetime.strptime(start.strftime("%Y-%m-%d"), "%Y-%m-%d")
     if (dt.datetime.now() - date).days > 30:
         # Only use subset for tape-based backfill
-        single_level_variables = ['total_absorption_aerosol_optical_depth_400nm', 'total_absorption_aerosol_optical_depth_440nm',
-    'total_absorption_aerosol_optical_depth_469nm', 'total_absorption_aerosol_optical_depth_500nm', 'total_absorption_aerosol_optical_depth_532nm',
-    'total_absorption_aerosol_optical_depth_550nm', 'total_absorption_aerosol_optical_depth_645nm', 'total_absorption_aerosol_optical_depth_670nm',]
+        single_level_variables = ['total_aerosol_optical_depth_400nm', 'total_aerosol_optical_depth_440nm',
+    'total_aerosol_optical_depth_500nm', 'total_aerosol_optical_depth_532nm', 'total_aerosol_optical_depth_645nm',]
         multi_level_variables = ['aerosol_extinction_coefficient_532nm',]
         config = CAMSConfig(
             date=start.strftime("%Y-%m-%d"),
