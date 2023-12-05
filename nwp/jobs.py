@@ -217,7 +217,7 @@ for dagname, dagdef in nwp_consumer_jobs.items():
     @dagster.job(
         name=dagname,
         config=config,
-        tags={"source": dagdef.source, dagster.MAX_RUNTIME_SECONDS_TAG: 345600},
+        tags={"source": dagdef.source, dagster.MAX_RUNTIME_SECONDS_TAG: 10000},
     )
     def ecmwf_daily_partitioned_archive() -> None:
         """Download and convert NWP data using the consumer according to input config."""
