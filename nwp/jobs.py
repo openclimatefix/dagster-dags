@@ -108,7 +108,7 @@ def CAMSDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[str,
 
 @dagster.job(
     config=CAMSDailyPartitionConfig,
-    tags={"source": "cams"}
+    tags={"source": "cams", dagster.MAX_RUNTIME_SECONDS_TAG: 345600} # 4 days
 )
 def cams_daily_archive() -> None:
     """Download CAMS data for a given day."""
@@ -130,7 +130,7 @@ def CAMSEUDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[st
 
 @dagster.job(
     config=CAMSEUDailyPartitionConfig,
-    tags={"source": "cams"}
+    tags={"source": "cams", dagster.MAX_RUNTIME_SECONDS_TAG: 345600}
 )
 def cams_eu_daily_archive() -> None:
     """Download CAMS data for a given day."""
@@ -217,7 +217,7 @@ for dagname, dagdef in nwp_consumer_jobs.items():
     @dagster.job(
         name=dagname,
         config=config,
-        tags={"source": dagdef.source},
+        tags={"source": dagdef.source, dagster.MAX_RUNTIME_SECONDS_TAG: 345600},
     )
     def ecmwf_daily_partitioned_archive() -> None:
         """Download and convert NWP data using the consumer according to input config."""
