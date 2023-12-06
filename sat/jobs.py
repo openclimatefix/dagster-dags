@@ -20,13 +20,16 @@ def IODCDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[str,
     # Do one day at a time
     config = EumetsatConfig(
         date=start.strftime("%Y-%m-%d"),
-        end_date=(start + pd.Timedelta("1d")).strftime("%Y-%m-%d"),
+        end_date=_end.strftime("%Y-%m-%d"),
         data_dir=base_path,
-        api_key=os.getenv("EUMETSAT_API_KEY"),
-        api_secret=os.getenv("EUMETSAT_API_SECRET"),
+        api_key="",
+        api_secret="",
 
     )
-    return {"ops": {"download_eumetsat_iodc_data": {"config": json.loads(config.json())}}}
+    config = json.loads(config.json())
+    config["api_key"] = {'env': 'EUMETSAT_API_KEY'}
+    config["api_secret"] = {'env': 'EUMETSAT_API_SECRET'}
+    return {"ops": {"download_eumetsat_iodc_data": {"config": config}}}
 
 
 @dagster.job(
@@ -46,13 +49,16 @@ def RSSDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[str, 
     # Do one day at a time
     config = EumetsatConfig(
         date=start.strftime("%Y-%m-%d"),
-        end_date=(start + pd.Timedelta("1d")).strftime("%Y-%m-%d"),
+        end_date=_end.strftime("%Y-%m-%d"),
         data_dir=base_path,
-        api_key=os.getenv("EUMETSAT_API_KEY"),
-        api_secret=os.getenv("EUMETSAT_API_SECRET"),
+        api_key="",
+        api_secret="",
 
     )
-    return {"ops": {"download_eumetsat_rss_data": {"config": json.loads(config.json())}}}
+    config = json.loads(config.json())
+    config["api_key"] = {'env': 'EUMETSAT_API_KEY'}
+    config["api_secret"] = {'env': 'EUMETSAT_API_SECRET'}
+    return {"ops": {"download_eumetsat_rss_data": {"config": config}}}
 
 
 @dagster.job(
@@ -71,13 +77,16 @@ def ZeroDegDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[s
     # Do one day at a time
     config = EumetsatConfig(
         date=start.strftime("%Y-%m-%d"),
-        end_date=(start + pd.Timedelta("1d")).strftime("%Y-%m-%d"),
+        end_date=_end.strftime("%Y-%m-%d"),
         data_dir=base_path,
-        api_key=os.getenv("EUMETSAT_API_KEY"),
-        api_secret=os.getenv("EUMETSAT_API_SECRET"),
+        api_key="",
+        api_secret="",
 
     )
-    return {"ops": {"download_eumetsat_0_deg_data": {"config": json.loads(config.json())}}}
+    config = json.loads(config.json())
+    config["api_key"] = {'env': 'EUMETSAT_API_KEY'}
+    config["api_secret"] = {'env': 'EUMETSAT_API_SECRET'}
+    return {"ops": {"download_eumetsat_0_deg_data": {"config": config}}}
 
 
 @dagster.job(
