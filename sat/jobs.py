@@ -1,12 +1,9 @@
-import pandas as pd
-from dagster import AssetSelection, define_asset_job, EnvVar
 import dagster
 from sat.assets.eumetsat.common import EumetsatConfig
 from sat.assets import download_eumetsat_iodc_data, download_eumetsat_0_deg_data, download_eumetsat_rss_data
 import datetime as dt
 from typing import Any
 import json
-import os
 
 jobs: list[dagster.JobDefinition] = []
 schedules: list[dagster.ScheduleDefinition] = []
