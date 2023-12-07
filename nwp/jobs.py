@@ -130,7 +130,7 @@ def CAMSEUDailyPartitionConfig(start: dt.datetime, _end: dt.datetime) -> dict[st
 
 @dagster.job(
     config=CAMSEUDailyPartitionConfig,
-    tags={"source": "cams", dagster.MAX_RUNTIME_SECONDS_TAG: 345600}
+    tags={"source": "cams-eu", dagster.MAX_RUNTIME_SECONDS_TAG: 345600}
 )
 def cams_eu_daily_archive() -> None:
     """Download CAMS data for a given day."""
