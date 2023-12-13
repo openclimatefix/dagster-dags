@@ -1,10 +1,11 @@
 import datetime as dt
 import os
+
 import cdsapi
 import dagster
 from dagster import AssetObservation
-from nwp.assets.cams.utils import CAMSConfig
 
+from nwp.assets.cams.utils import CAMSConfig
 
 INIT_TIMES: list[str] = [
     '00:00',
@@ -23,7 +24,6 @@ VARIABLES = [
 @dagster.op
 def fetch_cams_eu_forecast_for_day(context: dagster.OpExecutionContext, config: CAMSConfig):
     """Fetch CAMS forecast for a given day."""
-
     c = cdsapi.Client()
 
     date: dt.datetime = dt.datetime.strptime(config.date, "%Y-%m-%d")

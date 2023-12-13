@@ -1,5 +1,6 @@
 import datetime as dt
 import os
+
 import cdsapi
 import dagster
 from dagster import AssetObservation
@@ -148,7 +149,6 @@ INIT_TIMES: list[str] = [
 @dagster.op
 def fetch_cams_forecast_for_day(context: dagster.OpExecutionContext, config: CAMSConfig):
     """Fetch CAMS forecast for a given day."""
-    
     c = cdsapi.Client()
 
     date: dt.datetime = dt.datetime.strptime(config.date, "%Y-%m-%d")
