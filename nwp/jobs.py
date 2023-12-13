@@ -167,7 +167,7 @@ nwp_consumer_jobs: dict[str, NWPConsumerDagDefinition] = {
     ),
     "ecmwf_india_daily_archive": NWPConsumerDagDefinition(
         source="ecmwf-mars",
-        folder="ECMWF/india",
+        folder="ECMWF/nw-india",
         env_overrides={"ECMWF_AREA": "nw-india", "ECMWF_HOURS": "84"}
     ),
     "ecmwf_malta_daily_archive": NWPConsumerDagDefinition(
