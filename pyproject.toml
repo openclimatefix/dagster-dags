@@ -1,7 +1,7 @@
 # --- PROJECT CONFIGURATION --- #
 
 [build-system]
-requires = ["setuptools>=67", "wheel"]
+requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 # Metadata (see https://peps.python.org/pep-0621/)
@@ -10,7 +10,7 @@ name = "dags"
 dynamic = ["version"] # Set automtically using git: https://setuptools-git-versioning.readthedocs.io/en/stable/
 description = "Dags for running jobs via Dagster on Leonardo"
 readme = {file = "README.md", content-type = "text/markdown"}
-requires-python = ">=3.10.0"
+requires-python = ">=3.11.0"
 license = {text = "MIT License"}
 authors = [
     { name = "Jacob Bieker", email = "jacob@openclimatefix.org"}, 
@@ -18,28 +18,29 @@ authors = [
 ]
 classifiers = ["Programming Language :: Python :: 3"]
 dependencies = [
-    "cdsapi == 0.6.1",
-    "ecmwf-api-client == 1.6.3",
-    "dagit == 1.4.11",
-    "dagster == 1.4.11",
-    "dagster-cloud == 1.4.11",
-    "dagster-docker == 0.20.11",
-    "huggingface-hub == 0.16.4",
-    "numpy >= 1.23.0",
-    "nwp-consumer == 0.1.23",
-    "ocf-blosc2 == 0.0.3",
-    "pathlib == 1.0.1",
+    "cdsapi >= 0.6.1",
+    "ecmwf-api-client >= 1.6.3",
+    "dagit >= 1.5.11",
+    "dagster >= 1.5.11",
+    "dagster-cloud >= 1.5.11",
+    "dagster-docker >= 0.21.11",
+    "huggingface-hub >= 0.19.4",
+    "numpy >= 1.23.2",
+    "nwp-consumer == 0.1.30",
+    "ocf-blosc2 >= 0.0.3",
+    "pathlib >= 1.0.1",
     "requests >= 2.28.0",
     "xarray >= 2022.3.0",
     "zarr >= 2.13.3",
-    "satip",
+    # "satip >= 2.11.17",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "mypy == 0.910",
     "ruff == 0.0.259",
     "unittest-xml-reporting == 3.2.0",
-    "dagster-webserver == 1.4.11",
+    "dagster-webserver == 1.5.11",
     "pytest == 7.4.1",
     "python-lsp-server == 1.7.4"
 ]

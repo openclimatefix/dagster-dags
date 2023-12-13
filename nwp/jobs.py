@@ -17,7 +17,9 @@ jobs: list[dagster.JobDefinition] = []
 schedules: list[dagster.ScheduleDefinition] = []
 
 # TODO: I would like to be able to use something like this at some point:
-NWP_FOLDER = "/mnt/storage_b/archives/NWP"
+NWP_ZARR_FOLDER = "/mnt/storage_b/nwp"
+NWP_RAW_FOLDER = "/mnt/storage_c/raw/nwp"
+NWP_TEMP_FOLDER = "/mnt/storage_c/ephemeral/nwp"
 
 # --- DWD ICON jobs and schedules --------------------------------------
 

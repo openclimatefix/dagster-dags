@@ -2,7 +2,7 @@ import contextlib
 import os
 
 import nwp_consumer.cmd.main as consumer
-from dagster import Config, OpExecutionContext, op
+import dagster as dg
 
 
 @contextlib.contextmanager
@@ -20,7 +20,7 @@ def modify_env(newvars: dict[str, str]):
             else:
                 del os.environ[key]
 
-class NWPConsumerConfig(Config):
+class NWPConsumerConfig(dg.Config):
     """Configuration for the NWP consumer."""
 
     date_from: str
@@ -31,8 +31,8 @@ class NWPConsumerConfig(Config):
     env_overrides: dict[str, str]
 
 
-@op
-def nwp_consumer_download_op(context: OpExecutionContext, config: NWPConsumerConfig) \
+@dg.op
+def nwp_consumer_download_op(context: dg.OpExecutionContext, config: NWPConsumerConfig) \
         -> NWPConsumerConfig:
     """Download the data from the source."""
     with modify_env(config.env_overrides):
@@ -53,8 +53,8 @@ def nwp_consumer_download_op(context: OpExecutionContext, config: NWPConsumerCon
 
     return config
 
-@op
-def nwp_consumer_convert_op(context: OpExecutionContext, downloadedConfig: NWPConsumerConfig):
+@dg.op
+def nwp_consumer_convert_op(context: dg.OpExecutionContext, downloadedConfig: NWPConsumerConfig):
     """Convert the downloaded data to zarr format."""
     with modify_env(downloadedConfig.env_overrides):
         consumer.run({
