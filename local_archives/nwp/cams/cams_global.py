@@ -2,9 +2,9 @@ import dagster as dg
 from cdsapi import Client
 
 from ._factories import (
-    MakeAssetDefinitionsOptions,
+    MakeDefinitionsOptions,
     VariableSelection,
-    make_asset_definitions,
+    make_definitions,
 )
 
 cams_global_partitions = dg.MultiPartitionsDefinition(
@@ -238,7 +238,7 @@ multilevel_levels: list[str] = [
     "1000",
 ]
 
-opts = MakeAssetDefinitionsOptions(
+opts = MakeDefinitionsOptions(
     area="global",
     file_format="grib",
     multilevel_vars=VariableSelection(
@@ -256,5 +256,10 @@ opts = MakeAssetDefinitionsOptions(
     client=Client(),
 )
 
-cams_global_source_archive, cams_global_raw_archive = make_asset_definitions(opts=opts)
+defs = make_definitions(opts=opts)
+
+cams_global_source_archive = defs.source_asset
+cams_global_raw_archive = defs.raw_asset
+scan_cams_global_raw_archive = defs.raw_job
+
 

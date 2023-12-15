@@ -1,15 +1,19 @@
 import dataclasses as dc
 import datetime as dt
+import os
 import pathlib
 from typing import Any, Literal
 
 import cdsapi
 import dagster as dg
-from cdsapi.api import Result
+from nwp_consumer.internal import IT_FOLDER_FMTSTR
 
 from constants import LOCATIONS_BY_ENVIRONMENT
 
-RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT["local"].RAW_FOLDER
+from ._ops import ValidateExistingFilesConfig, validate_existing_raw_init_files
+
+env = os.getenv("ENVIRONMENT", "local")
+RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].RAW_FOLDER
 
 
 def map_partition_to_time(context: dg.AssetExecutionContext) -> dt.datetime:
@@ -36,7 +40,7 @@ class VariableSelection:
 
 
 @dc.dataclass
-class MakeAssetDefinitionsOptions:
+class MakeDefinitionsOptions:
     """Typesafe options for the make_asset_definitions function."""
 
     area: str
@@ -65,6 +69,7 @@ class MakeAssetDefinitionsOptions:
             case _:
                 raise ValueError(f"Area {self.area} not supported")
 
+
 @dc.dataclass
 class CamsFileInfo:
     """Information about a remote file from the CAMS CDS API.
@@ -73,15 +78,27 @@ class CamsFileInfo:
     https://github.com/ecmwf/cdsapi/blob/master/cdsapi/api.py
     Also adds in a field to hold the variable name.
     """
+
     resultType: str
     contentType: str
     contentLength: int
     location: str
     var: str
+    inittime: dt.datetime
 
-def make_asset_definitions(
-    opts: MakeAssetDefinitionsOptions,
-) -> tuple[dg.AssetsDefinition, dg.AssetsDefinition]:
+
+@dg.dataclass
+class MakeDefinitionsOutputs:
+    """Outputs from the make_asset_definitions function."""
+
+    source_asset: dg.AssetsDefinition
+    raw_asset: dg.AssetsDefinition
+    raw_job: dg.JobDefinition
+
+
+def make_definitions(
+    opts: MakeDefinitionsOptions,
+) -> MakeDefinitionsOutputs:
     """Generate the assets for a CAMS datset."""
 
     @dg.asset(
@@ -127,7 +144,7 @@ def make_asset_definitions(
                     name=opts.dataset_name(),
                     request=sl_var_request,
                 )
-                fis.append(CamsFileInfo(**result.toJSON(), var=var))
+                fis.append(CamsFileInfo(**result.toJSON(), var=var, inittime=it))
 
         # Then handle multilevel variables
         if opts.multilevel_vars is not None:
@@ -155,7 +172,9 @@ def make_asset_definitions(
                 fis.append(CamsFileInfo(**result.toJSON(), var=var))
 
         if len(fis) == 0:
-            raise Exception("No remote files found for this partition key. See logs for more details.")
+            raise Exception(
+                "No remote files found for this partition key. See logs for more details.",
+            )
 
         elapsed_time: dt.timedelta = dt.datetime.now(tz=dt.UTC) - execution_start
 
@@ -185,7 +204,8 @@ def make_asset_definitions(
         },
     )
     def _cams_raw_archive(
-        context: dg.AssetExecutionContext, fis: list[CamsFileInfo],
+        context: dg.AssetExecutionContext,
+        fis: list[CamsFileInfo],
     ) -> dg.Output[list[pathlib.Path]]:
         """Locally stored archive of raw data from CAMS."""
         execution_start = dt.datetime.now(tz=dt.UTC)
@@ -193,13 +213,14 @@ def make_asset_definitions(
         stored_paths: list[pathlib.Path] = []
         # Iterate over the variables and their associated result objects from the cdsapi
         for fi in fis:
-            it = map_partition_to_time(context)
             # Store the file based on the asset key prefix and the init time of the file
             loc = "/".join(context.asset_key.path[:-1])
             ext = ".grib" if opts.file_format == "grib" else ".nc"
-            fname: str = f'{RAW_FOLDER}/{loc}/{it.strftime("%Y%m%d%H")}_{fi.var}{ext}'
+            fname = (
+                f"{RAW_FOLDER}/{loc}/{fi.inittime.strftime(IT_FOLDER_FMTSTR)}/{fi.inittime.strftime('%Y%m%d%H')}_{fi.var}{ext}",
+            )
             # Download the file using the CDS api. Target must be a list even though it
-            # is a single file - see the _download method on the Client class
+            # is a single file - see the _download method on the Client class
             # https://github.com/ecmwf/cdsapi/blob/master/cdsapi/api.py
             stored_path = opts.client._download(fi.__dict__, target=[fname])
             stored_paths.append(pathlib.Path(stored_path))
@@ -219,4 +240,23 @@ def make_asset_definitions(
             },
         )
 
-    return (_cams_source_archive, _cams_raw_archive)
+    @dg.job(
+        name=f"scan_cams_{opts.area}_raw_archive",
+        config=dg.RunConfig(
+            ops={
+                "validate_existing_raw_files": ValidateExistingFilesConfig(
+                    base_path=RAW_FOLDER,
+                    asset_key=list(_cams_raw_archive.key.path),
+                ),
+            },
+        ),
+    )
+    def _scan_cams_raw_archive() -> None:
+        """Scan the raw archive for existing files."""
+        validate_existing_raw_init_files()
+
+    return MakeDefinitionsOutputs(
+        source_asset=_cams_source_archive,
+        raw_asset=_cams_raw_archive,
+        raw_job=_scan_cams_raw_archive,
+    )

@@ -41,7 +41,7 @@ jobs:
       - name: Build venv
         run: |
           apt -qq update && apt -qq install -y build-essential
-          conda create -p ./venv python=3.10
+          conda create -p ./venv python=3.11
           ./venv/bin/python -m pip install --upgrade -q pip wheel setuptools
         if: steps.restore-cache.outputs.cache-hit != 'true'
 
@@ -76,6 +76,12 @@ jobs:
         with:
           path: ./venv
           key: ${{ runner.os }}-venv-${{ hashFiles('**/pyproject.toml') }}
+
+      # Create fake cdsapirc
+      - name: Populate .cdsapirc
+        run: |
+          echo "url: https://ads.atmosphere.copernicus.eu/api/v2" > ~/.cdsapirc
+          echo "key: notarealkey" > ~/.csdsapirc
 
       # Run unittests
       # * Produce JUnit XML report

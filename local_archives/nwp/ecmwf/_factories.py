@@ -1,5 +1,6 @@
 import dataclasses as dc
 import datetime as dt
+import os
 import pathlib
 import shutil
 
@@ -10,7 +11,15 @@ from nwp_consumer.internal import IT_FOLDER_FMTSTR, FetcherInterface, FileInfoMo
 
 from constants import LOCATIONS_BY_ENVIRONMENT
 
-RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT["local"].RAW_FOLDER
+from ._ops import (
+    ValidateExistingFilesConfig,
+    validate_existing_raw_ecmwf_files,
+    validate_existing_zarr_ecmwf_files,
+)
+
+env = os.getenv("ENVIRONMENT", "local")
+RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].RAW_FOLDER
+ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].PROCESSED_FOLDER
 
 ecmwf_partitions = dg.MultiPartitionsDefinition(
     {
@@ -18,6 +27,7 @@ ecmwf_partitions = dg.MultiPartitionsDefinition(
         "inittime": dg.StaticPartitionsDefinition(["00:00", "12:00"]),
     },
 )
+
 
 def map_partition_to_time(context: dg.AssetExecutionContext) -> dt.datetime:
     """Map a partition key to a datetime."""
@@ -29,7 +39,7 @@ def map_partition_to_time(context: dg.AssetExecutionContext) -> dt.datetime:
         ).replace(tzinfo=dt.UTC)
     else:
         raise ValueError(
-            f"Partition key must be of type MultiPartitionKey, not {type(context.partition_key)}"
+            f"Partition key must be of type MultiPartitionKey, not {type(context.partition_key)}",
         )
 
 
@@ -50,11 +60,25 @@ class MakeAssetDefinitionsOptions:
         return ["nwp", "ecmwf", self.area]
 
 
-def make_asset_definitions(
-    opts: MakeAssetDefinitionsOptions,
-) -> tuple[dg.AssetsDefinition, dg.AssetsDefinition, dg.AssetsDefinition]:
-    """Generate the assets for an ECMWF dataset."""
+@dc.dataclass
+class MakeDefinitionsOutputs:
+    """Typesafe outputs for the make_definitions function."""
 
+    source_asset: dg.AssetsDefinition
+    raw_asset: dg.AssetsDefinition
+    zarr_asset: dg.AssetsDefinition
+    raw_job: dg.JobDefinition
+    zarr_job: dg.JobDefinition
+
+    def list_jobs(self) -> list[dg.JobDefinition]:
+        """List all jobs."""
+        return [self.raw_job, self.zarr_job]
+
+
+def make_definitions(
+    opts: MakeAssetDefinitionsOptions,
+) -> MakeDefinitionsOutputs:
+    """Generates assets and associated jobs for ECMWF data."""
 
     @dg.asset(
         name="source_archive",
@@ -88,7 +112,6 @@ def make_asset_definitions(
             },
         )
 
-
     @dg.asset(
         name="raw_archive",
         key_prefix=opts.key_prefix(),
@@ -97,12 +120,9 @@ def make_asset_definitions(
         check_specs=[
             dg.AssetCheckSpec(
                 name="num_local_is_num_remote",
-                asset=[*opts.key_prefix(), "raw_archive"]
+                asset=[*opts.key_prefix(), "raw_archive"],
             ),
-            dg.AssetCheckSpec(
-                name="nonzero_local_size",
-                asset=[*opts.key_prefix(), "raw_archive"]
-            ),
+            dg.AssetCheckSpec(name="nonzero_local_size", asset=[*opts.key_prefix(), "raw_archive"]),
         ],
         metadata={
             "archive_folder": dg.MetadataValue.text(f"{RAW_FOLDER}/{'/'.join(opts.key_prefix())}"),
@@ -145,7 +165,7 @@ def make_asset_definitions(
             stored_paths,
             metadata={
                 "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
-                "num_files": dg.MetadataValue.int(len(stored_paths)),
+                "partition_num_files": dg.MetadataValue.int(len(stored_paths)),
                 "file_paths": dg.MetadataValue.text(str([f.as_posix() for f in stored_paths])),
                 "partition_size": dg.MetadataValue.int(sum(sizes)),
                 "area": dg.MetadataValue.text(opts.area),
@@ -195,4 +215,40 @@ def make_asset_definitions(
             },
         )
 
-    return (_ecmwf_source_archive, _ecmwf_raw_archive, _ecmwf_zarr_archive)
+    @dg.job(
+        name=f"scan_ecmwf_{opts.area}_raw_archive",
+        config=dg.RunConfig(
+            ops={
+                "validate_existing_raw_ecmwf_files": ValidateExistingFilesConfig(
+                    asset_key=list(_ecmwf_source_archive.key.path),
+                    base_path=RAW_FOLDER,
+                ),
+            },
+        ),
+    )
+    def _scan_ecmwf_raw_archive() -> None:
+        """Scan the raw archive for existing files."""
+        validate_existing_raw_ecmwf_files()
+
+    @dg.job(
+        name=f"scan_ecmwf_{opts.area}_zarr_archive",
+        config=dg.RunConfig(
+            ops={
+                "validate_existing_zarr_ecmwf_files": ValidateExistingFilesConfig(
+                    asset_key=list(_ecmwf_zarr_archive.key.path),
+                    base_path=ZARR_FOLDER,
+                ),
+            },
+        ),
+    )
+    def _scan_ecmwf_zarr_archive() -> None:
+        """Scan the zarr archive for existing files."""
+        validate_existing_zarr_ecmwf_files()
+
+    return MakeDefinitionsOutputs(
+        source_asset=_ecmwf_source_archive,
+        raw_asset=_ecmwf_raw_archive,
+        zarr_asset=_ecmwf_zarr_archive,
+        raw_job=_scan_ecmwf_raw_archive,
+        zarr_job=_scan_ecmwf_zarr_archive,
+    )
