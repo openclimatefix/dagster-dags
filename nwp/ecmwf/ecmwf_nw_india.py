@@ -1,9 +1,8 @@
-
 from nwp_consumer.internal.inputs.ecmwf import mars
 
 from constants import LOCATIONS_BY_ENVIRONMENT
-from ._factories import make_asset_definitions, MakeAssetDefinitionsOptions
 
+from ._factories import MakeAssetDefinitionsOptions, make_asset_definitions
 
 RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT["local"].RAW_FOLDER
 
@@ -16,8 +15,5 @@ ecmwf_uk_source_archive, ecmwf_uk_raw_archive, ecmwf_uk_zarr_archive = make_asse
     opts=MakeAssetDefinitionsOptions(
         area="nw_india",
         fetcher=fetcher,
-    )
+    ),
 )
-
-
-

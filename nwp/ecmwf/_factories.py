@@ -1,109 +1,132 @@
-import dagster as dg
-import datetime as dt
-from nwp_consumer.internal import FileInfoModel, IT_FOLDER_FMTSTR, FetcherInterface
-import pathlib
-import numpy as np
-import shutil
 import dataclasses as dc
+import datetime as dt
+import pathlib
+import shutil
+
+import dagster as dg
+import numpy as np
+import xarray as xr
+from nwp_consumer.internal import IT_FOLDER_FMTSTR, FetcherInterface, FileInfoModel
 
 from constants import LOCATIONS_BY_ENVIRONMENT
 
-
 RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT["local"].RAW_FOLDER
 
-ecmwf_partitions = dg.MultiPartitionsDefinition({
-    "date": dg.DailyPartitionsDefinition(start_date="2017-01-01"),
-    "inittime": dg.StaticPartitionsDefinition(["00:00", "12:00"]),
-})
+ecmwf_partitions = dg.MultiPartitionsDefinition(
+    {
+        "date": dg.DailyPartitionsDefinition(start_date="2017-01-01"),
+        "inittime": dg.StaticPartitionsDefinition(["00:00", "12:00"]),
+    },
+)
 
 def map_partition_to_time(context: dg.AssetExecutionContext) -> dt.datetime:
     """Map a partition key to a datetime."""
-    partkeys = context.partition_key.keys_by_dimension
-    return dt.datetime.strptime(
-        f"{partkeys['date']}|{partkeys['inittime']}", "%Y-%m-%d|%H:%M"
-    ).replace(tzinfo=dt.UTC)
+    if type(context.partition_key) == dg.MultiPartitionKey:
+        partkeys = context.partition_key.keys_by_dimension
+        return dt.datetime.strptime(
+            f"{partkeys['date']}|{partkeys['inittime']}",
+            "%Y-%m-%d|%H:%M",
+        ).replace(tzinfo=dt.UTC)
+    else:
+        raise ValueError(
+            f"Partition key must be of type MultiPartitionKey, not {type(context.partition_key)}"
+        )
 
 
-@ dc.dataclass
+@dc.dataclass
 class MakeAssetDefinitionsOptions:
     """Typesafe options for the make_asset_definitions function."""
 
     area: str
     fetcher: FetcherInterface
     partitions: dg.PartitionsDefinition = ecmwf_partitions
-    key_prefix: list[str] = ["nwp", "ecmwf", area]
+
+    def key_prefix(self) -> list[str]:
+        """Generate an asset key prefix based on the area.
+
+        The prefix is important as it defines the folder structure under which
+        assets are stored.
+        """
+        return ["nwp", "ecmwf", self.area]
 
 
-def make_asset_definitions(opts: MakeAssetDefinitionsOptions) \
-        -> tuple[dg.AssetsDefinition, dg.AssetsDefinition, dg.AssetsDefinition]:
+def make_asset_definitions(
+    opts: MakeAssetDefinitionsOptions,
+) -> tuple[dg.AssetsDefinition, dg.AssetsDefinition, dg.AssetsDefinition]:
     """Generate the assets for an ECMWF dataset."""
+
 
     @dg.asset(
         name="source_archive",
-        key_prefix=opts.key_prefix,
+        key_prefix=opts.key_prefix(),
         partitions_def=opts.partitions,
-        check_specs=[
-            dg.AssetCheckSpec(
-                name="nonzero_num_files",
-                asset=key_prefix.append('source_archive')
-            )
-        ],
         compute_kind="network_request",
-        op_tags={"MAX_RUNTIME_SECONDS_TAG": 1000}
+        op_tags={"MAX_RUNTIME_SECONDS_TAG": 1000},
     )
     def _ecmwf_source_archive(
-            context: dg.AssetExecutionContext
+        context: dg.AssetExecutionContext,
     ) -> dg.Output[list[FileInfoModel]]:
         """Asset detailing all wanted remote files from ECMWF."""
+        execution_start = dt.datetime.now(tz=dt.UTC)
+
         # List all files for this partition
         it = map_partition_to_time(context=context)
         fileinfos = opts.fetcher.listRawFilesForInitTime(it=it)
 
-        yield dg.Output(fileinfos, metadata={
-            "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
-            "num_files": dg.MetadataValue.int(len(fileinfos)),
-            "file_names": dg.MetadataValue.text(str([f.filename() for f in fileinfos])),
-        })
+        elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
 
-        yield dg.AssetCheckResult(
-            check_name="nonzero_num_files",
-            passed=bool(len(fileinfos) > 0),
-            metadata={"num_files": dg.MetadataValue.int(len(fileinfos))},
+        if len(fileinfos) == 0:
+            raise ValueError("No files found for this partition. See error logs.")
+
+        return dg.Output(
+            fileinfos,
+            metadata={
+                "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
+                "num_files": dg.MetadataValue.int(len(fileinfos)),
+                "file_names": dg.MetadataValue.text(str([f.filename() for f in fileinfos])),
+                "elapsed_time_mins": dg.MetadataValue.float(elapsed_time / dt.timedelta(minutes=1)),
+            },
         )
+
 
     @dg.asset(
         name="raw_archive",
-        key_prefix=opts.key_prefix,
+        key_prefix=opts.key_prefix(),
         partitions_def=opts.partitions,
+        ins={"fis": dg.AssetIn(key=_ecmwf_source_archive.key)},
         check_specs=[
             dg.AssetCheckSpec(
                 name="num_local_is_num_remote",
-                asset=key_prefix.append('raw_archive')
+                asset=[*opts.key_prefix(), "raw_archive"]
             ),
             dg.AssetCheckSpec(
                 name="nonzero_local_size",
-                asset=key_prefix.append('raw_archive')
+                asset=[*opts.key_prefix(), "raw_archive"]
             ),
         ],
         metadata={
-            "archive_folder": dg.MetadataValue.text(f"{RAW_FOLDER}/nwp/ecmwf/{opts.area}"),
+            "archive_folder": dg.MetadataValue.text(f"{RAW_FOLDER}/{'/'.join(opts.key_prefix())}"),
             "area": dg.MetadataValue.text(opts.area),
         },
         compute_kind="download",
-        op_tags={"MAX_RUNTIME_SECONDS_TAG": 1000}
+        op_tags={"MAX_RUNTIME_SECONDS_TAG": 1000},
     )
     def _ecmwf_raw_archive(
         context: dg.AssetExecutionContext,
-        source_archive: list[FileInfoModel]
+        fis: list[FileInfoModel],
     ) -> dg.Output[list[pathlib.Path]]:
         """Locally stored archive of raw data from ECMWF."""
+        execution_start = dt.datetime.now(tz=dt.UTC)
+
         # For each file in the remote archive, download and store it
         stored_paths: list[pathlib.Path] = []
         sizes: list[int] = []
         # Store the file based on the asset key prefix and the init time of the file
         loc = "/".join(context.asset_key.path[:-1])
-        for fi in source_archive:
-            dst = pathlib.Path(f"{RAW_FOLDER}/{loc}/{fi.it().strftime(IT_FOLDER_FMTSTR)}/{fi.filename()}")
+        for fi in fis:
+            dst = pathlib.Path(
+                f"{RAW_FOLDER}/{loc}/{fi.it().strftime(IT_FOLDER_FMTSTR)}/{fi.filename()}",
+            )
             # If the file already exists, delete it
             if dst.exists():
                 dst.unlink()
@@ -116,18 +139,24 @@ def make_asset_definitions(opts: MakeAssetDefinitionsOptions) \
             stored_paths.append(dst)
             sizes.append(dst.stat().st_size)
 
-        yield dg.Output(stored_paths, metadata={
-            "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
-            "num_files": dg.MetadataValue.int(len(stored_paths)),
-            "file_paths": dg.MetadataValue.text(str([f.as_posix() for f in stored_paths])),
-            "partition_size": dg.MetadataValue.int(sum(sizes)),
-            "area": dg.MetadataValue.text(opts.area),
-        })
+        elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
+
+        yield dg.Output(
+            stored_paths,
+            metadata={
+                "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
+                "num_files": dg.MetadataValue.int(len(stored_paths)),
+                "file_paths": dg.MetadataValue.text(str([f.as_posix() for f in stored_paths])),
+                "partition_size": dg.MetadataValue.int(sum(sizes)),
+                "area": dg.MetadataValue.text(opts.area),
+                "elapsed_time_mins": dg.MetadataValue.float(elapsed_time / dt.timedelta(minutes=1)),
+            },
+        )
 
         # Perform the checks defined in the check_specs above
         yield dg.AssetCheckResult(
             check_name="num_local_is_num_remote",
-            passed=bool(len(stored_paths) == len(source_archive)),
+            passed=bool(len(stored_paths) == len(fis)),
         )
         yield dg.AssetCheckResult(
             check_name="nonzero_local_size",
@@ -136,27 +165,34 @@ def make_asset_definitions(opts: MakeAssetDefinitionsOptions) \
 
     @dg.asset(
         name="zarr_archive",
-        key_prefix=opts.key_prefix,
+        key_prefix=opts.key_prefix(),
         partitions_def=opts.partitions,
+        ins={"raw_paths": dg.AssetIn(key=_ecmwf_raw_archive.key)},
         io_manager_key="xr_zarr_io",
         compute_kind="process",
-        op_tags={"MAX_RUNTIME_SECONDS_TAG": 1000}
+        op_tags={"MAX_RUNTIME_SECONDS_TAG": 1000},
     )
     def _ecmwf_zarr_archive(
         context: dg.AssetExecutionContext,
-        raw_archive: list[pathlib.Path],
+        raw_paths: list[pathlib.Path],
     ) -> dg.Output[xr.Dataset]:
-        """Local zarr archive asset."""
+        """Locally stored archive of zarr-formatted xarray data from ECMWF."""
+        execution_start = dt.datetime.now(tz=dt.UTC)
         # Convert each file to an xarray dataset and merge
-        datasets: list[xr.dataset] = []
-        for path in raw_archive:
+        datasets: list[xr.Dataset] = []
+        for path in raw_paths:
             datasets.append(opts.fetcher.mapTemp(p=path))
         ds = xr.merge(datasets, combine_attrs="drop_conflicts")
 
-        yield dg.Output(ds, metadata={
-            "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
-            "dataset": dg.MetadataValue.md(str(ds)),
-        })
+        elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
 
-    return [_ecmwf_source_archive, _ecmwf_raw_archive, _ecmwf_zarr_archive]
+        return dg.Output(
+            ds,
+            metadata={
+                "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
+                "dataset": dg.MetadataValue.md(str(ds)),
+                "elapsed_time_mins": dg.MetadataValue.float(elapsed_time / dt.timedelta(minutes=1)),
+            },
+        )
 
+    return (_ecmwf_source_archive, _ecmwf_raw_archive, _ecmwf_zarr_archive)

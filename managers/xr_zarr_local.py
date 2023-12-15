@@ -5,7 +5,22 @@ import datetime as dt
 from ocf_blosc2 import Blosc2
 import pathlib
 
-from nwp.ecmwf.ecmwf_uk import map_partition_to_time
+from nwp.ecmwf._factories import map_partition_to_time
+
+def map_partition_to_time(context: dg.InputContext | dg.OutputContext) -> dt.datetime:
+    """Map the partition key to a datetime object."""
+    partition_key = context.asset_partitions_def.get_partition_keys_in_range(context.asset_partition_key_range)[0]
+    if context.has_partition_key and context.partition_key.keys_by_dimension is not None:
+        partkeys = context.partition_key.keys_by_dimension
+        return dt.datetime.strptime(
+            f"{partkeys['date']}|{partkeys['inittime']}",
+            "%Y-%m-%d|%H:%M",
+        ).replace(tzinfo=dt.UTC)
+    else:
+        raise ValueError(
+            "AssetKey is not a list of strings with at least two elements."
+            "Ensure the you have setkey_prefix on the asset."
+        )
 
 class LocalFilesystemXarrayZarrManager(dg.ConfigurableIOManager):
     """IOManager for reading and writing xarray datasets to the local filesystem.
