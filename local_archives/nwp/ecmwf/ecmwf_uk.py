@@ -10,7 +10,6 @@ from local_archives.nwp._generic_definitions_factory import (
 
 fetcher = mars.Client(
     area="uk",
-    param_group="basic",
 )
 
 partitions = InitTimePartitionsDefinition(
