@@ -83,12 +83,15 @@ def make_definitions(
 
         # List all files for this partition
         it = opts.partitions.parse_key(key=context.partition_key)
+        context.log.info(
+            f"Listing files for init time {it.strftime('%Y-%m-%d %H:%M')} from {opts.source}.",
+        )
         fileinfos = opts.fetcher.listRawFilesForInitTime(it=it)
-
-        elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
 
         if len(fileinfos) == 0:
             raise ValueError("No files found for this partition. See error logs.")
+
+        elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
 
         return dg.Output(
             fileinfos,
@@ -136,8 +139,12 @@ def make_definitions(
             dst = pathlib.Path(
                 f"{RAW_FOLDER}/{loc}/{fi.it().strftime(IT_FOLDER_FMTSTR)}/{fi.filename()}",
             )
+
             # If the file already exists, don't re download it
             if dst.exists() and dst.stat().st_size > 0:
+                context.log.info(
+                    f"File {fi.filename()} already exists at {dst.as_posix()}. Skipping download.",
+                )
                 stored_paths.append(dst)
                 sizes.append(dst.stat().st_size)
                 continue
@@ -145,6 +152,9 @@ def make_definitions(
             # Otherwise, download it and store it
             if dst.exists() and dst.stat().st_size == 0:
                 dst.unlink()
+            context.log.info(
+                f"Downloading file {fi.filename()} to {dst.as_posix()}",
+            )
             try:
                 fi, src = opts.fetcher.downloadToTemp(fi=fi)
                 dst.parent.mkdir(parents=True, exist_ok=True)
@@ -203,7 +213,13 @@ def make_definitions(
         # Convert each file to an xarray dataset and merge
         datasets: list[xr.Dataset] = []
         for path in raw_paths:
+            context.log.info(
+                f"Converting raw file at {path.as_posix()} to xarray dataset."
+            )
             datasets.append(opts.fetcher.mapTemp(p=path))
+        context.log.info(
+            f"Merging {len(datasets)} datasets into one."
+        )
         ds = xr.merge(datasets, combine_attrs="drop_conflicts")
 
         elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
