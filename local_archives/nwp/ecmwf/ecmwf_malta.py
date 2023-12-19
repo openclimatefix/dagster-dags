@@ -1,7 +1,7 @@
 """ECMWF Malta data pipeline."""
 
 from nwp_consumer.internal.inputs.ecmwf import mars
-from partitions import InitTimePartitionsDefinition
+from local_archives.partitions import InitTimePartitionsDefinition
 
 from local_archives.nwp._generic_definitions_factory import (
     MakeDefinitionsOptions,

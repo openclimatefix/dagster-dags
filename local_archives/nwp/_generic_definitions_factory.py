@@ -73,7 +73,7 @@ def make_definitions(
             "area": dg.MetadataValue.text(opts.area),
             "source": dg.MetadataValue.text(opts.source),
         },
-        op_tags={"MAX_RUNTIME_SECONDS_TAG": 1000},
+        op_tags={"MAX_RUNTIME_SECONDS_TAG": 100},
     )
     def _source_archive(
         context: dg.AssetExecutionContext,
@@ -118,7 +118,7 @@ def make_definitions(
             "source": dg.MetadataValue.text(opts.source),
         },
         compute_kind="download",
-        op_tags={"MAX_RUNTIME_SECONDS_TAG": 1000000},  # TODO: Make more reasonable
+        op_tags={"MAX_RUNTIME_SECONDS_TAG": int(60 * 5)},  # TODO: Make more reasonable
     )
     def _raw_archive(
         context: dg.AssetExecutionContext,
@@ -216,7 +216,7 @@ def make_definitions(
         name=f"scan_{opts.source}_{opts.area}_raw_archive",
         config=dg.RunConfig(
             ops={
-                "validate_existing_raw_ecmwf_files": ValidateExistingFilesConfig(
+                validate_existing_raw_files.__name__: ValidateExistingFilesConfig(
                     asset_key=list(_raw_archive.key.path),
                     base_path=RAW_FOLDER,
                 ),
@@ -231,7 +231,7 @@ def make_definitions(
         name=f"scan_{opts.source}_{opts.area}_zarr_archive",
         config=dg.RunConfig(
             ops={
-                "validate_existing_zarr_ecmwf_files": ValidateExistingFilesConfig(
+                validate_existing_zarr_files.__name__: ValidateExistingFilesConfig(
                     asset_key=list(_zarr_archive.key.path),
                     base_path=ZARR_FOLDER,
                 ),

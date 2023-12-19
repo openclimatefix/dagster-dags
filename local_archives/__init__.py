@@ -5,7 +5,7 @@ import dagster as dg
 import managers
 from constants import LOCATIONS_BY_ENVIRONMENT
 
-from .nwp import cams, ecmwf
+from .nwp import cams, ecmwf, ceda
 
 resources_by_env = {
     "leo": {
@@ -20,10 +20,20 @@ resources_by_env = {
     },
 }
 
-all_assets: list[dg.AssetsDefinition] = [*ecmwf.all_assets, *cams.all_assets]
+all_assets: list[dg.AssetsDefinition] = [
+    *ecmwf.all_assets,
+    *cams.all_assets,
+    *ceda.all_assets,
+]
+
+all_jobs: list[dg.JobDefinition] = [
+    *ecmwf.all_jobs,
+    *cams.all_jobs,
+    *ceda.all_jobs,
+]
 
 defs = dg.Definitions(
     assets=all_assets,
     resources=resources_by_env[os.getenv("ENVIRONMENT", "local")],
-    jobs=[*ecmwf.all_jobs, *cams.all_jobs],
+    jobs=all_jobs,
 )

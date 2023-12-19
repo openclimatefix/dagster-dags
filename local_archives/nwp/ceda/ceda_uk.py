@@ -3,7 +3,7 @@
 import os
 
 from nwp_consumer.internal.inputs import ceda
-from partitions import InitTimePartitionsDefinition
+from local_archives.partitions import InitTimePartitionsDefinition
 
 from local_archives.nwp._generic_definitions_factory import (
     MakeDefinitionsOptions,
