@@ -143,13 +143,16 @@ def make_definitions(
                 continue
 
             # Otherwise, download it and store it
-            fi, src = opts.fetcher.downloadToTemp(fi=fi)
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(src=src, dst=dst)
-            src.unlink(missing_ok=True)
+            try:
+                fi, src = opts.fetcher.downloadToTemp(fi=fi)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(src=src, dst=dst)
+                src.unlink(missing_ok=True)
 
-            stored_paths.append(dst)
-            sizes.append(dst.stat().st_size)
+                stored_paths.append(dst)
+                sizes.append(dst.stat().st_size)
+            except Exception as e:
+                raise ValueError(f"Failed to download file {fi.filename()}") from e
 
         elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
 
