@@ -162,9 +162,11 @@ def make_definitions(
                 raise ValueError(
                     f"Error downloading file {fi.filename()}. See stdout logs for details."
                 )
+            context.log.info(
+                f"Moving file {src.as_posix()} to {dst.as_posix()}"
+            )
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(src=src, dst=dst)
-            src.unlink(missing_ok=True)
 
             stored_paths.append(dst)
             sizes.append(dst.stat().st_size)
