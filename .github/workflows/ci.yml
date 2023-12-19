@@ -77,15 +77,12 @@ jobs:
           path: ./venv
           key: ${{ runner.os }}-venv-${{ hashFiles('**/pyproject.toml') }}
 
-      # Create fake cdsapirc
-      - name: Populate .cdsapirc
-        run: |
-          echo "url: https://ads.atmosphere.copernicus.eu/api/v2" > /home/runner/.cdsapirc
-          echo "key: notarealkey" > /home/runner/.csdsapirc
-
       # Run unittests
       # * Produce JUnit XML report
       - name: Run unit tests
+        env:
+          CDSAPI_URL: "https://ads.atmosphere.copernicus.eu/api/v2"
+          CDSAPI_KEY: "fakekey"
         run: ./venv/bin/python -m pytest --junitxml=ut-report.xml dags_tests 
 
       # Create test summary to be visualised on the job summary screen on GitHub
