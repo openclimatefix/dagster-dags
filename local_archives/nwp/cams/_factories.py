@@ -9,25 +9,12 @@ import dagster as dg
 from nwp_consumer.internal import IT_FOLDER_FMTSTR
 
 from constants import LOCATIONS_BY_ENVIRONMENT
+from local_archives.partitions import InitTimePartitionsDefinition
 
 from ._ops import ValidateExistingFilesConfig, validate_existing_raw_init_files
 
 env = os.getenv("ENVIRONMENT", "local")
 RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].RAW_FOLDER
-
-
-def map_partition_to_time(context: dg.AssetExecutionContext) -> dt.datetime:
-    """Map a partition key to a datetime."""
-    if type(context.partition_key) == dg.MultiPartitionKey:
-        partkeys = context.partition_key.keys_by_dimension
-        return dt.datetime.strptime(
-            f"{partkeys['date']}|{partkeys['inittime']}",
-            "%Y-%m-%d|%H:%M",
-        ).replace(tzinfo=dt.UTC)
-    else:
-        raise ValueError(
-            f"Partition key must be of type MultiPartitionKey, not {type(context.partition_key)}",
-        )
 
 
 @dc.dataclass
@@ -45,7 +32,7 @@ class MakeDefinitionsOptions:
 
     area: str
     file_format: Literal["grib", "netcdf"]
-    partitions: dg.PartitionsDefinition
+    partitions: InitTimePartitionsDefinition
     client: cdsapi.Client
     multilevel_vars: VariableSelection | None = None
     multilevel_levels: list[str] | None = None
@@ -87,7 +74,7 @@ class CamsFileInfo:
     inittime: dt.datetime
 
 
-@dg.dataclass
+@dc.dataclass
 class MakeDefinitionsOutputs:
     """Outputs from the make_asset_definitions function."""
 
@@ -111,11 +98,11 @@ def make_definitions(
             "MAX_RUNTIME_SECONDS_TAG": 20 * 60,
         },
     )
-    def _cams_source_archive(context: dg.AssetExecutionContext) -> list[CamsFileInfo]:
+    def _cams_source_archive(context: dg.AssetExecutionContext) -> dg.Output[list[CamsFileInfo]]:
         """Asset detailing all wanted remote files from CAMS."""
         execution_start = dt.datetime.now(tz=dt.UTC)
 
-        it = map_partition_to_time(context)
+        it = opts.partitions.parse_key(key=context.partition_key)
         # Check if partition is targeting a time more than 30 days old
         # * CAMS data older than 30 days is only available from tape
         # * These variables are slower to collect
@@ -157,13 +144,10 @@ def make_definitions(
                     "variable": var,
                     "leadtime_hour": opts.multilevel_vars.hours,
                     "time": it.strftime("%H:%M"),
+                    "level": opts.multilevel_levels,
                 }
                 if opts.area == "eu":
                     ml_var_request["model"] = "ensemble"
-                    ml_var_request["level"] = opts.multilevel_levels
-                else:
-                    # Jacob, why is this different for global?
-                    ml_var_request["pressure_level"] = opts.multilevel_levels
 
                 result = opts.client.retrieve(
                     name=opts.dataset_name(),
@@ -244,7 +228,7 @@ def make_definitions(
         name=f"scan_cams_{opts.area}_raw_archive",
         config=dg.RunConfig(
             ops={
-                "validate_existing_raw_files": ValidateExistingFilesConfig(
+                "validate_existing_raw_init_files": ValidateExistingFilesConfig(
                     base_path=RAW_FOLDER,
                     asset_key=list(_cams_raw_archive.key.path),
                 ),

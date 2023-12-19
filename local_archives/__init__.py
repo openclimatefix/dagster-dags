@@ -9,13 +9,13 @@ from .nwp import cams, ecmwf
 
 resources_by_env = {
     "leo": {
-        "xr_zarr_io": managers.LocalFilesystemXarrayZarrManager(
-            base_path=LOCATIONS_BY_ENVIRONMENT["leo"].PROCESSED_FOLDER,
+        "nwp_xr_zarr_io": managers.LocalFilesystemXarrayZarrManager(
+            base_path=LOCATIONS_BY_ENVIRONMENT["leo"].NWP_ZARR_FOLDER,
         ),
     },
     "local": {
-        "xr_zarr_io": managers.LocalFilesystemXarrayZarrManager(
-            base_path=LOCATIONS_BY_ENVIRONMENT["local"].PROCESSED_FOLDER,
+        "nwp_xr_zarr_io": managers.LocalFilesystemXarrayZarrManager(
+            base_path=LOCATIONS_BY_ENVIRONMENT["local"].NWP_ZARR_FOLDER,
         ),
     },
 }

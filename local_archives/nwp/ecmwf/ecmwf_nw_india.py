@@ -1,17 +1,8 @@
 """ECMWF NW India data pipeline."""
 
-import os
-
-import dagster as dg
 from nwp_consumer.internal.inputs.ecmwf import mars
 
-from constants import LOCATIONS_BY_ENVIRONMENT
-
-from ._factories import MakeAssetDefinitionsOptions, make_definitions
-
-env = os.getenv("ENVIRONMENT", "local")
-RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].RAW_FOLDER
-ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].PROCESSED_FOLDER
+from ._factories import MakeDefinitionsOptions, make_definitions
 
 fetcher = mars.Client(
     area="nw-india",
@@ -19,7 +10,7 @@ fetcher = mars.Client(
 )
 
 defs = make_definitions(
-    opts=MakeAssetDefinitionsOptions(
+    opts=MakeDefinitionsOptions(
         area="nw_india",
         fetcher=fetcher,
     ),

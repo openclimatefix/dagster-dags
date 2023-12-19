@@ -50,6 +50,18 @@ def validate_existing_raw_ecmwf_files(
         total_archive_size_bytes += sum(sizes)
 
         if len(it_filepaths) > 0:
+            yield dg.Output(
+                it_filepaths,
+                metadata={
+                    "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
+                    "partition_num_files": dg.MetadataValue.int(len(stored_paths)),
+                    "file_paths": dg.MetadataValue.text(str([f.as_posix() for f in stored_paths])),
+                    "partition_size": dg.MetadataValue.int(sum(sizes)),
+                    "area": dg.MetadataValue.text(opts.area),
+                    "elapsed_time_mins": dg.MetadataValue.float(elapsed_time / dt.timedelta(minutes=1)),
+                },
+            )
+            yield O
             context.log_event(
                 dg.AssetMaterialization(
                     asset_key=config.asset_key,

@@ -1,5 +1,6 @@
-import dagster as dg
 from cdsapi import Client
+
+from local_archives.partitions import InitTimePartitionsDefinition
 
 from ._factories import (
     MakeDefinitionsOptions,
@@ -7,11 +8,9 @@ from ._factories import (
     make_definitions,
 )
 
-cams_global_partitions = dg.MultiPartitionsDefinition(
-    {
-        "date": dg.DailyPartitionsDefinition(start_date="2015-01-01"),
-        "inittime": dg.StaticPartitionsDefinition(["00:00", "12:00"]),
-    },
+cams_global_partitions: InitTimePartitionsDefinition = InitTimePartitionsDefinition(
+    start="2015-01-01",
+    init_times=["00:00", "12:00"],
 )
 
 singlelevel_fast_vars: list[str] = [
@@ -261,5 +260,3 @@ defs = make_definitions(opts=opts)
 cams_global_source_archive = defs.source_asset
 cams_global_raw_archive = defs.raw_asset
 scan_cams_global_raw_archive = defs.raw_job
-
-

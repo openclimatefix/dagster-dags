@@ -10,6 +10,7 @@ import xarray as xr
 from nwp_consumer.internal import IT_FOLDER_FMTSTR, FetcherInterface, FileInfoModel
 
 from constants import LOCATIONS_BY_ENVIRONMENT
+from local_archives.partitions import InitTimePartitionsDefinition
 
 from ._ops import (
     ValidateExistingFilesConfig,
@@ -19,37 +20,21 @@ from ._ops import (
 
 env = os.getenv("ENVIRONMENT", "local")
 RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].RAW_FOLDER
-ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].PROCESSED_FOLDER
+ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
 
-ecmwf_partitions = dg.MultiPartitionsDefinition(
-    {
-        "date": dg.DailyPartitionsDefinition(start_date="2017-01-01"),
-        "inittime": dg.StaticPartitionsDefinition(["00:00", "12:00"]),
-    },
+ecmwf_partitions = InitTimePartitionsDefinition(
+    start="2017-01-01",
+    init_times=["00:00", "12:00"],
 )
 
 
-def map_partition_to_time(context: dg.AssetExecutionContext) -> dt.datetime:
-    """Map a partition key to a datetime."""
-    if type(context.partition_key) == dg.MultiPartitionKey:
-        partkeys = context.partition_key.keys_by_dimension
-        return dt.datetime.strptime(
-            f"{partkeys['date']}|{partkeys['inittime']}",
-            "%Y-%m-%d|%H:%M",
-        ).replace(tzinfo=dt.UTC)
-    else:
-        raise ValueError(
-            f"Partition key must be of type MultiPartitionKey, not {type(context.partition_key)}",
-        )
-
-
 @dc.dataclass
-class MakeAssetDefinitionsOptions:
+class MakeDefinitionsOptions:
     """Typesafe options for the make_asset_definitions function."""
 
     area: str
     fetcher: FetcherInterface
-    partitions: dg.PartitionsDefinition = ecmwf_partitions
+    partitions: InitTimePartitionsDefinition = ecmwf_partitions
 
     def key_prefix(self) -> list[str]:
         """Generate an asset key prefix based on the area.
@@ -76,7 +61,7 @@ class MakeDefinitionsOutputs:
 
 
 def make_definitions(
-    opts: MakeAssetDefinitionsOptions,
+    opts: MakeDefinitionsOptions,
 ) -> MakeDefinitionsOutputs:
     """Generates assets and associated jobs for ECMWF data."""
 
@@ -94,7 +79,7 @@ def make_definitions(
         execution_start = dt.datetime.now(tz=dt.UTC)
 
         # List all files for this partition
-        it = map_partition_to_time(context=context)
+        it = opts.partitions.parse_key(key=context.partition_key)
         fileinfos = opts.fetcher.listRawFilesForInitTime(it=it)
 
         elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
@@ -188,7 +173,7 @@ def make_definitions(
         key_prefix=opts.key_prefix(),
         partitions_def=opts.partitions,
         ins={"raw_paths": dg.AssetIn(key=_ecmwf_raw_archive.key)},
-        io_manager_key="xr_zarr_io",
+        io_manager_key="nwp_xr_zarr_io",
         compute_kind="process",
         op_tags={"MAX_RUNTIME_SECONDS_TAG": 1000},
     )
@@ -220,7 +205,7 @@ def make_definitions(
         config=dg.RunConfig(
             ops={
                 "validate_existing_raw_ecmwf_files": ValidateExistingFilesConfig(
-                    asset_key=list(_ecmwf_source_archive.key.path),
+                    asset_key=list(_ecmwf_raw_archive.key.path),
                     base_path=RAW_FOLDER,
                 ),
             },

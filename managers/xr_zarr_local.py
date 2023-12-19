@@ -1,26 +1,27 @@
-import dagster as dg
-import zarr
-import xarray as xr
 import datetime as dt
-from ocf_blosc2 import Blosc2
 import pathlib
 
-from nwp.ecmwf._factories import map_partition_to_time
+import dagster as dg
+import xarray as xr
+import zarr
+from ocf_blosc2 import Blosc2
+
 
 def map_partition_to_time(context: dg.InputContext | dg.OutputContext) -> dt.datetime:
     """Map the partition key to a datetime object."""
-    partition_key = context.asset_partitions_def.get_partition_keys_in_range(context.asset_partition_key_range)[0]
-    if context.has_partition_key and context.partition_key.keys_by_dimension is not None:
+    if context.has_partition_key and type(context.partition_key) == dg.MultiPartitionKey:
         partkeys = context.partition_key.keys_by_dimension
-        return dt.datetime.strptime(
-            f"{partkeys['date']}|{partkeys['inittime']}",
-            "%Y-%m-%d|%H:%M",
-        ).replace(tzinfo=dt.UTC)
+        try:
+            it: dt.datetime = dt.datetime.strptime(
+                f"{partkeys['date']}|{partkeys['inittime']}",
+                "%Y-%m-%d|%H:%M",
+            ).replace(tzinfo=dt.UTC)
+            return it
+        except ValueError as e:
+            raise ValueError("Partition key does not contain 'date' and 'inittime' keys.") from e
     else:
-        raise ValueError(
-            "AssetKey is not a list of strings with at least two elements."
-            "Ensure the you have setkey_prefix on the asset."
-        )
+        raise ValueError("No partition key found or partition key is not a MultiPartitionKey.")
+
 
 class LocalFilesystemXarrayZarrManager(dg.ConfigurableIOManager):
     """IOManager for reading and writing xarray datasets to the local filesystem.
@@ -41,15 +42,17 @@ class LocalFilesystemXarrayZarrManager(dg.ConfigurableIOManager):
     def _get_path(self, context: dg.InputContext | dg.OutputContext) -> pathlib.Path:
         """Get the path to the zarr file."""
         if context.has_partition_key:
-            if type (context.asset_key.path) is not list or len(context.asset_key.path) <= 1:
+            if isinstance(context.asset_key.path, str) or len(context.asset_key.path) <= 1:
                 raise ValueError(
                     "AssetKey is not a list of strings with at least two elements."
-                    "Ensure the you have setkey_prefix on the asset."
+                    "Ensure the you have setkey_prefix on the asset.",
                 )
 
-            asset_prefixes: str = '/'.join(context.asset_key.path[:-1])
+            asset_prefixes: str = "/".join(context.asset_key.path[:-1])
             it = map_partition_to_time(context)
-            return pathlib.Path(self.base_path) / asset_prefixes / it.strftime(self.filename_formatstr)
+            return (
+                pathlib.Path(self.base_path) / asset_prefixes / it.strftime(self.filename_formatstr)
+            )
         else:
             # Not yet implemented
             raise NotImplementedError("No partition key found")
@@ -71,13 +74,15 @@ class LocalFilesystemXarrayZarrManager(dg.ConfigurableIOManager):
                     },
                 },
             )
-        context.add_output_metadata({
-            "path": dg.MetadataValue.path(dst.as_posix()),
-            "size": dg.MetadataValue.int(dst.stat().st_size),
-            "modified": dg.MetadataValue.text(
-                dt.datetime.fromtimestamp(dst.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-            ),
-        })
+        context.add_output_metadata(
+            {
+                "path": dg.MetadataValue.path(dst.as_posix()),
+                "size": dg.MetadataValue.int(dst.stat().st_size),
+                "modified": dg.MetadataValue.text(
+                    dt.datetime.fromtimestamp(dst.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                ),
+            },
+        )
 
     def load_input(self, context: dg.InputContext) -> xr.Dataset:
         """Load an xarray dataset from a zarr file."""
