@@ -155,10 +155,12 @@ def make_definitions(
             context.log.info(
                 f"Downloading file {fi.filename()} to {dst.as_posix()}",
             )
+            # Download to temp fails soft, so we need to check the src
+            # to see if it is an empty path.
             fi, src = opts.fetcher.downloadToTemp(fi=fi)
             if src is None or src == pathlib.Path():
                 raise ValueError(
-                    f"Error downloading file {fi.filename()}. See stderr logs for details."
+                    f"Error downloading file {fi.filename()}. See stdout logs for details."
                 )
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.move(src=src, dst=dst)
