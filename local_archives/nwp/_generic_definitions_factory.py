@@ -157,6 +157,7 @@ def make_definitions(
             )
             try:
                 fi, src = opts.fetcher.downloadToTemp(fi=fi)
+                raise ValueError(f"TODO: Remove this line. Downloaded to {src}")
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(src=src, dst=dst)
                 src.unlink(missing_ok=True)

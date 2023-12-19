@@ -1,6 +1,10 @@
 from cdsapi import Client
 
 from local_archives.partitions import InitTimePartitionsDefinition
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ._definitions_factory import MakeDefinitionsOutputs
 
 from ._definitions_factory import (
     MakeDefinitionsOptions,
@@ -237,7 +241,7 @@ multilevel_levels: list[str] = [
     "1000",
 ]
 
-opts = MakeDefinitionsOptions(
+opts: MakeDefinitionsOptions = MakeDefinitionsOptions(
     area="global",
     file_format="grib",
     multilevel_vars=VariableSelection(
@@ -255,7 +259,7 @@ opts = MakeDefinitionsOptions(
     client=Client(),
 )
 
-defs = make_definitions(opts=opts)
+defs: MakeDefinitionsOutputs = make_definitions(opts=opts)
 
 cams_global_source_archive = defs.source_asset
 cams_global_raw_archive = defs.raw_asset

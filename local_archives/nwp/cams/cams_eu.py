@@ -3,6 +3,10 @@ import datetime as dt
 from cdsapi import Client
 
 from local_archives.partitions import InitTimePartitionsDefinition
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ._definitions_factory import MakeDefinitionsOutputs
 
 from ._definitions_factory import (
     MakeDefinitionsOptions,
@@ -38,7 +42,7 @@ VARIABLES = [
     "sulphur_dioxide",
 ]
 
-opts = MakeDefinitionsOptions(
+opts: MakeDefinitionsOptions = MakeDefinitionsOptions(
     area="eu",
     file_format="netcdf",
     multilevel_vars=VariableSelection(
@@ -51,7 +55,7 @@ opts = MakeDefinitionsOptions(
     client=Client(),
 )
 
-defs = make_definitions(opts=opts)
+defs: MakeDefinitionsOutputs = make_definitions(opts=opts)
 
 cams_eu_source_archive = defs.source_asset
 cams_eu_raw_archive = defs.raw_asset
