@@ -4,14 +4,11 @@ import os
 
 from nwp_consumer.internal.inputs import ceda
 from local_archives.partitions import InitTimePartitionsDefinition
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from nwp_consumer.internal import FetcherInterface
-    from local_archives.nwp._generic_definitions_factory import MakeDefinitionsOutputs
+from nwp_consumer.internal import FetcherInterface
 
 from local_archives.nwp._generic_definitions_factory import (
     MakeDefinitionsOptions,
+    MakeDefinitionsOutputs,
     make_definitions,
 )
 

@@ -3,11 +3,9 @@ from cdsapi import Client
 from local_archives.partitions import InitTimePartitionsDefinition
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from ._definitions_factory import MakeDefinitionsOutputs
-
 from ._definitions_factory import (
     MakeDefinitionsOptions,
+    MakeDefinitionsOutputs,
     VariableSelection,
     make_definitions,
 )
