@@ -155,17 +155,17 @@ def make_definitions(
             context.log.info(
                 f"Downloading file {fi.filename()} to {dst.as_posix()}",
             )
-            try:
-                fi, src = opts.fetcher.downloadToTemp(fi=fi)
-                raise ValueError(f"TODO: Remove this line. Downloaded to {src}")
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(src=src, dst=dst)
-                src.unlink(missing_ok=True)
+            fi, src = opts.fetcher.downloadToTemp(fi=fi)
+            if src is None or src == pathlib.Path():
+                raise ValueError(
+                    f"Error downloading file {fi.filename()}. See stderr logs for details."
+                )
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(src=src, dst=dst)
+            src.unlink(missing_ok=True)
 
-                stored_paths.append(dst)
-                sizes.append(dst.stat().st_size)
-            except Exception as e:
-                raise ValueError(f"Failed to download file {fi.filename()}") from e
+            stored_paths.append(dst)
+            sizes.append(dst.stat().st_size)
 
         elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
 
