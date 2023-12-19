@@ -1,17 +1,27 @@
 """ECMWF Malta data pipeline."""
 
 from nwp_consumer.internal.inputs.ecmwf import mars
+from partitions import InitTimePartitionsDefinition
 
-from ._factories import MakeDefinitionsOptions, make_definitions
+from local_archives.nwp._generic_definitions_factory import (
+    MakeDefinitionsOptions,
+    make_definitions,
+)
 
 fetcher = mars.Client(
     area="malta",
-    param_group="basic",
+)
+
+partitions = InitTimePartitionsDefinition(
+    start="2017-01-01",
+    init_times=["00:00", "12:00"],
 )
 
 defs = make_definitions(
     opts=MakeDefinitionsOptions(
         area="malta",
+        source="ecmwf",
+        partitions=partitions,
         fetcher=fetcher,
     ),
 )

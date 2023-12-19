@@ -20,11 +20,17 @@ class ValidateExistingFilesConfig(dg.Config):
 
 
 @dg.op
-def validate_existing_raw_ecmwf_files(
+def validate_existing_raw_files(
     context: dg.OpExecutionContext,
     config: ValidateExistingFilesConfig,
 ) -> None:
-    """Checks for existing raw ECMWF files."""
+    """Checks for existing raw files.
+
+    The folder structure of the raw files is assumed to follw the convention
+    from the nwp-consumer library. That is to say, the files are stored in
+    folders named after the inittime, which are in turn stored in folders
+    named after the area and source. See README.md for more details.
+    """
     loc: str = "/".join(config.asset_key[:-1])
     base_path: pathlib.Path = pathlib.Path(config.base_path) / loc
 
@@ -50,28 +56,30 @@ def validate_existing_raw_ecmwf_files(
         total_archive_size_bytes += sum(sizes)
 
         if len(it_filepaths) > 0:
-            context.log_event(dg.AssetObservation(
-                asset_key=config.asset_key,
-                partition=it.strftime("%Y-%m-%d|%H:%M"),
-                metadata={
-                    "inittime": dg.MetadataValue.text(
-                        it.strftime("%Y-%m-%d|%H:%M"),
-                    ),
-                    "num_files": dg.MetadataValue.int(
-                        len(it_filepaths),
-                    ),
-                    "file_paths": dg.MetadataValue.text(
-                        str([f.as_posix() for f in it_filepaths]),
-                    ),
-                    "partition_size": dg.MetadataValue.int(
-                        sum(sizes),
-                    ),
-                    "area": dg.MetadataValue.text(config.asset_key[-2]),
-                    "last_checked": dg.MetadataValue.text(
-                        dt.datetime.now(tz=dt.UTC).isoformat(),
-                    ),
-                },
-            ))
+            context.log_event(
+                dg.AssetObservation(
+                    asset_key=config.asset_key,
+                    partition=it.strftime("%Y-%m-%d|%H:%M"),
+                    metadata={
+                        "inittime": dg.MetadataValue.text(
+                            it.strftime("%Y-%m-%d|%H:%M"),
+                        ),
+                        "num_files": dg.MetadataValue.int(
+                            len(it_filepaths),
+                        ),
+                        "file_paths": dg.MetadataValue.text(
+                            str([f.as_posix() for f in it_filepaths]),
+                        ),
+                        "partition_size": dg.MetadataValue.int(
+                            sum(sizes),
+                        ),
+                        "area": dg.MetadataValue.text(config.asset_key[-2]),
+                        "last_checked": dg.MetadataValue.text(
+                            dt.datetime.now(tz=dt.UTC).isoformat(),
+                        ),
+                    },
+                ),
+            )
 
     context.log_event(
         dg.AssetObservation(
@@ -87,11 +95,11 @@ def validate_existing_raw_ecmwf_files(
 
 
 @dg.op
-def validate_existing_zarr_ecmwf_files(
+def validate_existing_zarr_files(
     context: dg.OpExecutionContext,
     config: ValidateExistingFilesConfig,
 ) -> None:
-    """Checks for existing zarr ECMWF files."""
+    """Checks for existing zarr files."""
     loc: str = "/".join(config.asset_key[:-1])
     base_path: pathlib.Path = pathlib.Path(config.base_path) / loc
 

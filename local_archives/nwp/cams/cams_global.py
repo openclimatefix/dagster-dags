@@ -2,7 +2,7 @@ from cdsapi import Client
 
 from local_archives.partitions import InitTimePartitionsDefinition
 
-from ._factories import (
+from ._definitions_factory import (
     MakeDefinitionsOptions,
     VariableSelection,
     make_definitions,
