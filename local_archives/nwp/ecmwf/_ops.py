@@ -40,7 +40,7 @@ def validate_existing_raw_ecmwf_files(
             continue
 
         # For every file in the inittime folder with the correct extension,
-        # create an AssetMaterialization for the relevant partition
+        # create an AssetObservation for the relevant partition
         sizes: list[int] = []
         it_filepaths: list[pathlib.Path] = []
         for file in it_folder.glob("*.grib"):
@@ -50,42 +50,28 @@ def validate_existing_raw_ecmwf_files(
         total_archive_size_bytes += sum(sizes)
 
         if len(it_filepaths) > 0:
-            yield dg.Output(
-                it_filepaths,
+            context.log_event(dg.AssetObservation(
+                asset_key=config.asset_key,
+                partition=it.strftime("%Y-%m-%d|%H:%M"),
                 metadata={
-                    "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
-                    "partition_num_files": dg.MetadataValue.int(len(stored_paths)),
-                    "file_paths": dg.MetadataValue.text(str([f.as_posix() for f in stored_paths])),
-                    "partition_size": dg.MetadataValue.int(sum(sizes)),
-                    "area": dg.MetadataValue.text(opts.area),
-                    "elapsed_time_mins": dg.MetadataValue.float(elapsed_time / dt.timedelta(minutes=1)),
+                    "inittime": dg.MetadataValue.text(
+                        it.strftime("%Y-%m-%d|%H:%M"),
+                    ),
+                    "num_files": dg.MetadataValue.int(
+                        len(it_filepaths),
+                    ),
+                    "file_paths": dg.MetadataValue.text(
+                        str([f.as_posix() for f in it_filepaths]),
+                    ),
+                    "partition_size": dg.MetadataValue.int(
+                        sum(sizes),
+                    ),
+                    "area": dg.MetadataValue.text(config.asset_key[-2]),
+                    "last_checked": dg.MetadataValue.text(
+                        dt.datetime.now(tz=dt.UTC).isoformat(),
+                    ),
                 },
-            )
-            yield O
-            context.log_event(
-                dg.AssetMaterialization(
-                    asset_key=config.asset_key,
-                    partition=it.strftime("%Y-%m-%d|%H:%M"),
-                    metadata={
-                        "inittime": dg.MetadataValue.text(
-                            it.strftime("%Y-%m-%d|%H:%M"),
-                        ),
-                        "num_files": dg.MetadataValue.int(
-                            len(it_filepaths),
-                        ),
-                        "file_paths": dg.MetadataValue.text(
-                            str([f.as_posix() for f in it_filepaths]),
-                        ),
-                        "partition_size": dg.MetadataValue.int(
-                            sum(sizes),
-                        ),
-                        "area": dg.MetadataValue.text(config.asset_key[-2]),
-                        "last_checked": dg.MetadataValue.text(
-                            dt.datetime.now(tz=dt.UTC).isoformat(),
-                        ),
-                    },
-                ),
-            )
+            ))
 
     context.log_event(
         dg.AssetObservation(
@@ -124,9 +110,9 @@ def validate_existing_zarr_ecmwf_files(
 
         ds = xr.open_zarr("zip::" + file.as_posix())
 
-        # Create an AssetMaterialization for the relevant partition
+        # Create an AssetObservation for the relevant partition
         context.log_event(
-            dg.AssetMaterialization(
+            dg.AssetObservation(
                 asset_key=config.asset_key,
                 partition=it.strftime("%Y-%m-%d|%H:%M"),
                 metadata={

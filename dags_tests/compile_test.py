@@ -1,9 +1,9 @@
-from nwp import all_assets, defs
+from local_archives.nwp import ecmwf, cams
 
 
 def test_asset_key_prefixes() -> None:
     """Test asset keys for all assets have the correct key structure."""
-    for asset in all_assets:
+    for asset in [*cams.all_assets, *ecmwf.all_assets]:
         assert len(asset.key.path) == 4
 
         # Ensure that the prefix is as expected
@@ -13,5 +13,4 @@ def test_asset_key_prefixes() -> None:
         assert asset.key.path[1] in ["ecmwf", "metoffice", "eumetsat", "cams"]
         # The third element should be the region
         assert asset.key.path[2] in ["uk", "eu", "global", "europe", "nw_india"]
-
 

@@ -132,9 +132,12 @@ def make_definitions(
             dst = pathlib.Path(
                 f"{RAW_FOLDER}/{loc}/{fi.it().strftime(IT_FOLDER_FMTSTR)}/{fi.filename()}",
             )
-            # If the file already exists, delete it
+            # If the file already exists, don't re download it
             if dst.exists():
-                dst.unlink()
+                stored_paths.append(dst)
+                sizes.append(dst.stat().st_size)
+                continue
+
             # Otherwise, download it and store it
             fi, src = opts.fetcher.downloadToTemp(fi=fi)
             dst.parent.mkdir(parents=True, exist_ok=True)

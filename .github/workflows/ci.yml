@@ -80,8 +80,8 @@ jobs:
       # Create fake cdsapirc
       - name: Populate .cdsapirc
         run: |
-          echo "url: https://ads.atmosphere.copernicus.eu/api/v2" > ~/.cdsapirc
-          echo "key: notarealkey" > ~/.csdsapirc
+          echo "url: https://ads.atmosphere.copernicus.eu/api/v2" > /home/runner/.cdsapirc
+          echo "key: notarealkey" > /home/runner/.csdsapirc
 
       # Run unittests
       # * Produce JUnit XML report

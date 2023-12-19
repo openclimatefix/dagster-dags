@@ -195,18 +195,27 @@ def make_definitions(
         execution_start = dt.datetime.now(tz=dt.UTC)
 
         stored_paths: list[pathlib.Path] = []
+        sizes: list[int] = []
         # Iterate over the variables and their associated result objects from the cdsapi
         for fi in fis:
             # Store the file based on the asset key prefix and the init time of the file
             loc = "/".join(context.asset_key.path[:-1])
             ext = ".grib" if opts.file_format == "grib" else ".nc"
-            fname = (
-                f"{RAW_FOLDER}/{loc}/{fi.inittime.strftime(IT_FOLDER_FMTSTR)}/{fi.inittime.strftime('%Y%m%d%H')}_{fi.var}{ext}",
+            dst = pathlib.Path(
+                f"{RAW_FOLDER}/{loc}/{fi.inittime.strftime(IT_FOLDER_FMTSTR)}/" \
+                + f"{fi.inittime.strftime('%Y%m%d%H')}_{fi.var}{ext}"
             )
+            # If the file already exists, don't redownload it
+            if dst.exists():
+                stored_paths.append(dst)
+                sizes.append(dst.stat().st_size)
+                continue
+
             # Download the file using the CDS api. Target must be a list even though it
             # is a single file - see the _download method on the Client class
             # https://github.com/ecmwf/cdsapi/blob/master/cdsapi/api.py
-            stored_path = opts.client._download(fi.__dict__, target=[fname])
+            dst.unlink(missing_ok=True)
+            stored_path = opts.client._download(fi.__dict__, target=[dst.as_posix()])
             stored_paths.append(pathlib.Path(stored_path))
 
         if len(stored_paths) == 0:

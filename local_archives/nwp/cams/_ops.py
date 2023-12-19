@@ -39,7 +39,7 @@ def validate_existing_raw_init_files(
             continue
 
         # For every file in the inittime folder with the correct extension,
-        # create an AssetMaterialization for the relevant partition
+        # create an AssetObservation for the relevant partition
         sizes: list[int] = []
         it_filepaths: list[pathlib.Path] = []
         for file in list(it_folder.glob("*.grib")) + list(it_folder.glob("*.nc")):
@@ -50,7 +50,7 @@ def validate_existing_raw_init_files(
 
         if len(it_filepaths) > 0:
             context.log_event(
-                dg.AssetMaterialization(
+                dg.AssetObservation(
                     asset_key=config.asset_key,
                     partition=it.strftime("%Y-%m-%d|%H:%M"),
                     metadata={
