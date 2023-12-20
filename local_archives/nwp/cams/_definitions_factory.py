@@ -153,7 +153,7 @@ def make_definitions(
                     name=opts.dataset_name(),
                     request=ml_var_request,
                 )
-                fis.append(CamsFileInfo(**result.toJSON(), var=var))
+                fis.append(CamsFileInfo(**result.toJSON(), var=var, inittime=it))
 
         if len(fis) == 0:
             raise Exception(
