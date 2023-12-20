@@ -1,7 +1,7 @@
+
 from cdsapi import Client
 
 from local_archives.partitions import InitTimePartitionsDefinition
-from typing import TYPE_CHECKING
 
 from ._definitions_factory import (
     MakeDefinitionsOptions,

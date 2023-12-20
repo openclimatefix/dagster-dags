@@ -5,6 +5,7 @@ from . import ecmwf_malta, ecmwf_nw_india, ecmwf_uk
 uk_assets = dg.load_assets_from_modules(
     modules=[ecmwf_uk],
     group_name="ecmwf_uk",
+    auto_materialize_policy=dg.AutoMaterializePolicy.eager(),
 )
 uk_jobs = [
     ecmwf_uk.scan_ecmwf_uk_raw_archive,

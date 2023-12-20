@@ -2,15 +2,15 @@
 
 import os
 
-from nwp_consumer.internal.inputs import ceda
-from local_archives.partitions import InitTimePartitionsDefinition
 from nwp_consumer.internal import FetcherInterface
+from nwp_consumer.internal.inputs import ceda
 
 from local_archives.nwp._generic_definitions_factory import (
     MakeDefinitionsOptions,
     MakeDefinitionsOutputs,
     make_definitions,
 )
+from local_archives.partitions import InitTimePartitionsDefinition
 
 fetcher: FetcherInterface = ceda.Client(
     ftpUsername=os.getenv("CEDA_FTP_USER", "not-set"),
