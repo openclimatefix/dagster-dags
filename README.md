@@ -22,7 +22,7 @@ Dagster defintions for OCF's archival datasets
 
 The following terms are used throughout the codebase and documentation. They are defined here to avoid ambiguity.
 
- - *InitTime* - The time at which a forecast is initialised. For example, a forecast initialised at 12:00 on 1st January.
+ - *InitTime* - The time at which a forecast is initialized. For example, a forecast initialized at 12:00 on 1st January.
  - *TargetTime* - The time at which a predicted value is valid. For example, a forecast with InitTime 12:00 on 1st January predicts that the temperature at TargetTime 12:00 on 2nd January at position x will be 10 degrees.
 
 
@@ -60,7 +60,7 @@ then take into account the following features:
  - The *Region* the data covers (UK, EU etc)
  - The *InitTime* the data refers to
 
-Paths are then generated via`base/flavour/provider/region/inittime`. See managers for an example implementation.
+Paths are then generated via`base/flavor/provider/region/inittime`. See managers for an example implementation.
 For this to work, each asset must have an asset key prefix conforming to this structure `[flavor, provider, region]`.
 The *Base Paths* are defined in `constants.py`.
 

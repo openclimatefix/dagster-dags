@@ -7,7 +7,7 @@ def test_asset_key_prefixes() -> None:
         assert len(asset.key.path) == 4
 
         # Ensure that the prefix is as expected
-        # The first element should be the flavour:
+        # The first element should be the flavor:
         assert asset.key.path[0] in ["nwp", "sat"]
         # The second element should be the provider
         assert asset.key.path[1] in ["ecmwf", "metoffice", "eumetsat", "cams"]
