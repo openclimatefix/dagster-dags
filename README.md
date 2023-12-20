@@ -1,8 +1,71 @@
-# dags
+<h2 align="center">
+Dagster Dags
+<br>
+<br>
+Dagster defintions for OCF's archival datasets
+</h2>
 
-This is a [Dagster](https://dagster.io/) project scaffolded with [`dagster project scaffold`](https://docs.dagster.io/getting-started/create-new-project).
+<div align="center">
 
-## Getting started
+<a href="https://github.com/openclimatefix/dagster-dags/graphs/contributors" alt="Contributors">
+    <img src="https://img.shields.io/github/contributors/openclimatefix/dagster-dags?style=for-the-badge&color=FFFFFF" /></a>
+<a href="https://github.com/openclimatefix/dagster-dags/actions/workflows/ci.yml" alt="Workflows">
+    <img alt="GitHub Workflow Status (with branch)" src="https://img.shields.io/github/actions/workflow/status/openclimatefix/dagster-dags/ci.yml?branch=main&style=for-the-badge&color=FFD053"></a>
+<a href="https://github.com/openclimatefix/dagster-dags/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc" alt="Issues">
+    <img src="https://img.shields.io/github/issues/openclimatefix/dagster-dags?style=for-the-badge&color=FFAC5F"></a>
+</div>
+
+<br>
+
+
+## Ubiquitous language
+
+The following terms are used throughout the codebase and documentation. They are defined here to avoid ambiguity.
+
+ - *InitTime* - The time at which a forecast is initialized. For example, a forecast initialized at 12:00 on 1st January.
+ - *TargetTime* - The time at which a predicted value is valid. For example, a forecast with InitTime 12:00 on 1st January predicts that the temperature at TargetTime 12:00 on 2nd January at position x will be 10 degrees.
+
+
+## Repository structure
+
+Produced by `eza`:
+```sh
+eza --tree --git-ignore -F -I "*init*|test*.*|build"
+```
+
+```sh
+./
+├── cloud_archives/ # Dagster definitions for cloud-stored archival datasets
+│  └── nwp/ # Specifications for Numerical Weather Predication data sources
+│     └── icon/ 
+├── constants.py # Values used across the project
+├── dags_tests/ # Tests for the project
+├── local_archives/ # Dagster defintions for locally-stored archival datasets
+│  ├── nwp/ # Specifications for Numerical Weather Prediction data source
+│  │  ├── cams/
+│  │  └── ecmwf/
+│  └── sat/ # Specifications for Satellite image data sources
+├── managers/ # IO Managers for use across the project
+├── pyproject.toml # The build configuration for the service
+└── README.md
+```
+
+## Conventions
+
+The storage of data is handled automatically into locations defined by features of the data in question. The only configurable
+part of the storage is the *Base Path* - the root point from which dagster will then handle the subpaths. The full storage paths
+then take into account the following features:
+ - The *flavor* of the data (NWP, Satellite etc)
+ - The *Provider* of the data (CEDA, ECMWF etc)
+ - The *Region* the data covers (UK, EU etc)
+ - The *InitTime* the data refers to
+
+Paths are then generated via`base/flavor/provider/region/inittime`. See managers for an example implementation.
+For this to work, each asset must have an asset key prefix conforming to this structure `[flavor, provider, region]`.
+The *Base Paths* are defined in `constants.py`.
+
+
+## Local Development
 
 First, install your Dagster code location as a Python package. By using the --editable flag, pip will install your Python package in ["editable mode"](https://pip.pypa.io/en/latest/topics/local-project-installs/#editable-installs) so that as you develop, local code changes will automatically apply.
 
@@ -13,36 +76,15 @@ pip install -e ".[dev]"
 Then, start the Dagster UI web server:
 
 ```bash
-dagster dev
+dagster dev --module-name=local_archives
 ```
 
-Open http://localhost:3000 with your browser to see the project.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the project.
 
-You can start writing assets in `dags/assets.py`. The assets are automatically loaded into the Dagster code location as you define them.
-
-## Development
+Add your assets to the relevant code location. See [Repository Structure](#repository-structure) for details.
 
 
-### Adding new Python dependencies
+## Useful links
 
-You can specify new Python dependencies in `pyproject.toml`.
+- (Detecting existing assets)[https://github.com/dagster-io/dagster/discussions/17847]
 
-### Unit testing
-
-Tests are in the `dags_tests` directory and you can run tests using `pytest`:
-
-```bash
-pytest dags_tests
-```
-
-### Schedules and sensors
-
-If you want to enable Dagster [Schedules](https://docs.dagster.io/concepts/partitions-schedules-sensors/schedules) or [Sensors](https://docs.dagster.io/concepts/partitions-schedules-sensors/sensors) for your jobs, the [Dagster Daemon](https://docs.dagster.io/deployment/dagster-daemon) process must be running. This is done automatically when you run `dagster dev`.
-
-Once your Dagster Daemon is running, you can start turning on schedules and sensors for your jobs.
-
-## Deploy on Dagster Cloud
-
-The easiest way to deploy your Dagster project is to use Dagster Cloud.
-
-Check out the [Dagster Cloud Documentation](https://docs.dagster.cloud) to learn more.

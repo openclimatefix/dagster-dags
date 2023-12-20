@@ -41,7 +41,7 @@ jobs:
       - name: Build venv
         run: |
           apt -qq update && apt -qq install -y build-essential
-          conda create -p ./venv python=3.10
+          conda create -p ./venv python=3.11
           ./venv/bin/python -m pip install --upgrade -q pip wheel setuptools
         if: steps.restore-cache.outputs.cache-hit != 'true'
 
@@ -80,6 +80,9 @@ jobs:
       # Run unittests
       # * Produce JUnit XML report
       - name: Run unit tests
+        env:
+          CDSAPI_URL: "https://ads.atmosphere.copernicus.eu/api/v2"
+          CDSAPI_KEY: "fake1:fake33-bogus44-falsehood-key55"
         run: ./venv/bin/python -m pytest --junitxml=ut-report.xml dags_tests 
 
       # Create test summary to be visualised on the job summary screen on GitHub

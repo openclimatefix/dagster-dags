@@ -1,7 +1,7 @@
 # --- PROJECT CONFIGURATION --- #
 
 [build-system]
-requires = ["setuptools>=67", "wheel"]
+requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 # Metadata (see https://peps.python.org/pep-0621/)
@@ -10,37 +10,39 @@ name = "dags"
 dynamic = ["version"] # Set automtically using git: https://setuptools-git-versioning.readthedocs.io/en/stable/
 description = "Dags for running jobs via Dagster on Leonardo"
 readme = {file = "README.md", content-type = "text/markdown"}
-requires-python = ">=3.10.0"
+requires-python = ">=3.11.0"
 license = {text = "MIT License"}
 authors = [
-    { name = "Jacob Bieker", email = "jacob@openclimatefix.org"}, 
-    { name = "Sol Cotton", email = "sol@openclimatefix.org"}
+    { name = "Jacob Bieker", email = "jacob@openclimatefix.org"},
+    { name = "Sol Cotton", email = "sol@openclimatefix.org"},
 ]
 classifiers = ["Programming Language :: Python :: 3"]
 dependencies = [
-    "cdsapi == 0.6.1",
-    "ecmwf-api-client == 1.6.3",
-    "dagit == 1.4.11",
-    "dagster == 1.4.11",
-    "dagster-cloud == 1.4.11",
-    "dagster-docker == 0.20.11",
-    "huggingface-hub == 0.16.4",
-    "numpy >= 1.23.0",
-    "nwp-consumer == 0.1.23",
-    "ocf-blosc2 == 0.0.3",
-    "pathlib == 1.0.1",
-    "requests >= 2.28.0",
+    "cdsapi >= 0.6.1",
+    "ecmwf-api-client >= 1.6.3",
+    "dagit >= 1.5.11",
+    "dagster >= 1.5.11",
+    "dagster-cloud >= 1.5.11",
+    "dagster-docker >= 0.21.11",
+    "huggingface-hub >= 0.19.4",
+    "numpy >= 1.23.2",
+    "nwp-consumer == 0.1.30",
+    "ocf-blosc2 >= 0.0.3",
+    "pathlib >= 1.0.1",
+    "requests >= 2.31.0",
+    "requests-toolbelt >= 0.9.1",
     "xarray >= 2022.3.0",
     "zarr >= 2.13.3",
-    "satip",
+    "satip >= 2.11.19",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "ruff == 0.0.259",
+    "mypy == 1.7.1",
+    "ruff == 0.1.7",
     "unittest-xml-reporting == 3.2.0",
-    "dagster-webserver == 1.4.11",
-    "pytest == 7.4.1",
+    "dagster-webserver == 1.5.11",
+    "pytest >= 7.4.1",
     "python-lsp-server == 1.7.4"
 ]
 
@@ -60,15 +62,43 @@ select = [
     "S",   # flake8 bandit
     "B",   # flake8 bugbear
     "C4",  # flake8 comprehensions
+    "COM", # flake8 commas
     "T20", # flake8 print
     "SIM", # flake8 simplify
     "ARG", # flake8 unused arguments
+    "DTZ", # flake8 datetimes
+    "Q",   # flake8 quotes
+    "TCH", # flake8 typecheck
     "D",   # pydocstyle
+    "RUF", # ruff-specific rules
 ]
 line-length = 100
-ignore = ["D203", "D213", "ANN101"]
+indent-width = 4
+# Use pydocstyle Google convention
+# See https://www.pydocstyle.org/en/stable/error_codes.html
+ignore = [
+    "D203", "D213", "D215", "D400", "D401", "D404", "D406",
+    "D407", "D408", "D409", "D413",
+    "ANN101",
+]
 exclude = ["__init__.py"]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
 
 [tool.ruff.per-file-ignores]
 "test*" = ["D", "ANN"]
+
+# MyPy configuration
+# * See https://mypy.readthedocs.io/en/stable/index.html
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+disallow_untyped_defs = true
+plugins = [
+    'numpy.typing.mypy_plugin'
+]
 
