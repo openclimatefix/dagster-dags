@@ -1,4 +1,3 @@
-
 from cdsapi import Client
 
 from local_archives.partitions import InitTimePartitionsDefinition
@@ -199,6 +198,14 @@ singlelevel_slow_vars: list[str] = [
     "total_fine_mode_aerosol_optical_depth_865nm",
 ]
 
+singlelevel_slow_vars_subset = [
+    "total_aerosol_optical_depth_400nm",
+    "total_aerosol_optical_depth_440nm",
+    "total_aerosol_optical_depth_500nm",
+    "total_aerosol_optical_depth_532nm",
+    "total_aerosol_optical_depth_645nm",
+]
+
 multilevel_slow_vars: list[str] = [
     "aerosol_extinction_coefficient_1064nm",
     "aerosol_extinction_coefficient_355nm",
@@ -210,6 +217,8 @@ multilevel_slow_vars: list[str] = [
     "attenuated_backscatter_due_to_aerosol_532nm_from_ground",
     "attenuated_backscatter_due_to_aerosol_532nm_from_top_of_atmosphere",
 ]
+
+multilevel_slow_vars_subset = ["aerosol_extinction_coefficient_532nm"]
 
 multilevel_levels: list[str] = [
     "1",
@@ -243,13 +252,13 @@ opts: MakeDefinitionsOptions = MakeDefinitionsOptions(
     area="global",
     file_format="grib",
     multilevel_vars=VariableSelection(
-        slow=multilevel_slow_vars,
+        slow=multilevel_slow_vars_subset,
         fast=multilevel_fast_vars,
         hours=multilevel_hours,
     ),
     multilevel_levels=multilevel_levels,
     singlelevel_vars=VariableSelection(
-        slow=singlelevel_slow_vars,
+        slow=singlelevel_slow_vars_subset,
         fast=singlelevel_fast_vars,
         hours=singlelevel_hours,
     ),
