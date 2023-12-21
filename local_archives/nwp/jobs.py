@@ -1,6 +1,6 @@
 """Defines the jobs for the ECMWF data pipeline."""
-
 import datetime as dt
+import os
 import pathlib
 
 import dagster as dg
@@ -11,12 +11,37 @@ from nwp_consumer.internal import (
     IT_FOLDER_GLOBSTR,
 )
 
+from constants import LOCATIONS_BY_ENVIRONMENT
+
+env = os.getenv("ENVIRONMENT", "local")
+RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].RAW_FOLDER
+ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
+
 
 class ValidateExistingFilesConfig(dg.Config):
     """Config schema for the validate_existing_files job."""
 
     base_path: str
-    asset_key: list[str]
+    source: str
+    area: str
+    asset_name: str
+
+    def check(self) -> None:
+        """Check that the source and area are valid."""
+        if self.area not in ["global", "eu", "uk", "nw_india", "malta"]:
+            raise ValueError(f"Area {self.area} not recognised.")
+
+        if self.source not in ["ecmwf", "icon", "ceda", "cams"]:
+            raise ValueError(f"Source {self.source} not recognised.")
+
+        if self.archive_path().exists() is False:
+            raise FileNotFoundError(
+                f"Could not find archive folder {self.archive_path().as_posix()}",
+            )
+
+    def archive_path(self) -> pathlib.Path:
+        """Return the base path of the archive."""
+        return pathlib.Path(self.base_path) / "nwp" / self.source / self.area
 
 
 @dg.op
@@ -31,15 +56,14 @@ def validate_existing_raw_files(
     folders named after the inittime, which are in turn stored in folders
     named after the area and source. See README.md for more details.
     """
-    loc: str = "/".join(config.asset_key[:-1])
-    base_path: pathlib.Path = pathlib.Path(config.base_path) / loc
+    config.check()
 
     total_archive_size_bytes: int = 0
-    for it_folder in [f for f in base_path.glob(IT_FOLDER_GLOBSTR) if f.suffix == ""]:
+    for it_folder in [f for f in config.archive_path().glob(IT_FOLDER_GLOBSTR) if f.suffix == ""]:
         # Parse the folder as an inittime:
         try:
             it = dt.datetime.strptime(
-                it_folder.relative_to(base_path).as_posix(),
+                it_folder.relative_to(config.archive_path()).as_posix(),
                 IT_FOLDER_FMTSTR,
             ).replace(tzinfo=dt.UTC)
         except ValueError:
@@ -49,7 +73,7 @@ def validate_existing_raw_files(
         # create an AssetObservation for the relevant partition
         sizes: list[int] = []
         it_filepaths: list[pathlib.Path] = []
-        for file in it_folder.glob("*.grib"):
+        for file in list(it_folder.glob("*.nc")) + list(it_folder.glob("*.grib")):
             it_filepaths.append(file)
             sizes.append(file.stat().st_size)
 
@@ -58,7 +82,7 @@ def validate_existing_raw_files(
         if len(it_filepaths) > 0:
             context.log_event(
                 dg.AssetObservation(
-                    asset_key=config.asset_key,
+                    asset_key=["nwp", config.source, config.area, config.asset_name],
                     partition=it.strftime("%Y-%m-%d|%H:%M"),
                     metadata={
                         "inittime": dg.MetadataValue.text(
@@ -73,7 +97,7 @@ def validate_existing_raw_files(
                         "partition_size": dg.MetadataValue.int(
                             sum(sizes),
                         ),
-                        "area": dg.MetadataValue.text(config.asset_key[-2]),
+                        "area": dg.MetadataValue.text(config.area),
                         "last_checked": dg.MetadataValue.text(
                             dt.datetime.now(tz=dt.UTC).isoformat(),
                         ),
@@ -83,10 +107,10 @@ def validate_existing_raw_files(
 
     context.log_event(
         dg.AssetObservation(
-            asset_key=config.asset_key,
+            asset_key=["nwp", config.source, config.area, config.asset_name],
             metadata={
-                "archive_folder": dg.MetadataValue.text(base_path.as_posix()),
-                "area": dg.MetadataValue.text(config.asset_key[-2]),
+                "archive_folder": dg.MetadataValue.text(config.archive_path().as_posix()),
+                "area": dg.MetadataValue.text(config.area),
                 "total_archive_size_gb": dg.MetadataValue.float(total_archive_size_bytes / 1e9),
                 "last_scan": dg.MetadataValue.text(dt.datetime.now(tz=dt.UTC).isoformat()),
             },
@@ -100,11 +124,10 @@ def validate_existing_zarr_files(
     config: ValidateExistingFilesConfig,
 ) -> None:
     """Checks for existing zarr files."""
-    loc: str = "/".join(config.asset_key[:-1])
-    base_path: pathlib.Path = pathlib.Path(config.base_path) / loc
+    config.check()
 
     total_archive_size_bytes: int = 0
-    for file in base_path.glob("*.zarr.zip"):
+    for file in config.archive_path().glob("*.zarr.zip"):
         # Try to parse the init time from the filename
         try:
             it = dt.datetime.strptime(
@@ -132,12 +155,64 @@ def validate_existing_zarr_files(
 
     context.log_event(
         dg.AssetObservation(
-            asset_key=config.asset_key,
+            asset_key=["nwp", config.source, config.area, config.asset_name],
             metadata={
-                "archive_folder": dg.MetadataValue.text(base_path.as_posix()),
-                "area": dg.MetadataValue.text(config.asset_key[-2]),
+                "archive_folder": dg.MetadataValue.text(config.archive_path().as_posix()),
+                "area": dg.MetadataValue.text(config.area),
                 "total_archive_size_gb": dg.MetadataValue.float(total_archive_size_bytes / 1e9),
                 "last_scan": dg.MetadataValue.text(dt.datetime.now(tz=dt.UTC).isoformat()),
             },
         ),
     )
+
+    return None
+
+
+@dg.job(
+    name="scan_nwp_raw_archive",
+    config=dg.RunConfig(
+        ops={
+            validate_existing_raw_files.__name__: ValidateExistingFilesConfig(
+                base_path=RAW_FOLDER,
+                source="ecmwf",
+                area="uk",
+                asset_name="raw_archive",
+            ),
+        },
+    ),
+)
+def scan_nwp_raw_archive() -> None:
+    """Scan the raw NWP archive for existing files.
+
+    This assumes a folder structure as follows:
+    >>> {base_path}/nwp/{source}/{area}/{YYYY}/{MM}/{DD}/{HHMM}/{file}
+
+    where the time values pertain to the init time.
+    The values `nwp`, `source``` and `area`
+    are taken from the asset key.
+    """
+    validate_existing_raw_files()
+
+
+@dg.job(
+    name="scan_nwp_zarr_archive",
+    config=dg.RunConfig(
+        ops={
+            validate_existing_zarr_files.__name__: ValidateExistingFilesConfig(
+                base_path=ZARR_FOLDER,
+                source="ecmwf",
+                area="uk",
+                asset_name="zarr_archive",
+            ),
+        },
+    ),
+)
+def scan_nwp_zarr_archive() -> None:
+    """Scan the zarr NWP archive for existing files.
+
+    This assumes a folder structure as follows:
+    >>> {base_path}/nwp/{source}/{area}/{YYYYMMDD}T{HHMM}.zarr.zip
+
+    where the time values pertain to the init time.
+    """
+    validate_existing_zarr_files()

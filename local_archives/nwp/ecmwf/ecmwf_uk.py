@@ -1,14 +1,14 @@
 """ECMWF UK data pipeline."""
 
-from nwp_consumer.internal.inputs.ecmwf import mars
-from local_archives.partitions import InitTimePartitionsDefinition
 from nwp_consumer.internal import FetcherInterface
+from nwp_consumer.internal.inputs.ecmwf import mars
 
 from local_archives.nwp._generic_definitions_factory import (
     MakeDefinitionsOptions,
     MakeDefinitionsOutputs,
     make_definitions,
 )
+from local_archives.partitions import InitTimePartitionsDefinition
 
 fetcher: FetcherInterface = mars.Client(
     area="uk",
@@ -31,5 +31,3 @@ defs: MakeDefinitionsOutputs = make_definitions(
 ecmwf_uk_source_archive = defs.source_asset
 ecmwf_uk_raw_archive = defs.raw_asset
 ecmwf_uk_zarr_archive = defs.zarr_asset
-scan_ecmwf_uk_raw_archive = defs.raw_job
-scan_ecmwf_uk_zarr_archive = defs.zarr_job

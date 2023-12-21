@@ -1,14 +1,13 @@
 """ECMWF NW India data pipeline."""
 
-from nwp_consumer.internal.inputs.ecmwf import mars
-from local_archives.partitions import InitTimePartitionsDefinition
 from nwp_consumer.internal import FetcherInterface
+from nwp_consumer.internal.inputs.ecmwf import mars
 
 from local_archives.nwp._generic_definitions_factory import (
     MakeDefinitionsOptions,
-    MakeDefinitionsOutputs,
     make_definitions,
 )
+from local_archives.partitions import InitTimePartitionsDefinition
 
 fetcher: FetcherInterface = mars.Client(
     area="nw-india",
@@ -32,5 +31,3 @@ defs = make_definitions(
 ecmwf_nw_india_source_archive = defs.source_asset
 ecmwf_nw_india_raw_archive = defs.raw_asset
 ecmwf_nw_india_zarr_archive = defs.zarr_asset
-scan_ecmwf_nw_india_raw_archive = defs.raw_job
-scan_ecmwf_nw_india_zarr_archive = defs.zarr_job
