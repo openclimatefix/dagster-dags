@@ -1,12 +1,10 @@
+"""EO:EUM:DAT:MSG:HRSEVIRI-IODC
 """
-EO:EUM:DAT:MSG:HRSEVIRI-IODC
-"""
-from satip.eumetsat import DownloadManager, eumetsat_filename_to_datetime
-from satip.utils import filter_dataset_ids_on_current_files
-import pandas as pd
 import os
 
+import pandas as pd
 from dagster import Config
+from satip.eumetsat import DownloadManager
 
 
 class EumetsatConfig(Config):

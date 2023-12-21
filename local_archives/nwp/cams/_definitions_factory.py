@@ -11,8 +11,6 @@ from nwp_consumer.internal import IT_FOLDER_FMTSTR
 from constants import LOCATIONS_BY_ENVIRONMENT
 from local_archives.partitions import InitTimePartitionsDefinition
 
-from ._ops import ValidateExistingFilesConfig, validate_existing_raw_init_files
-
 env = os.getenv("ENVIRONMENT", "local")
 RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].RAW_FOLDER
 
@@ -63,7 +61,7 @@ class CamsFileInfo:
 
     Mirrors the structure of the cdsapi.api.Result.toJSON() method:
     https://github.com/ecmwf/cdsapi/blob/master/cdsapi/api.py
-    Also adds in a field to hold the variable name.
+    Also adds in a field to hold the variable name and inittime.
     """
 
     resultType: str
@@ -80,7 +78,6 @@ class MakeDefinitionsOutputs:
 
     source_asset: dg.AssetsDefinition
     raw_asset: dg.AssetsDefinition
-    raw_job: dg.JobDefinition
 
 
 def make_definitions(
@@ -203,7 +200,7 @@ def make_definitions(
             ext = ".grib" if opts.file_format == "grib" else ".nc"
             dst = pathlib.Path(
                 f"{RAW_FOLDER}/{loc}/{fi.inittime.strftime(IT_FOLDER_FMTSTR)}/" \
-                + f"{fi.inittime.strftime('%Y%m%d%H')}_{fi.var}{ext}"
+                + f"{fi.inittime.strftime('%Y%m%d%H')}_{fi.var}{ext}",
             )
             # If the file already exists, don't redownload it
             if dst.exists():
@@ -233,23 +230,8 @@ def make_definitions(
             },
         )
 
-    @dg.job(
-        name=f"scan_cams_{opts.area}_raw_archive",
-        config=dg.RunConfig(
-            ops={
-                "validate_existing_raw_init_files": ValidateExistingFilesConfig(
-                    base_path=RAW_FOLDER,
-                    asset_key=list(_cams_raw_archive.key.path),
-                ),
-            },
-        ),
-    )
-    def _scan_cams_raw_archive() -> None:
-        """Scan the raw archive for existing files."""
-        validate_existing_raw_init_files()
 
     return MakeDefinitionsOutputs(
         source_asset=_cams_source_archive,
         raw_asset=_cams_raw_archive,
-        raw_job=_scan_cams_raw_archive,
     )

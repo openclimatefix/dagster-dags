@@ -56,4 +56,3 @@ defs: MakeDefinitionsOutputs = make_definitions(opts=opts)
 
 cams_eu_source_archive = defs.source_asset
 cams_eu_raw_archive = defs.raw_asset
-scan_cams_eu_raw_archive = defs.raw_job

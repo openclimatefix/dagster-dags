@@ -1,6 +1,8 @@
-from dagster import asset  # import the `dagster` library
-from . import download_product_range, EumetsatConfig
 import pandas as pd
+from dagster import asset  # import the `dagster` library
+
+from . import EumetsatConfig, download_product_range
+
 
 @asset
 def download_eumetsat_iodc_data(config: EumetsatConfig) -> None:
