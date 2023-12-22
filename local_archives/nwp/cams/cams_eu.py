@@ -43,8 +43,8 @@ opts: MakeDefinitionsOptions = MakeDefinitionsOptions(
     area="eu",
     file_format="netcdf",
     multilevel_vars=VariableSelection(
-        slow=VARIABLES,
-        fast=VARIABLES,
+        slow={v: [v] for v in VARIABLES},
+        fast={v: [v] for v in VARIABLES},
         hours=[str(x) for x in range(0, 97)],
     ),
     multilevel_levels=["0", "1000", "2000", "250", "3000", "50", "500", "5000"],
@@ -54,5 +54,4 @@ opts: MakeDefinitionsOptions = MakeDefinitionsOptions(
 
 defs: MakeDefinitionsOutputs = make_definitions(opts=opts)
 
-cams_eu_source_archive = defs.source_asset
 cams_eu_raw_archive = defs.raw_asset
