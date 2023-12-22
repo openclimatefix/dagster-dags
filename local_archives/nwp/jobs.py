@@ -216,3 +216,26 @@ def scan_nwp_zarr_archive() -> None:
     where the time values pertain to the init time.
     """
     validate_existing_zarr_files()
+
+
+def gen_run_config(asset_key: dg.AssetKey) -> dg.RunConfig:
+    """Generate a Run config for the validate_existing_files job."""
+    vc: ValidateExistingFilesConfig = ValidateExistingFilesConfig(
+        base_path=RAW_FOLDER,
+        source=asset_key.path[1],
+        area=asset_key.path[2],
+        asset_name=asset_key.path[3],
+    )
+
+    if asset_key.path[-1] == "raw_archive":
+        return dg.RunConfig(
+            ops={
+                validate_existing_raw_files.__name__: vc,
+            },
+        )
+    elif asset_key.path[-1] == "zarr_archive":
+        return dg.RunConfig(
+            ops={
+                validate_existing_zarr_files.__name__: vc,
+            },
+        )
