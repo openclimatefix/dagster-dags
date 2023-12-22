@@ -28,8 +28,13 @@ all_jobs: list[dg.JobDefinition] = [
     *nwp.all_jobs,
 ]
 
+all_schedules: list[dg.ScheduleDefinition] = [
+    *nwp.all_schedules,
+]
+
 defs = dg.Definitions(
     assets=all_assets,
     resources=resources_by_env[os.getenv("ENVIRONMENT", "local")],
     jobs=all_jobs,
+    schedules=all_schedules,
 )
