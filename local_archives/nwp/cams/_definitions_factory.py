@@ -209,7 +209,7 @@ def make_definitions(
 
                 # Request the file and download it to the target
                 context.log.info("Reqesting file from CDS API", extra={
-                    "request": sl_var_request,
+                    "request": ml_var_request,
                     "target": dst.as_posix(),
                 })
                 result = opts.client.retrieve(
