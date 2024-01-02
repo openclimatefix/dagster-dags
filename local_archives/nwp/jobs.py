@@ -131,7 +131,7 @@ def validate_existing_zarr_files(
         # Try to parse the init time from the filename
         try:
             it = dt.datetime.strptime(
-                file.stem,
+                file.name,
                 "%Y%m%dT%H%M.zarr.zip",
             ).replace(tzinfo=dt.UTC)
         except ValueError:
