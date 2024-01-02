@@ -144,7 +144,7 @@ def validate_existing_zarr_files(
         # Create an AssetObservation for the relevant partition
         context.log_event(
             dg.AssetObservation(
-                asset_key=config.asset_key,
+                asset_key=["nwp", config.source, config.area, config.asset_name],
                 partition=it.strftime("%Y-%m-%d|%H:%M"),
                 metadata={
                     "inittime": dg.MetadataValue.text(it.strftime("%Y-%m-%d|%H:%M")),
