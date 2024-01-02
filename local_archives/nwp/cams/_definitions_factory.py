@@ -134,6 +134,12 @@ def make_definitions(
                 )
                 # If the file already exists, don't redownload it
                 if dst.exists():
+                    stored_files.append(dst)
+                    sizes.append(dst.stat().st_size)
+                    context.log(f"File {dst.as_posix()} already exists, skipping", extra={
+                        "file": dst.as_posix(),
+                        "size": dst.stat().st_size,
+                    })
                     continue
 
                 dst.parent.mkdir(parents=True, exist_ok=True)
@@ -152,7 +158,7 @@ def make_definitions(
                     sl_var_request["model"] = "ensemble"
 
                 # Request the file and download it to the target
-                context.log.info("Reqesting file from CDS API", extra={
+                context.log.info(f"Reqesting file {dst.as_posix()} from CDS API", extra={
                     "request": sl_var_request,
                     "target": dst.as_posix(),
                 })
@@ -163,7 +169,7 @@ def make_definitions(
                 )
                 stored_files.append(dst)
                 sizes.append(dst.stat().st_size)
-                context.log.info("File downloaded from CDS API", extra={
+                context.log.info(f"File {dst.as_posix()} downloaded from CDS API", extra={
                     "file": dst.as_posix(),
                     "size": dst.stat().st_size,
                 })
@@ -187,6 +193,12 @@ def make_definitions(
 
                 # If the file already exists, don't redownload it
                 if dst.exists():
+                    stored_files.append(dst)
+                    sizes.append(dst.stat().st_size)
+                    context.log(f"File {dst.as_posix()} already exists, skipping", extra={
+                        "file": dst.as_posix(),
+                        "size": dst.stat().st_size,
+                    })
                     continue
 
                 dst.parent.mkdir(parents=True, exist_ok=True)
@@ -208,7 +220,7 @@ def make_definitions(
                     ml_var_request["pressure_level"] = opts.multilevel_levels
 
                 # Request the file and download it to the target
-                context.log.info("Reqesting file from CDS API", extra={
+                context.log.info(f"Reqesting file {dst.as_posix()} from CDS API", extra={
                     "request": ml_var_request,
                     "target": dst.as_posix(),
                 })
@@ -219,7 +231,7 @@ def make_definitions(
                 )
                 stored_files.append(dst)
                 sizes.append(dst.stat().st_size)
-                context.log.info("File downloaded from CDS API", extra={
+                context.log.info(f"File {dst.as_posix()} downloaded from CDS API", extra={
                     "file": dst.as_posix(),
                     "size": dst.stat().st_size,
                 })
