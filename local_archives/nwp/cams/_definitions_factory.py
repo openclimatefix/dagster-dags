@@ -136,7 +136,7 @@ def make_definitions(
                 if dst.exists():
                     stored_files.append(dst)
                     sizes.append(dst.stat().st_size)
-                    context.log(f"File {dst.as_posix()} already exists, skipping", extra={
+                    context.log.info(f"File {dst.as_posix()} already exists, skipping", extra={
                         "file": dst.as_posix(),
                         "size": dst.stat().st_size,
                     })
@@ -195,7 +195,7 @@ def make_definitions(
                 if dst.exists():
                     stored_files.append(dst)
                     sizes.append(dst.stat().st_size)
-                    context.log(f"File {dst.as_posix()} already exists, skipping", extra={
+                    context.log.info(f"File {dst.as_posix()} already exists, skipping", extra={
                         "file": dst.as_posix(),
                         "size": dst.stat().st_size,
                     })
