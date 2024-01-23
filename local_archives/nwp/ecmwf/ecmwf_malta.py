@@ -1,5 +1,5 @@
 """ECMWF Malta data pipeline."""
-
+import dagster as dg
 from nwp_consumer.internal import FetcherInterface
 from nwp_consumer.internal.inputs.ecmwf import mars
 
@@ -28,6 +28,5 @@ defs: MakeDefinitionsOutputs = make_definitions(
     ),
 )
 
-ecmwf_malta_source_archive = defs.source_asset
 ecmwf_malta_raw_archive = defs.raw_asset
 ecmwf_malta_zarr_archive = defs.zarr_asset

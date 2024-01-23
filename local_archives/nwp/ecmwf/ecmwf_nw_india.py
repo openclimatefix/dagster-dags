@@ -28,6 +28,5 @@ defs = make_definitions(
     ),
 )
 
-ecmwf_nw_india_source_archive = defs.source_asset
 ecmwf_nw_india_raw_archive = defs.raw_asset
 ecmwf_nw_india_zarr_archive = defs.zarr_asset
