@@ -5,7 +5,6 @@ from . import ecmwf_malta, ecmwf_nw_india, ecmwf_uk
 uk_assets = dg.load_assets_from_modules(
     modules=[ecmwf_uk],
     group_name="ecmwf_uk",
-    auto_materialize_policy=dg.AutoMaterializePolicy.eager(),
 )
 
 
@@ -19,4 +18,8 @@ malta_assets = dg.load_assets_from_modules(
     group_name="ecmwf_malta",
 )
 
-all_assets: list[dg.AssetsDefinition] = [*uk_assets, *nw_india_assets, *malta_assets]
+all_assets: list[dg.AssetsDefinition] = [
+    *uk_assets,
+    *nw_india_assets,
+    *malta_assets,
+]

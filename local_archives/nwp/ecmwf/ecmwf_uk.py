@@ -28,6 +28,5 @@ defs: MakeDefinitionsOutputs = make_definitions(
     ),
 )
 
-ecmwf_uk_source_archive = defs.source_asset
 ecmwf_uk_raw_archive = defs.raw_asset
 ecmwf_uk_zarr_archive = defs.zarr_asset

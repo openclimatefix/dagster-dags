@@ -94,7 +94,8 @@ def make_definitions(
         name="raw_archive",
         key_prefix=opts.key_prefix(),
         partitions_def=opts.partitions,
-        compute_kind="network_request_download",
+        auto_materialize_policy=dg.AutoMaterializePolicy.eager(),
+        compute_kind="download",
         op_tags={
             "expected_runtime": "5hrs",
             "MAX_RUNTIME_SECONDS_TAG": 20 * 60 * 60,

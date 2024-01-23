@@ -31,6 +31,5 @@ defs: MakeDefinitionsOutputs = make_definitions(
     ),
 )
 
-ceda_uk_source_archive = defs.source_asset
 ceda_uk_raw_archive = defs.raw_asset
 ceda_uk_zarr_archive = defs.zarr_asset
