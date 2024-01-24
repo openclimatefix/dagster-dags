@@ -14,7 +14,14 @@ class InitTimePartitionsDefinition(dg.MultiPartitionsDefinition):
     `keys_by_dimension` property is a dict with keys `date` and `inittime`.
     """
 
-    def __init__(self, *, start: str, end: str | None = None, init_times: list[str]) -> None:
+    def __init__(
+        self,
+        *,
+        start: str,
+        end: str | None = None,
+        init_times: list[str],
+        end_offset: int = 0,
+    ) -> None:
         """Create a multipartitions definition for the given init times.
 
         Args:
@@ -22,6 +29,7 @@ class InitTimePartitionsDefinition(dg.MultiPartitionsDefinition):
                 YYYY-MM-DD.
             end: The end date of the partition set. Must be of the form
                 YYYY-MM-DD, if included. Defaults to None.
+            end_offset: The offset from the end date to pass to the daily partitions defintition
             init_times: A list of init times, each of the form HH:MM.
         """
         # Attepmt to parse the start date, raise an error if it is invalid
@@ -50,7 +58,9 @@ class InitTimePartitionsDefinition(dg.MultiPartitionsDefinition):
 
         return super().__init__(
             {
-                "date": dg.DailyPartitionsDefinition(start_date=self._start, end_date=self._end),
+                "date": dg.DailyPartitionsDefinition(
+                    start_date=self._start, end_date=self._end, end_offset=end_offset
+                ),
                 "inittime": dg.StaticPartitionsDefinition(self._init_times),
             },
         )
@@ -62,7 +72,8 @@ class InitTimePartitionsDefinition(dg.MultiPartitionsDefinition):
         try:
             key_dict = key.keys_by_dimension
             it: dt.datetime = dt.datetime.strptime(
-                f"{key_dict['date']}|{key_dict['inittime']}", "%Y-%m-%d|%H:%M",
+                f"{key_dict['date']}|{key_dict['inittime']}",
+                "%Y-%m-%d|%H:%M",
             ).replace(tzinfo=dt.UTC)
         except ValueError as e:
             raise ValueError(f"Invalid key: {key}") from e
