@@ -2,7 +2,7 @@
 
 import dagster as dg
 
-from ._factories import MakeDefinitionsOptions, MakeDefinitionsOutputs, make_definitions
+from cloud_archives.nwp.icon._factories import MakeDefinitionsOptions, MakeDefinitionsOutputs, make_definitions
 
 opts: MakeDefinitionsOptions = MakeDefinitionsOptions(
     area="global",

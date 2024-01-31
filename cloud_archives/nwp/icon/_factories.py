@@ -50,13 +50,23 @@ def make_definitions(opts: MakeDefinitionsOptions) -> MakeDefinitionsOutputs:
 
         # Get the inittime as a datetime object from the partition key
         inittime = dt.datetime.strptime(context.partition_key, "%Y-%m-%d|%H:%M").replace(
-            tzinfo=dt.UTC
+            tzinfo=dt.UTC,
         )
+
+        context.log.info(f"Creating zarr archive for {inittime.strftime('%Y-%m-%d|%H:%M')}")
+
+        # Set the kbatch url and token arguments to none in all calls to kbatch
+        # * Don't ask me why, but setting them their values using the environment
+        #   variables doesn't work, so let kbatch do that instead
+        kbatch_dict = {
+            "kbatch_url": None,
+            "token": None,
+        }
 
         # Create a kbatch job to consume the data.
         # * This spins up a single pod in a job (deployment) on the planetary computers cluster.
         job = Job(
-            name=f"icon-backfill-{inittime.strftime('%Y-%m-%dT%H%M')}",
+            name=f"icon-backfill",
             image="gchr.io/openclimatefix/nwp-consumer:0.2.0",
             args=[
                 "consume",
@@ -74,35 +84,41 @@ def make_definitions(opts: MakeDefinitionsOptions) -> MakeDefinitionsOutputs:
                 "HUGGINGFACE_REPO_ID": opts.hf_repo_id,
             },
         )
-        result = kbc.submit_job(job=job)
+        context.log.info("Submitting job to kbatch.")
+        result = kbc.submit_job(job=job, **kbatch_dict)
 
         # Extract the job and pod names from the result
         job_name: str = result["metadata"]["name"]
-        pod_name: str = kbc.list_pods(job_name=job_name)["items"][0]["metadata"]["name"]
+        pod_name: str = kbc.list_pods(job_name=job_name, **kbatch_dict)["items"][0]["metadata"]["name"]
 
-        # Wait for the status to change to either Succeeded or Failed
-        # * Status can be "Pending", "Running", "Succeeded", "Failed"
-        status: str = "Pending"
-        while status == "Pending" or status == "Running":
+        context.log.info(f"Kbatch job {job_name} created running with pod {pod_name}.")
+
+        # Wait for the job to complete
+        timeout: int = 60 * 60 * 4  # 4 hours
+        time_spent: int = 0
+        result = {}
+        while time_spent < timeout:
+            result = kbc.show_job(resource_name=job_name, **kbatch_dict)
+            active = result["status"]["active"]
+            if active is None:
+                break
             time.sleep(10)
-            result = kbc.show_job(resource_name=job_name)
-            status = result["items"][0]["status"]["phase"]
+            time_spent += 10
+            if time_spent % 5 * 60 * 60 == 0:
+                context.log.info(f"Kbatch job {job_name} still running after {int(time_spent / 60)} minutes.")
 
-        # Write out the logs
-        for log in kbc._logs(pod_name=pod_name, stream=True, read_timeout=60):
-            context.log.info(log)
+        # Write out the logs to stdout
+        for log in kbc._logs(pod_name=pod_name, stream=True, read_timeout=60, **kbatch_dict):
+            print(log)
 
         # Delete the job
-        kbc.delete_job(resource_name=job_name)
+        kbc.delete_job(resource_name=job_name, **kbatch_dict)
 
         # Check what has been created
-        if status == "Failed":
+        if result["status"]["failed"] is not None:
             raise Exception("Job failed, see logs.")
 
-        if status != "Succeeded":
-            raise Exception(f"Unexpected job status: {status}")
-
-        if status == "Succeeded":
+        if result["status"]["succeeded"] is not None:
             api = hfh.HfApi(token=os.environ["HUGGINGFACE_TOKEN"])
             files: list[RepoFile] = [
                 p
