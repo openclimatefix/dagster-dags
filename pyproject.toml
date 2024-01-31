@@ -24,7 +24,7 @@ dependencies = [
     "dagster >= 1.5.11",
     "dagster-cloud >= 1.5.11",
     "dagster-docker >= 0.21.11",
-    "huggingface-hub >= 0.19.4",
+    "huggingface-hub >= 0.20.3",
     "kbatch >= 0.4.2",
     "numpy >= 1.23.2",
     "nwp-consumer == 0.1.30",
