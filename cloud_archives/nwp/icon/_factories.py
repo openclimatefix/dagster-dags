@@ -91,70 +91,71 @@ def make_definitions(opts: MakeDefinitionsOptions) -> MakeDefinitionsOutputs:
         job_name: str = result["metadata"]["name"]
         pod_name: str = kbc.list_pods(job_name=job_name, **kbatch_dict)["items"][0]["metadata"]["name"]
 
-        context.log.info(f"Kbatch job {job_name} created running with pod {pod_name}.")
+        context.log.info(f"Kbatch job {job_name} created with pod {pod_name}.")
 
-        # Wait for the job to complete
-        timeout: int = 60 * 60 * 4  # 4 hours
-        time_spent: int = 0
-        result = {}
-        while time_spent < timeout:
+        try:
+            # Wait for job not to be pending
+            timeout: int = 60 * 60 * 2  # 2 hours
+            time_spent: int = 0
+            while time_spent < timeout:
+                result = kbc.list_pods(job_name=job_name, **kbatch_dict)
+                status = result["status"]["phase"]
+                if status is not "Pending":
+                    break
+                time.sleep(10)
+                time_spent += 10
+                if time_spent % (5 * 60) == 0:
+                    context.log.info(f"Kbatch job {job_name} still pending after {int(time_spent / 60)} minutes.")
+
+            # While logs exist, write them to stdout
+            for log in kbc._logs(pod_name=pod_name, stream=True, read_timeout=timeout, **kbatch_dict):
+                print(log)
+
+            # Check what has been created
             result = kbc.show_job(resource_name=job_name, **kbatch_dict)
-            active = result["status"]["active"]
-            if active is None:
-                break
-            time.sleep(10)
-            time_spent += 10
-            if time_spent % 5 * 60 * 60 == 0:
-                context.log.info(f"Kbatch job {job_name} still running after {int(time_spent / 60)} minutes.")
+            if result["status"]["failed"] is not None:
+                raise Exception("Job failed, see logs.")
 
-        # Write out the logs to stdout
-        for log in kbc._logs(pod_name=pod_name, stream=True, read_timeout=60, **kbatch_dict):
-            print(log)
+            if result["status"]["succeeded"] is not None:
+                api = hfh.HfApi(token=os.environ["HUGGINGFACE_TOKEN"])
+                files: list[RepoFile] = [
+                    p
+                    for p in api.list_repo_tree(
+                        repo_id=opts.hf_repo_id,
+                        path_in_repo=f"data/{inittime.strftime('%Y/%m/%d')}",
+                    )
+                    if isinstance(p, RepoFile)
+                ]
 
-        # Delete the job
-        kbc.delete_job(resource_name=job_name, **kbatch_dict)
+                if len(files) == 0:
+                    raise Exception("No files found in the repo.")
 
-        # Check what has been created
-        if result["status"]["failed"] is not None:
-            raise Exception("Job failed, see logs.")
+                # Get the file that corresponds to the given init time
+                inittime_fileinfos: list[RepoFile] = [
+                    rf for rf in files if (f"{inittime.strftime('%Y%m%dT%H%M')}" in rf.path)
+                ]
+                if len(inittime_fileinfos) == 0:
+                    raise Exception("No files found in the repo for the given init time.")
+                fileinfo: RepoFile = next(iter(inittime_fileinfos))
 
-        if result["status"]["succeeded"] is not None:
-            api = hfh.HfApi(token=os.environ["HUGGINGFACE_TOKEN"])
-            files: list[RepoFile] = [
-                p
-                for p in api.list_repo_tree(
-                    repo_id=opts.hf_repo_id,
-                    path_in_repo=f"data/{inittime.strftime('%Y/%m/%d')}",
+                elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
+
+                yield dg.Output(
+                    value=fileinfo.path,
+                    metadata={
+                        "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
+                        "file_path": dg.MetadataValue.text(fileinfo.path),
+                        "partition_size": dg.MetadataValue.int(fileinfo.size),
+                        "area": dg.MetadataValue.text(opts.area),
+                        "elapsed_time_mins": dg.MetadataValue.float(
+                            elapsed_time / dt.timedelta(minutes=1),
+                        ),
+                    },
                 )
-                if isinstance(p, RepoFile)
-            ]
 
-            if len(files) == 0:
-                raise Exception("No files found in the repo.")
-
-            # Get the file that corresponds to the given init time
-            inittime_fileinfos: list[RepoFile] = [
-                rf for rf in files if (f"{inittime.strftime('%Y%m%dT%H%M')}" in rf.path)
-            ]
-            if len(inittime_fileinfos) == 0:
-                raise Exception("No files found in the repo for the given init time.")
-
-            fileinfo: RepoFile = next(iter(inittime_fileinfos))
-
-            elapsed_time = dt.datetime.now(tz=dt.UTC) - execution_start
-
-            yield dg.Output(
-                value=fileinfo.path,
-                metadata={
-                    "inittime": dg.MetadataValue.text(context.asset_partition_key_for_output()),
-                    "file_path": dg.MetadataValue.text(fileinfo.path),
-                    "partition_size": dg.MetadataValue.int(fileinfo.size),
-                    "area": dg.MetadataValue.text(opts.area),
-                    "elapsed_time_mins": dg.MetadataValue.float(
-                        elapsed_time / dt.timedelta(minutes=1),
-                    ),
-                },
-            )
+        finally:
+            # Delete the job
+            kbc.delete_job(resource_name=job_name, **kbatch_dict)
 
     return MakeDefinitionsOutputs(
         zarr_asset=zarr_asset,
