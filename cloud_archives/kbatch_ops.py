@@ -97,13 +97,16 @@ class NWPConsumerConfig(dg.Config):
         description="Environment variables to pass to the nwp-consumer.",
         default_factory=lambda: {},
     )
-    inittime: dt.datetime = Field(
+    inittime: str = Field(
         description="The initialisation time of the nwp data to consume.",
-        default=dt.datetime.now(dt.UTC).replace(hour=0, minute=0, second=0, microsecond=0),
+        default=dt.datetime.now(dt.UTC).replace(hour=0, minute=0, second=0, microsecond=0).strftime("%Y-%m-%d|%H:%M"),
+        regex=r"^\d{4}-\d{2}-\d{2}\|\d{2}:\d{2}$",
     )
 
 
-@dg.op
+@dg.op(
+    ins={"depends_on": dg.In(dg.Nothing)},
+)
 def define_kbatch_consumer_job(
         context: dg.OpExecutionContext,
         config: NWPConsumerConfig,
@@ -120,14 +123,11 @@ def define_kbatch_consumer_job(
     Returns:
         The kbatch job definition object.
     """
-
+    # Get the init time either from config or partition key
+    itstring = config.inittime
     if context.has_partition_key:
-        # Get the init time as a datetime object from the partition key
-        it = dt.datetime.strptime(context.partition_key, "%Y-%m-%d|%H:%M").replace(
-            tzinfo=dt.UTC,
-        )
-    else:
-        it = config.inittime
+        itstring = context.partition_key
+    it = dt.datetime.strptime(itstring, "%Y-%m-%d|%H:%M").replace(tzinfo=dt.UTC)
 
     job = Job(
         name=f"icon-backfill",
@@ -159,6 +159,9 @@ def submit_kbatch_job(context: dg.OpExecutionContext, job: Job) -> str:
 
     This can be generated using the kbatch CLI with the command:
         kbatch configure --kbatch_url <kbatch_url> --token <token>
+
+    Defines a "Nothing" input to allow for the op to have upstream dependencies
+    in a graph without the passing of data.
 
     Args:
         context: The dagster context.
@@ -195,33 +198,32 @@ def follow_kbatch_job(
         The name of the job.
     """
 
+    def wait_for_status_change(old_status: str) -> None:
+        timeout: int = 60 * 2  # 2 minutes
+        time_spent: int = 0
+        while time_spent < timeout:
+            time.sleep(10)
+            time_spent += 10
+            new_status = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["status"]["phase"]
+            if new_status != old_status:
+                context.log.info(f"Job {job_name} is no longer {old_status}, status: {new_status}.")
+                break
+            if time_spent % (1 * 60) == 0:
+                context.log.info(f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} minutes.")
+            if time_spent >= timeout:
+                condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
+                context.log.error(condition)
+                raise KbatchJobException(
+                    message=f"Timed out waiting for kbatch job not to be {old_status} after {timeout} seconds.",
+                    job_name=job_name,
+                )
+
     context.log.info("Assessing status of kbatch job.")
-    # All jobs start with pods in an initial pending state,
-    # whilst resources are configured and images are pulled on the cluster.
-    pods_info: list[dict] = [{"status": {"phase": "Pending"}}]
 
-    # Wait for job not to be pending
-    timeout: int = 60 * 2  # 2 minutes
-    time_spent: int = 0
-    while time_spent < timeout:
-        time.sleep(10)
-        time_spent += 10
-        pods_info = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
-        pod_status = pods_info[0]["status"]["phase"]
-        if pod_status != "Pending":
-            context.log.info(f"Job {job_name} is no longer Pending, status: {pod_status}.")
-            break
-        if time_spent % (1 * 60) == 0:
-            context.log.info(f"Kbatch job {job_name} still pending after {int(time_spent / 60)} minutes.")
-        if time_spent >= timeout:
-            condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
-            context.log.error(condition)
-            raise KbatchJobException(
-                message=f"Timed out waiting for kbatch job not to be pending after {timeout} seconds.",
-                job_name=job_name,
-            )
+    # Pods take a short while to be provisioned
+    wait_for_status_change(old_status="Pending")
 
-    # Capture the logs
+    # Capture the logs and stream to stdout
     # * Allows one hour for pod to run
     for log in kbc._logs(
         pod_name=kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["metadata"]["name"],
@@ -231,12 +233,13 @@ def follow_kbatch_job(
     ):
         print(log)
 
-    # Get the pod status
+    # Pods take a short while to update status
+    wait_for_status_change(old_status="Running")
+
     pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
     pod_status = pods_info[0]["status"]["phase"]
 
     context.log.info(f"Captured all logs for job {job_name}; status '{pod_status}'.")
-
     if pod_status == "Failed":
         raise KbatchJobException(
             message=f"Job {job_name} failed, see logs.",
@@ -258,16 +261,22 @@ def delete_kbatch_job(job_name: str) -> None:
 
 # --- GRAPHS --- #
 
-@dg.graph
-def kbatch_consumer_graph() -> str:
+@dg.graph(
+    ins={"depends_on": dg.In(dg.Nothing)},
+)
+def kbatch_consumer_graph(depends_on: dg.Nothing) -> str:
     """Graph for running the nwp-consumer as a kbatch job.
 
     Defines the set of operations that configure, run, and track a kbatch
     nwp-consumer job, streaming logs back to stdout. Any ops that manage
     or interact with a running kbatch job include a hook that deletes the
     job on failure.
+
+    Implements a Nothing input to allow for the graph to have upstream
+    dependencies in a pipeline without the passing of data.
     """
-    job_name: str = submit_kbatch_job.with_hooks({kbatch_job_failure_hook})(job=define_kbatch_consumer_job())
+    job: Job = define_kbatch_consumer_job(depends_on=depends_on)
+    job_name: str = submit_kbatch_job.with_hooks({kbatch_job_failure_hook})(job=job)
     job_name = follow_kbatch_job.with_hooks({kbatch_job_failure_hook})(job_name=job_name)
     delete_kbatch_job(job_name=job_name)
 

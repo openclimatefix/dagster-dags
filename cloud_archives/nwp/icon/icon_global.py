@@ -8,10 +8,14 @@ from cloud_archives.kbatch_ops import (
     kbatch_job_failure_hook,
 )
 from cloud_archives.huggingface_ops import (
-    get_hf_zarr_file_metadata_for_partition,
-    HFConfig,
+    get_hf_zarr_file_metadata,
+    HFFileConfig,
 )
-from ._ops import icon_kbatch_huggingface_graph
+from ._ops import (
+    icon_kbatch_huggingface_graph,
+    log_asset_materialization,
+    AssetMaterializationConfig,
+)
 
 import dagster as dg
 
@@ -23,7 +27,6 @@ icon_global_archive_job = icon_kbatch_huggingface_graph.to_job(
         start="2024-01-31|00:00",
         cron_schedule="0 0/12 * * *",
     ),
-    hooks={kbatch_job_failure_hook},
     config=dg.RunConfig(
         ops={
             kbatch_consumer_graph.name: {
@@ -42,8 +45,19 @@ icon_global_archive_job = icon_kbatch_huggingface_graph.to_job(
                     ),
                 }
             },
-            get_hf_zarr_file_metadata_for_partition.name: HFConfig(
-                hf_repo_id="sol-ocf/test-dwd-data",
+            get_hf_zarr_file_metadata.name: HFFileConfig(
+                hf_repo_id="sol-ocf/test-dwd-global",
+            ),
+            get_hf_zarr_file_metadata.name + "_2": HFFileConfig(
+                hf_repo_id="sol-ocf/test-dwd-global",
+            ),
+            log_asset_materialization.name: AssetMaterializationConfig(
+                asset_key=["nwp", "icon", "global", "zarr_archive"],
+                asset_description="Global ICON Zarr Archive stored in huggingface.",
+            ),
+            log_asset_materialization.name + "_2": AssetMaterializationConfig(
+                asset_key=["nwp", "icon", "global", "zarr_archive"],
+                asset_description="Global ICON Zarr Archive stored in huggingface.",
             ),
         },
     )
