@@ -4,7 +4,7 @@ import os
 from cloud_archives.kbatch_ops import (
     define_kbatch_consumer_job,
     kbatch_consumer_graph,
-    KbatchConsumerConfig,
+    NWPConsumerConfig,
     kbatch_job_failure_hook,
 )
 from cloud_archives.huggingface_ops import (
@@ -28,7 +28,7 @@ icon_global_archive_job = icon_kbatch_huggingface_graph.to_job(
         ops={
             kbatch_consumer_graph.name: {
                 "ops": {
-                    define_kbatch_consumer_job.name: KbatchConsumerConfig(
+                    define_kbatch_consumer_job.name: NWPConsumerConfig(
                         source="icon",
                         sink="huggingface",
                         docker_tag="0.2.0",
