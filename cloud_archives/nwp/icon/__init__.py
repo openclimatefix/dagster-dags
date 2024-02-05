@@ -9,4 +9,4 @@ global_assets = dg.load_assets_from_modules(
 
 all_assets: list[dg.AssetsDefinition] = [*global_assets]
 
-all_jobs: list[dg.JobDefinition] = [icon_global.icon_global_archive_job]
+all_jobs: list[dg.JobDefinition] = [icon_global.archive_icon_job]

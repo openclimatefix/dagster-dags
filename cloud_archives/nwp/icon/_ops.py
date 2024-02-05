@@ -1,66 +1,51 @@
-from typing import Any
+import dagster as dg
 
-from cloud_archives.kbatch_ops import (
-    kbatch_consumer_graph,
+from cloud_archives.ops.generic import (
+    AssetMaterializationConfig,
+    log_asset_materialization,
+    raise_exception,
 )
-from cloud_archives.huggingface_ops import (
+from cloud_archives.ops.huggingface import (
+    HFFileConfig,
     get_hf_zarr_file_metadata,
 )
-import dagster as dg
-from pydantic import Field
-
-from huggingface_hub.hf_api import RepoFile
-
-
-class AssetMaterializationConfig(dg.Config):
-    """Configuration for asset materialisation.
-
-    Builds upon the dagster Config type, allowing for the configuration to be
-    passed to an Op in a dagster pipeline. Default values of an ellipsis (...)
-    are used to indicate that the value must be provided.
-    """
-
-    asset_key: list[str] = Field(
-        description="The key of the asset to materialise.",
-        default=...,
-    )
-    asset_description: str | None = Field(
-        description="A description of the asset.",
-        default=None,
-    )
-
-@dg.op
-def log_asset_materialization(
-        context: dg.OpExecutionContext,
-        config: AssetMaterializationConfig,
-        metadata: dict[str, Any],
-) -> None:
-    """Materialises an asset according to the config."""
-
-    context.log_event(
-        dg.AssetMaterialization(
-            asset_key=config.asset_key,
-            description=config.asset_description,
-            partition=context.partition_key if context.has_partition_key else None,
-            metadata=metadata,
-        )
-    )
-
-@dg.op(
-    ins={"depends_on": dg.In(dg.Nothing)},
+from cloud_archives.ops.kbatch import (
+    NWPConsumerConfig,
+    define_kbatch_consumer_job,
+    kbatch_consumer_graph,
 )
-def raise_exception() -> None:
-    """Dagster Op that raises an exception.
 
-    This Op is used to mark a branch in a graph as being undesirable.
-    Defines a "Nothing" input to allow for the op to have upstream dependencies
-    in a graph without the passing of data.
+
+def create_icon_kbatch_huggingface_graph_config(
+    nwp_config: NWPConsumerConfig,
+    hf_config: HFFileConfig,
+    am_config: AssetMaterializationConfig,
+) -> dg.RunConfig:
+    """Mapping from Config to RunConfig for the corresponding graph.
+
+    Args:
+        nwp_config: Configuration for the nwp consumer.
+        hf_config: Configuration for huggingface.
+        am_config: Configuration for asset materialisation.
+
+    Returns:
+        The RunConfig for the graph.
     """
-    raise Exception("Reached exception Op.")
+    return dg.RunConfig(
+        ops={
+            kbatch_consumer_graph.name: {
+                "ops": {define_kbatch_consumer_job.name: nwp_config},
+            },
+            get_hf_zarr_file_metadata.name: hf_config,
+            get_hf_zarr_file_metadata.name + "_2": hf_config,
+            log_asset_materialization.name: am_config,
+            log_asset_materialization.name + "_2": am_config,
+        }
+    )
 
 
 @dg.graph
-def icon_kbatch_huggingface_graph() -> RepoFile:
+def icon_kbatch_huggingface_graph() -> dict[str, dg.MetadataValue]:
     """Op graph for icon archiving to huggingface using kbatch.
 
     Note: Some of the ops within the graphs require the defining of
@@ -74,7 +59,7 @@ def icon_kbatch_huggingface_graph() -> RepoFile:
     # If the file exists, log the materialization
     log_asset_materialization(file_metadata)
     # If the file does not exist, create a kbatch job to archive it
-    job_name: str = kbatch_consumer_graph(no_file_at_start)
+    job_name = kbatch_consumer_graph(no_file_at_start)
     file_metadata, no_file_after_job = get_hf_zarr_file_metadata(job_name)
     # Now the file should exist, so log the materialization
     log_asset_materialization(file_metadata)
@@ -82,3 +67,4 @@ def icon_kbatch_huggingface_graph() -> RepoFile:
     raise_exception(no_file_after_job)
 
     return file_metadata
+

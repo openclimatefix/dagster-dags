@@ -248,8 +248,10 @@ def follow_kbatch_job(
 
     return job_name
 
-@dg.op
-def delete_kbatch_job(job_name: str) -> None:
+@dg.op(
+    out={"job_name": dg.Out(str)},
+)
+def delete_kbatch_job(job_name: str) -> str:
     """Deletes a kbatch job.
 
     Args:
@@ -257,6 +259,7 @@ def delete_kbatch_job(job_name: str) -> None:
     """
     dg.get_dagster_logger().info(f"Deleting kbatch job {job_name}.")
     kbc.delete_job(resource_name=job_name, **KBATCH_DICT)
+    return job_name
 
 
 # --- GRAPHS --- #
@@ -268,9 +271,9 @@ def kbatch_consumer_graph(depends_on: dg.Nothing) -> str:
     """Graph for running the nwp-consumer as a kbatch job.
 
     Defines the set of operations that configure, run, and track a kbatch
-    nwp-consumer job, streaming logs back to stdout. Any ops that manage
-    or interact with a running kbatch job include a hook that deletes the
-    job on failure.
+    nwp-consumer job, streaming logs back to stdout and deleting the job
+    upon completion. Any ops that manage or interact with a running kbatch
+    job also include a hook that deletes the job on exceptions in the graph.
 
     Implements a Nothing input to allow for the graph to have upstream
     dependencies in a pipeline without the passing of data.
@@ -278,6 +281,6 @@ def kbatch_consumer_graph(depends_on: dg.Nothing) -> str:
     job: Job = define_kbatch_consumer_job(depends_on=depends_on)
     job_name: str = submit_kbatch_job.with_hooks({kbatch_job_failure_hook})(job=job)
     job_name = follow_kbatch_job.with_hooks({kbatch_job_failure_hook})(job_name=job_name)
-    delete_kbatch_job(job_name=job_name)
+    job_name = delete_kbatch_job(job_name=job_name)
 
     return job_name
