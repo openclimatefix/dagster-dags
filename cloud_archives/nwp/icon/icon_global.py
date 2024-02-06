@@ -27,11 +27,10 @@ archive_icon_job = icon_kbatch_huggingface_graph.to_job(
         nwp_config=NWPConsumerConfig(
             source="icon",
             sink="huggingface",
-            docker_tag="0.2.1",
+            docker_tag="0.3.1",
             env={
                 "ICON_MODEL": "global",
-                "ICON_PARAMETER_GROUP": "basic",  # TODO: change to "full"
-                "ICON_HOURS": "3",  # TODO: remove
+                "ICON_PARAMETER_GROUP": "full",
                 "HUGGINGFACE_TOKEN": os.environ["HUGGINGFACE_TOKEN"],
                 "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-global",
             },
