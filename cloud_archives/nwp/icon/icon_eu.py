@@ -1,4 +1,4 @@
-"""Pipeline for the processing of global ICON data."""
+"""Pipeline for the processing of eu ICON data."""
 import os
 
 import dagster as dg
@@ -16,35 +16,39 @@ from ._ops import (
     kbatch_huggingface_graph,
 )
 
-# Define the ICON global zarr archive as a source asset
-icon_global_zarr_archive = dg.SourceAsset(
-    key=["nwp", "icon", "global", "zarr_archive"],
+# Define the ICON europe zarr archive as a source asset
+icon_europe_zarr_archive = dg.SourceAsset(
+    key=["nwp", "icon", "europe", "zarr_archive"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m-%d|%H:%M",
         start="2024-01-31|00:00",
-        cron_schedule="0 0/12 * * *",
+        cron_schedule="0 0 * * *",
     ),
 )
 
-archive_icon_global_job = kbatch_huggingface_graph.to_job(
-    name="archive_icon_global_job",
-    partitions_def=icon_global_zarr_archive.partitions_def,
+# Define the job to materialize the ICON europe zarr archive
+archive_icon_europe_job = kbatch_huggingface_graph.to_job(
+    name="archive_icon_europe_job",
+    partitions_def=icon_europe_zarr_archive.partitions_def,
     config=create_kbatch_huggingface_graph_config(
         nwp_config=NWPConsumerConfig(
             source="icon",
             sink="huggingface",
             docker_tag="0.3.1",
             env={
-                "ICON_MODEL": "global",
+                "ICON_MODEL": "eu",
                 "ICON_PARAMETER_GROUP": "full",
                 "HUGGINGFACE_TOKEN": os.environ["HUGGINGFACE_TOKEN"],
-                "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-global",
+                "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-europe",
             },
         ),
-        hf_config=HFFileConfig(hf_repo_id="sol-ocf/test-dwd-global"),
+        hf_config=HFFileConfig(hf_repo_id="sol-ocf/test-dwd-europe"),
         am_config=AssetMaterializationConfig(
-            asset_key=list(icon_global_zarr_archive.key.path),
-            asset_description="Global ICON Zarr Archive stored in huggingface.",
+            asset_key=list(icon_europe_zarr_archive.key.path),
+            asset_description="Europe ICON Zarr Archive stored in huggingface.",
         ),
     ),
 )
+
+
+

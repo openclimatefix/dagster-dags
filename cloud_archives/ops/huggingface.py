@@ -1,12 +1,10 @@
-import dagster as dg
 import datetime as dt
 import os
 
-from pydantic import Field
-from typing import Tuple
-
-from huggingface_hub.hf_api import RepoFile, HfApi
+import dagster as dg
 from huggingface_hub import hf_hub_url
+from huggingface_hub.hf_api import HfApi, RepoFile
+from pydantic import Field
 
 
 class HFFileConfig(dg.Config):
@@ -25,23 +23,28 @@ class HFFileConfig(dg.Config):
     )
     file_init_time: str = Field(
         description="The initialisation time of the data of interest.",
-        default=dt.datetime.now(dt.UTC).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        ).strftime("%Y-%m-%d|%H:%M"),
+        default=dt.datetime.now(dt.UTC)
+        .replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        .strftime("%Y-%m-%d|%H:%M"),
     )
 
 
 @dg.op(
     ins={"depends_on": dg.In(dg.Nothing)},
     out={
-        "file_metadata": dg.Out(RepoFile, is_required=False),
+        "file_metadata": dg.Out(dict[str, dg.MetadataValue], is_required=False),
         "no_such_file": dg.Out(dg.Nothing, is_required=False),
     },
 )
 def get_hf_zarr_file_metadata(
-        context: dg.OpExecutionContext,
-        config: HFFileConfig,
-) -> Tuple[dict[str, dg.MetadataValue], dg.Nothing]:
+    context: dg.OpExecutionContext,
+    config: HFFileConfig,
+) -> tuple[dict[str, dg.MetadataValue], dg.Nothing]:
     """Dagster op to get metadata for a zarr file in a huggingface dataset.
 
     Assumes the zarr files are stored in a folder structure of the form:
@@ -61,6 +64,7 @@ def get_hf_zarr_file_metadata(
     Args:
         context: The dagster context.
         config: Configuration for where to look on huggingface.
+
     Returns:
         Either the metadata for the zarr file that was found, or a signal that
         no file was found for the given init time.
@@ -73,11 +77,16 @@ def get_hf_zarr_file_metadata(
 
     api = HfApi(token=os.environ["HUGGINGFACE_TOKEN"])
     # Check if there is an init time folder
-    if len(api.get_paths_info(
-            repo_id=config.hf_repo_id,
-            repo_type="dataset",
-            paths=f"data/{it.strftime('%Y/%m/%d')}",
-    )) == 0:
+    if (
+        len(
+            api.get_paths_info(
+                repo_id=config.hf_repo_id,
+                repo_type="dataset",
+                paths=f"data/{it.strftime('%Y/%m/%d')}",
+            )
+        )
+        == 0
+    ):
         files: list[RepoFile] = []
     else:
         # List all files in the repo folder for the given init time's date
@@ -90,13 +99,13 @@ def get_hf_zarr_file_metadata(
                 path_in_repo=f"data/{it.strftime('%Y/%m/%d')}",
             )
             if isinstance(p, RepoFile)
-               and p.path.endswith(".zarr.zip")
-               and f"{it.strftime('%Y%m%dT%H%M')}" in p.path
+            and p.path.endswith(".zarr.zip")
+            and f"{it.strftime('%Y%m%dT%H%M')}" in p.path
         ]
 
     if len(files) == 0:
         context.log.info("No files found in the repo for the given init time.")
-        yield dg.Output(dg.Nothing(), "no_such_file")
+        yield dg.Output(dg.Nothing, "no_such_file")
     else:
         rf: RepoFile = next(iter(files))
         context.log.info(f"Found file {rf} in repo {config.hf_repo_id}.")
@@ -104,7 +113,7 @@ def get_hf_zarr_file_metadata(
         metadata: dict[str, dg.MetadataValue] = {
             "file": dg.MetadataValue.path(rf.path),
             "url": dg.MetadataValue.url(
-                hf_hub_url(repo_id=config.hf_repo_id, repo_type="dataset", filename=rf.path)
+                hf_hub_url(repo_id=config.hf_repo_id, repo_type="dataset", filename=rf.path),
             ),
             "size (bytes)": dg.MetadataValue.int(rf.size),
             "blob ID": dg.MetadataValue.text(rf.blob_id),

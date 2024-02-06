@@ -1,9 +1,8 @@
 """Defines implementation-agnostic ops for generic graph-building."""
 
-import dagster as dg
 
+import dagster as dg
 from pydantic import Field
-from typing import Any
 
 
 class AssetMaterializationConfig(dg.Config):
@@ -26,19 +25,18 @@ class AssetMaterializationConfig(dg.Config):
 
 @dg.op
 def log_asset_materialization(
-        context: dg.OpExecutionContext,
-        config: AssetMaterializationConfig,
-        metadata: dict[str, Any],
+    context: dg.OpExecutionContext,
+    config: AssetMaterializationConfig,
+    metadata: dict[str, dg.MetadataValue],
 ) -> None:
     """Materialises an asset according to the config."""
-
     context.log_event(
         dg.AssetMaterialization(
             asset_key=config.asset_key,
             description=config.asset_description,
             partition=context.partition_key if context.has_partition_key else None,
             metadata=metadata,
-        )
+        ),
     )
 
 

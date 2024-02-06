@@ -16,7 +16,7 @@ from cloud_archives.ops.kbatch import (
 )
 
 
-def create_icon_kbatch_huggingface_graph_config(
+def create_kbatch_huggingface_graph_config(
     nwp_config: NWPConsumerConfig,
     hf_config: HFFileConfig,
     am_config: AssetMaterializationConfig,
@@ -45,8 +45,8 @@ def create_icon_kbatch_huggingface_graph_config(
 
 
 @dg.graph
-def icon_kbatch_huggingface_graph() -> dict[str, dg.MetadataValue]:
-    """Op graph for icon archiving to huggingface using kbatch.
+def kbatch_huggingface_graph() -> dict[str, dg.MetadataValue]:
+    """Op graph for archiving to huggingface using nwp-consumer in kbatch.
 
     Note: Some of the ops within the graphs require the defining of
     run configuration.
