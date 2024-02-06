@@ -22,7 +22,7 @@ icon_global_zarr_archive = dg.SourceAsset(
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m-%d|%H:%M",
         start="2024-01-31|00:00",
-        cron_schedule="0 0/12 * * *",
+        cron_schedule="0 0/6 * * *",
     ),
 )
 
