@@ -53,15 +53,15 @@ def make_definitions(
 
     # The Raw Archive asset has the following properties:
     # * Key Prefix: nwp/{source}/{area} - defines part of the storage folder structure
-    # * Freshness Policy: Ensures it keep itself no more than 48 hours behind the source
+    # * Auto Materialize Policy: Eagerly materialize the asset when the raw archive is updated
+    # ** This is checked on a cron schedule every tuesday and saturday at midnight, and up
+    # ** to 10 materializations are allowed per check.
     # * Partitions: Defines the partitioning scheme for the asset
     # * Check Specs: Defines the checks that should be performed on the asset
     @dg.asset(
         name="raw_archive",
         key_prefix=opts.key_prefix(),
-        auto_materialize_policy=dg.AutoMaterializePolicy.eager().with_rules(
-            dg.AutoMaterializeRule.materialize_on_cron(cron_schedule="0 0 * * *"),
-        ),
+        auto_materialize_policy=dg.AutoMaterializePolicy.eager(),
         partitions_def=opts.partitions,
         check_specs=[
             dg.AssetCheckSpec(

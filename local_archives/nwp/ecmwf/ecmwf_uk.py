@@ -17,6 +17,7 @@ fetcher: FetcherInterface = mars.Client(
 partitions: InitTimePartitionsDefinition = InitTimePartitionsDefinition(
     start="2017-01-01",
     init_times=["00:00", "12:00"],
+    end_offset=-1,
 )
 
 defs: MakeDefinitionsOutputs = make_definitions(
