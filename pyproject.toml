@@ -43,7 +43,6 @@ dev = [
     "mypy == 1.7.1",
     "ruff == 0.1.7",
     "unittest-xml-reporting == 3.2.0",
-    "dagster-webserver == 1.5.11",
     "pytest >= 7.4.1",
     "python-lsp-server == 1.7.4"
 ]
