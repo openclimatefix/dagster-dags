@@ -38,13 +38,13 @@ class HFFileConfig(dg.Config):
     ins={"depends_on": dg.In(dg.Nothing)},
     out={
         "file_metadata": dg.Out(dict[str, dg.MetadataValue], is_required=False),
-        "no_such_file": dg.Out(dg.Nothing, is_required=False),
+        "no_such_file": dg.Out(bool, is_required=False),
     },
 )
 def get_hf_zarr_file_metadata(
     context: dg.OpExecutionContext,
     config: HFFileConfig,
-) -> tuple[dict[str, dg.MetadataValue], dg.Nothing]:
+) -> tuple[dict[str, dg.MetadataValue], bool]:
     """Dagster op to get metadata for a zarr file in a huggingface dataset.
 
     Assumes the zarr files are stored in a folder structure of the form:
@@ -105,7 +105,7 @@ def get_hf_zarr_file_metadata(
 
     if len(files) == 0:
         context.log.info("No files found in the repo for the given init time.")
-        yield dg.Output(dg.Nothing, "no_such_file")
+        yield dg.Output(True, "no_such_file")
     else:
         rf: RepoFile = next(iter(files))
         context.log.info(f"Found file {rf} in repo {config.hf_repo_id}.")

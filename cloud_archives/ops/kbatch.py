@@ -10,14 +10,13 @@ nwp-consumer job, streaming logs back to stdout and cleaning up
 resources on error or success.
 """
 
-import dagster as dg
 import datetime as dt
 import time
-from pydantic import Field
 
-from kbatch._types import Job
+import dagster as dg
 import kbatch._core as kbc
-
+from kbatch._types import Job
+from pydantic import Field
 
 # --- CONSTANTS --- #
 
@@ -33,6 +32,7 @@ KBATCH_DICT = {
 
 
 # --- CLASSES AND METHODS --- #
+
 
 class KbatchJobException(Exception):
     """Exception raised when a kbatch job fails.
@@ -69,6 +69,7 @@ def kbatch_job_failure_hook(context: dg.HookContext) -> None:
 
 # --- OPS --- #
 
+
 class NWPConsumerConfig(dg.Config):
     """Configuration object for the nwp consumer.
 
@@ -99,7 +100,9 @@ class NWPConsumerConfig(dg.Config):
     )
     inittime: str = Field(
         description="The initialisation time of the nwp data to consume.",
-        default=dt.datetime.now(dt.UTC).replace(hour=0, minute=0, second=0, microsecond=0).strftime("%Y-%m-%d|%H:%M"),
+        default=dt.datetime.now(dt.UTC)
+        .replace(hour=0, minute=0, second=0, microsecond=0)
+        .strftime("%Y-%m-%d|%H:%M"),
         regex=r"^\d{4}-\d{2}-\d{2}\|\d{2}:\d{2}$",
     )
 
@@ -108,8 +111,8 @@ class NWPConsumerConfig(dg.Config):
     ins={"depends_on": dg.In(dg.Nothing)},
 )
 def define_kbatch_consumer_job(
-        context: dg.OpExecutionContext,
-        config: NWPConsumerConfig,
+    context: dg.OpExecutionContext,
+    config: NWPConsumerConfig,
 ) -> Job:
     """Define a kbatch job object to run the nwp-consumer.
 
@@ -120,6 +123,7 @@ def define_kbatch_consumer_job(
     Args:
         context: The dagster context.
         config: Configuration for the nwp-consumer.
+
     Returns:
         The kbatch job definition object.
     """
@@ -130,7 +134,7 @@ def define_kbatch_consumer_job(
     it = dt.datetime.strptime(itstring, "%Y-%m-%d|%H:%M").replace(tzinfo=dt.UTC)
 
     job = Job(
-        name=f"icon-backfill",
+        name="icon-backfill",
         image=f"ghcr.io/openclimatefix/nwp-consumer:{config.docker_tag}",
         args=[
             "consume",
@@ -166,6 +170,7 @@ def submit_kbatch_job(context: dg.OpExecutionContext, job: Job) -> str:
     Args:
         context: The dagster context.
         job: A kbatch Job object defining the job to submit.
+
     Returns:
         The name of the created job.
     """
@@ -180,8 +185,8 @@ def submit_kbatch_job(context: dg.OpExecutionContext, job: Job) -> str:
 
 @dg.op
 def follow_kbatch_job(
-        context: dg.OpExecutionContext,
-        job_name: str,
+    context: dg.OpExecutionContext,
+    job_name: str,
 ) -> str:
     """Blocking function that follows the status of a kbatch job.
 
@@ -194,6 +199,7 @@ def follow_kbatch_job(
     Args:
         context: The dagster context.
         job_name: The name of the job.
+
     Returns:
         The name of the job.
     """
@@ -204,12 +210,16 @@ def follow_kbatch_job(
         while time_spent < timeout:
             time.sleep(10)
             time_spent += 10
-            new_status = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["status"]["phase"]
+            new_status = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["status"][
+                "phase"
+            ]
             if new_status != old_status:
                 context.log.info(f"Job {job_name} is no longer {old_status}, status: {new_status}.")
                 break
             if time_spent % (1 * 60) == 0:
-                context.log.info(f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} minutes.")
+                context.log.info(
+                    f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} minutes."
+                )
             if time_spent >= timeout:
                 condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
                 context.log.error(condition)
@@ -229,7 +239,7 @@ def follow_kbatch_job(
         pod_name=kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["metadata"]["name"],
         stream=True,
         read_timeout=60 * 60,
-        **KBATCH_DICT
+        **KBATCH_DICT,
     ):
         print(log)
 
@@ -248,6 +258,7 @@ def follow_kbatch_job(
 
     return job_name
 
+
 @dg.op(
     out={"job_name": dg.Out(str)},
 )
@@ -264,9 +275,8 @@ def delete_kbatch_job(job_name: str) -> str:
 
 # --- GRAPHS --- #
 
-@dg.graph(
-    ins={"depends_on": dg.In(dg.Nothing)},
-)
+
+@dg.graph
 def kbatch_consumer_graph(depends_on: dg.Nothing) -> str:
     """Graph for running the nwp-consumer as a kbatch job.
 
