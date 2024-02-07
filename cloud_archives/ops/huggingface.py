@@ -1,3 +1,4 @@
+"""Dagster ops and resources for interacting with huggingface datasets."""
 import datetime as dt
 import os
 
@@ -75,7 +76,7 @@ def get_hf_zarr_file_metadata(
         itstring = context.partition_key
         it: dt.datetime = dt.datetime.strptime(itstring, "%Y-%m-%d|%H:%M").replace(tzinfo=dt.UTC)
 
-    api = HfApi(token=os.environ["HUGGINGFACE_TOKEN"])
+    api = HfApi(token=os.getenv("HUGGINGFACE_TOKEN", default=None))
     # Check if there is an init time folder
     if (
         len(
@@ -83,7 +84,7 @@ def get_hf_zarr_file_metadata(
                 repo_id=config.hf_repo_id,
                 repo_type="dataset",
                 paths=f"data/{it.strftime('%Y/%m/%d')}",
-            )
+            ),
         )
         == 0
     ):

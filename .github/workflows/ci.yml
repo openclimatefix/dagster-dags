@@ -83,7 +83,7 @@ jobs:
         env:
           CDSAPI_URL: "https://ads.atmosphere.copernicus.eu/api/v2"
           CDSAPI_KEY: "fake1:fake33-bogus44-falsehood-key55"
-        run: ./venv/bin/python -m pytest --junitxml=ut-report.xml dags_tests 
+        run: ./venv/bin/python -m pytest --junitxml=ut-report.xml tests
 
       # Create test summary to be visualised on the job summary screen on GitHub
       # * Runs even if previous steps fail
