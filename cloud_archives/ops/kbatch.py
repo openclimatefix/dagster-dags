@@ -247,8 +247,8 @@ def follow_kbatch_job(
                 **KBATCH_DICT,
             ):
                 print(log)  # noqa: T201
-        except httpcore.RemoteProtocolError as e:
-                context.log.warn(f"Partial read error, re-trying read. {e}")
+        except (httpcore.RemoteProtocolError, httpcore.ReadTimeout) as e:
+                context.log.warn(f"Recoverable error encountered, re-trying read. {e}")
                 time.sleep(5)
         except Exception as e:
             raise e
