@@ -27,6 +27,7 @@ dependencies = [
     "dagster-graphql >= 1.6.2",
     "dagster-docker >= 0.22.2",
     "huggingface-hub >= 0.19.4",
+    "kbatch >= 0.4.2",
     "numpy >= 1.23.2",
     "nwp-consumer >= 0.2.0",
     "ocf-blosc2 >= 0.0.3",
