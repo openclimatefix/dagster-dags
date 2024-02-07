@@ -225,6 +225,8 @@ def follow_kbatch_job(
             new_status: str = pods_info[0]["status"]["phase"]
             # Raise exception if job failed
             if new_status == "Failed":
+                condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
+                context.log.error(condition)
                 raise KbatchJobException(
                     message=f"Job {job_name} failed, see logs.",
                     job_name=job_name,
