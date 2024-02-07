@@ -13,6 +13,7 @@ resources on error or success.
 import datetime as dt
 import time
 
+import httpcore
 import dagster as dg
 import kbatch._core as kbc
 from kbatch._types import Job
@@ -195,6 +196,7 @@ def follow_kbatch_job(
     exception if the job fails.
 
     This function assumes the job is only running on a single pod.
+    On a partial read error the function will re-try the read.
 
     Args:
         context: The dagster context.
@@ -218,7 +220,7 @@ def follow_kbatch_job(
                 break
             if time_spent % (1 * 60) == 0:
                 context.log.info(
-                    f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} minutes."
+                    f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} minutes.",
                 )
             if time_spent >= timeout:
                 condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
@@ -235,13 +237,21 @@ def follow_kbatch_job(
 
     # Capture the logs and stream to stdout
     # * Allows one hour for pod to run
-    for log in kbc._logs(
-        pod_name=kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["metadata"]["name"],
-        stream=True,
-        read_timeout=60 * 60,
-        **KBATCH_DICT,
-    ):
-        print(log)
+    pod_name: str = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["metadata"]["name"]
+    while True:
+        try:
+            for log in kbc._logs(
+                pod_name=pod_name,
+                stream=True,
+                read_timeout=60 * 60,
+                **KBATCH_DICT,
+            ):
+                print(log)  # noqa: T201
+        except httpcore.RemoteProtocolError as e:
+                context.log.warn(f"Partial read error, re-trying read. {e}")
+                time.sleep(5)
+        except Exception as e:
+            raise e
 
     # Pods take a short while to update status
     wait_for_status_change(old_status="Running")
