@@ -97,14 +97,18 @@ def wait_for_status_change(old_status: str, job_name: str) -> None:
             )
         # Exit if status has changed
         if new_status != old_status:
-            print(f"Job {job_name} is no longer {old_status}, status: {new_status}.")  # noqa: T201
+            dg.get_dagster_logger().info(
+                f"Job {job_name} is no longer {old_status}, status: {new_status}.",
+            )
             break
         # Log if still waiting
         if time_spent % (1 * 60) == 0:
-            print(f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} mins.")  # noqa: T201
+            dg.get_dagster_logger().debug(
+                f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} mins."
+            )
         # Raise exception if timed out
         if time_spent >= timeout:
-            print(f"Condition: {condition}")  # noqa: T201
+            dg.get_dagster_logger().info(f"Condition: {condition}")
             raise KbatchJobException(
                 message=f"Timed out waiting for status '{old_status}' to change.",
                 job_name=job_name,
@@ -265,11 +269,12 @@ def follow_kbatch_job(
                 **KBATCH_DICT,
             ):
                 print(log)  # noqa: T201
-        except (RemoteProtocolError, httpcore.RemoteProtocolError, httpcore.ReadTimeout) as e:
-            context.log.warning(f"Recoverable error encountered, re-trying read. {e}")
-            time.sleep(5)
-        except Exception as e:
-            raise e
+        except (RemoteProtocolError, httpcore.RemoteProtocolError) as e:
+            if "incomplete chunked read" in str(e):
+                context.log.warning(f"Recoverable error encountered, re-trying read. {e}")
+                time.sleep(5)
+            else:
+                raise e
 
     # Pods take a short while to update status
     wait_for_status_change(old_status="Running", job_name=job_name)
