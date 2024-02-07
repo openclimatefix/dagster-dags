@@ -223,9 +223,9 @@ def follow_kbatch_job(
             # Get the status of the job
             pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
             new_status: str = pods_info[0]["status"]["phase"]
+            condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
             # Raise exception if job failed
             if new_status == "Failed":
-                condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
                 context.log.error(condition)
                 raise KbatchJobException(
                     message=f"Job {job_name} failed, see logs.",
@@ -242,7 +242,6 @@ def follow_kbatch_job(
                 )
             # Raise exception if timed out
             if time_spent >= timeout:
-                condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
                 context.log.error(condition)
                 raise KbatchJobException(
                     message=f"Timed out waiting for status '{old_status}' to change.",
