@@ -5,7 +5,7 @@ from . import (
 )
 
 __all__ = [
-    "generic.py",
-    "huggingface.py",
-    "kbatch.py",
+    "generic",
+    "huggingface",
+    "kbatch",
 ]
