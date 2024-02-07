@@ -19,6 +19,7 @@ def generate_mock_list_pods_response(status: str) -> dict:
 
 
 class TestWaitForStatusChange(unittest.TestCase):
+
     @patch("time.sleep", return_value=None)
     @patch(
         "cloud_archives.ops.kbatch.kbc.list_pods",

@@ -38,7 +38,7 @@ archive_icon_europe_job = kbatch_huggingface_graph.to_job(
             env={
                 "ICON_MODEL": "eu",
                 "ICON_PARAMETER_GROUP": "full",
-                "HUGGINGFACE_TOKEN": os.environ["HUGGINGFACE_TOKEN"],
+                "HUGGINGFACE_TOKEN": os.getenv("HUGGINGFACE_TOKEN", default="not-set"),
                 "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-europe",
             },
         ),
