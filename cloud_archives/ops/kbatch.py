@@ -266,7 +266,7 @@ def follow_kbatch_job(
             ):
                 print(log)  # noqa: T201
         except (RemoteProtocolError, httpcore.RemoteProtocolError, httpcore.ReadTimeout) as e:
-            context.log.warn(f"Recoverable error encountered, re-trying read. {e}")
+            context.log.warning(f"Recoverable error encountered, re-trying read. {e}")
             time.sleep(5)
         except Exception as e:
             raise e
