@@ -13,8 +13,8 @@ resources on error or success.
 import datetime as dt
 import time
 
-import httpcore
 import dagster as dg
+import httpcore
 import kbatch._core as kbc
 from kbatch._types import Job
 from pydantic import Field
@@ -207,26 +207,43 @@ def follow_kbatch_job(
     """
 
     def wait_for_status_change(old_status: str) -> None:
+        """Wait for the status of the job to change from old_status.
+
+        Waits up to 2 minutes for the status of the job to change from the given status.
+        If the status changes to "Failed" an exception is raised.
+
+        Args:
+            old_status: The status to wait for the job to change from.
+        """
         timeout: int = 60 * 2  # 2 minutes
         time_spent: int = 0
         while time_spent < timeout:
             time.sleep(10)
             time_spent += 10
-            new_status = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["status"][
-                "phase"
-            ]
+            # Get the status of the job
+            pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
+            new_status: str = pods_info[0]["status"]["phase"]
+            # Raise exception if job failed
+            if new_status == "Failed":
+                raise KbatchJobException(
+                    message=f"Job {job_name} failed, see logs.",
+                    job_name=job_name,
+                )
+            # Exit if status has changed
             if new_status != old_status:
                 context.log.info(f"Job {job_name} is no longer {old_status}, status: {new_status}.")
                 break
+            # Log if still waiting
             if time_spent % (1 * 60) == 0:
                 context.log.info(
-                    f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} minutes.",
+                    f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} mins.",
                 )
+            # Raise exception if timed out
             if time_spent >= timeout:
                 condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
                 context.log.error(condition)
                 raise KbatchJobException(
-                    message=f"Timed out waiting for kbatch job not to be {old_status} after {timeout} seconds.",
+                    message=f"Timed out waiting for status '{old_status}' to change.",
                     job_name=job_name,
                 )
 
@@ -248,8 +265,8 @@ def follow_kbatch_job(
             ):
                 print(log)  # noqa: T201
         except (httpcore.RemoteProtocolError, httpcore.ReadTimeout) as e:
-                context.log.warn(f"Recoverable error encountered, re-trying read. {e}")
-                time.sleep(5)
+            context.log.warn(f"Recoverable error encountered, re-trying read. {e}")
+            time.sleep(5)
         except Exception as e:
             raise e
 
@@ -258,13 +275,7 @@ def follow_kbatch_job(
 
     pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
     pod_status = pods_info[0]["status"]["phase"]
-
     context.log.info(f"Captured all logs for job {job_name}; status '{pod_status}'.")
-    if pod_status == "Failed":
-        raise KbatchJobException(
-            message=f"Job {job_name} failed, see logs.",
-            job_name=job_name,
-        )
 
     return job_name
 
