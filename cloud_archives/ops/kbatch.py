@@ -69,6 +69,48 @@ def kbatch_job_failure_hook(context: dg.HookContext) -> None:
         kbc.delete_job(resource_name=job_name, **KBATCH_DICT)
 
 
+def wait_for_status_change(old_status: str, job_name: str) -> None:
+    """Wait for the status of the job to change from old_status.
+
+    Waits up to 2 minutes for the status of the job to change from the given status.
+    If the status changes to "Failed" an exception is raised.
+
+    Args:
+        old_status: The status to wait for the job to change from.
+        job_name: The name of the job to check.
+    """
+    timeout: int = 60 * 2  # 2 minutes
+    time_spent: int = 0
+    while time_spent < timeout:
+        time.sleep(10)
+        time_spent += 10
+        # Get the status of the job
+        pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
+        new_status: str = pods_info[0]["status"]["phase"]
+        condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
+        # Raise exception if job failed
+        if new_status == "Failed":
+            print(f"Condition: {condition}")  # noqa: T201
+            raise KbatchJobException(
+                message=f"Job {job_name} failed, see logs.",
+                job_name=job_name,
+            )
+        # Exit if status has changed
+        if new_status != old_status:
+            print(f"Job {job_name} is no longer {old_status}, status: {new_status}.")  # noqa: T201
+            break
+        # Log if still waiting
+        if time_spent % (1 * 60) == 0:
+            print(f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} mins.")  # noqa: T201
+        # Raise exception if timed out
+        if time_spent >= timeout:
+            print(f"Condition: {condition}")  # noqa: T201
+            raise KbatchJobException(
+                message=f"Timed out waiting for status '{old_status}' to change.",
+                job_name=job_name,
+            )
+
+
 # --- OPS --- #
 
 
@@ -206,53 +248,10 @@ def follow_kbatch_job(
     Returns:
         The name of the job.
     """
-
-    def wait_for_status_change(old_status: str) -> None:
-        """Wait for the status of the job to change from old_status.
-
-        Waits up to 2 minutes for the status of the job to change from the given status.
-        If the status changes to "Failed" an exception is raised.
-
-        Args:
-            old_status: The status to wait for the job to change from.
-        """
-        timeout: int = 60 * 2  # 2 minutes
-        time_spent: int = 0
-        while time_spent < timeout:
-            time.sleep(10)
-            time_spent += 10
-            # Get the status of the job
-            pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
-            new_status: str = pods_info[0]["status"]["phase"]
-            condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
-            # Raise exception if job failed
-            if new_status == "Failed":
-                context.log.error(condition)
-                raise KbatchJobException(
-                    message=f"Job {job_name} failed, see logs.",
-                    job_name=job_name,
-                )
-            # Exit if status has changed
-            if new_status != old_status:
-                context.log.info(f"Job {job_name} is no longer {old_status}, status: {new_status}.")
-                break
-            # Log if still waiting
-            if time_spent % (1 * 60) == 0:
-                context.log.info(
-                    f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} mins.",
-                )
-            # Raise exception if timed out
-            if time_spent >= timeout:
-                context.log.error(condition)
-                raise KbatchJobException(
-                    message=f"Timed out waiting for status '{old_status}' to change.",
-                    job_name=job_name,
-                )
-
     context.log.info("Assessing status of kbatch job.")
 
     # Pods take a short while to be provisioned
-    wait_for_status_change(old_status="Pending")
+    wait_for_status_change(old_status="Pending", job_name=job_name)
 
     # Capture the logs and stream to stdout
     # * Allows one hour for pod to run
@@ -273,7 +272,7 @@ def follow_kbatch_job(
             raise e
 
     # Pods take a short while to update status
-    wait_for_status_change(old_status="Running")
+    wait_for_status_change(old_status="Running", job_name=job_name)
 
     pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
     pod_status = pods_info[0]["status"]["phase"]
