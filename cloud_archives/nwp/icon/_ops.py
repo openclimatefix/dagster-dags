@@ -7,6 +7,7 @@ from cloud_archives.ops.generic import (
 )
 from cloud_archives.ops.huggingface import (
     HFFileConfig,
+    delete_raw_dir,
     get_hf_zarr_file_metadata,
 )
 from cloud_archives.ops.kbatch import (
@@ -40,7 +41,8 @@ def create_kbatch_huggingface_graph_config(
             get_hf_zarr_file_metadata.name + "_2": hf_config,
             log_asset_materialization.name: am_config,
             log_asset_materialization.name + "_2": am_config,
-        }
+            delete_raw_dir.name: hf_config,
+        },
     )
 
 
@@ -63,8 +65,8 @@ def kbatch_huggingface_graph() -> dict[str, dg.MetadataValue]:
     file_metadata, no_file_after_job = get_hf_zarr_file_metadata(job_name)
     # Now the file should exist, so log the materialization
     log_asset_materialization(file_metadata)
+    delete_raw_dir(file_metadata)
     # Raise an exception if it doesn't exist at this point
     raise_exception(no_file_after_job)
 
     return file_metadata
-

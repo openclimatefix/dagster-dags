@@ -14,9 +14,8 @@ import datetime as dt
 import time
 
 import dagster as dg
-import httpcore
+import httpx
 import kbatch._core as kbc
-from h11._util import RemoteProtocolError
 from kbatch._types import Job
 from pydantic import Field
 
@@ -269,7 +268,7 @@ def follow_kbatch_job(
                 **KBATCH_DICT,
             ):
                 print(log)  # noqa: T201
-        except (RemoteProtocolError, httpcore.RemoteProtocolError) as e:
+        except httpx.RemoteProtocolError as e:
             if "incomplete chunked read" in str(e):
                 context.log.warning(f"Recoverable error encountered, re-trying read: {e}")
                 time.sleep(5)
