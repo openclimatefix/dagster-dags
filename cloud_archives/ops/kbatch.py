@@ -296,7 +296,7 @@ def follow_kbatch_job(
             stream=False,
             read_timeout=60 * 2,
             **KBATCH_DICT,
-        ).splitlines():
+        ):
             print(log)  # noqa: T201
     except httpx.RemoteProtocolError as e:
         if "incomplete chunked read" in str(e):
