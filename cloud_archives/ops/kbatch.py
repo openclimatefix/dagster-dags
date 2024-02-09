@@ -86,8 +86,16 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2
         time.sleep(10)
         time_spent += 10
 
-        # Get the status of the job
-        pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
+        # Get the status of the pod in the job
+        try:
+            pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
+        except httpx.ConnectError as e:
+            if "Temporary failure in name resolution" in str(e):
+                dg.get_dagster_logger().warning(f"Name resolution error, retrying: {e}")
+                continue
+            else:
+                raise e
+
         new_status: str = pods_info[0]["status"]["phase"]
         condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
 
