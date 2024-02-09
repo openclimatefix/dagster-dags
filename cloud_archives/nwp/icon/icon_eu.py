@@ -37,7 +37,7 @@ archive_icon_europe_job = kbatch_huggingface_graph.to_job(
             docker_tag="0.3.2",
             env={
                 "ICON_MODEL": "europe",
-                "ICON_PARAMETER_GROUP": "full",
+                "ICON_PARAMETER_GROUP": "default",
                 "HUGGINGFACE_TOKEN": os.getenv("HUGGINGFACE_TOKEN", default="not-set"),
                 "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-europe",
             },
