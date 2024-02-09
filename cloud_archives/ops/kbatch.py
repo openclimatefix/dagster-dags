@@ -68,50 +68,53 @@ def kbatch_job_failure_hook(context: dg.HookContext) -> None:
         kbc.delete_job(resource_name=job_name, **KBATCH_DICT)
 
 
-def wait_for_status_change(old_status: str, job_name: str) -> None:
+def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2) -> str:
     """Wait for the status of the job to change from old_status.
 
     Waits up to 2 minutes for the status of the job to change from the given status.
-    If the status changes to "Failed" an exception is raised.
 
     Args:
         old_status: The status to wait for the job to change from.
         job_name: The name of the job to check.
+        timeout: The maximum time to wait for the status to change.
+
+    Returns:
+        The new status of the job.
     """
-    timeout: int = 60 * 2  # 2 minutes
     time_spent: int = 0
     while time_spent < timeout:
         time.sleep(10)
         time_spent += 10
+
         # Get the status of the job
         pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
         new_status: str = pods_info[0]["status"]["phase"]
         condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
-        # Raise exception if job failed
-        if new_status == "Failed":
-            print(f"Condition: {condition}")  # noqa: T201
-            raise KbatchJobException(
-                message=f"Job {job_name} failed, see logs.",
-                job_name=job_name,
-            )
+
         # Exit if status has changed
         if new_status != old_status:
             dg.get_dagster_logger().info(
                 f"Job {job_name} is no longer {old_status}, status: {new_status}.",
             )
-            break
+            if new_status == "Failed":
+                dg.get_dagster_logger().error(f"Condition: {condition}")
+            return new_status
+
         # Log if still waiting
-        if time_spent % (1 * 60) == 0:
+        if time_spent % (5 * 60) == 0:
             dg.get_dagster_logger().debug(
                 f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} mins.",
             )
-        # Raise exception if timed out
-        if time_spent >= timeout:
-            dg.get_dagster_logger().info(f"Condition: {condition}")
-            raise KbatchJobException(
-                message=f"Timed out waiting for status '{old_status}' to change.",
-                job_name=job_name,
-            )
+
+    # Raise exception if timed out
+    if time_spent >= timeout:
+        dg.get_dagster_logger().info(f"Condition: {condition}")
+        raise KbatchJobException(
+            message=f"Timed out waiting for status '{old_status}' to change.",
+            job_name=job_name,
+        )
+
+    return new_status
 
 
 # --- OPS --- #
@@ -181,12 +184,13 @@ def define_kbatch_consumer_job(
     it = dt.datetime.strptime(itstring, "%Y-%m-%d|%H:%M").replace(tzinfo=dt.UTC)
 
     job = Job(
-        name="icon-backfill",
+        name=f"{config.source}-{config.sink}-backfill",
         image=f"ghcr.io/openclimatefix/nwp-consumer:{config.docker_tag}",
         args=[
             "consume",
             f"--source={config.source}",
             f"--sink={config.sink}",
+            "--rsink=local",
             "--rdir=raw",
             "--zdir=data",
             f"--from={it.strftime('%Y-%m-%dT%H:%M')}",
@@ -254,33 +258,44 @@ def follow_kbatch_job(
     context.log.info("Assessing status of kbatch job.")
 
     # Pods take a short while to be provisioned
-    wait_for_status_change(old_status="Pending", job_name=job_name)
+    status: str = wait_for_status_change(old_status="Pending", job_name=job_name)
+    # If the pod fails to be provisioned there will be no logs to view.
+    # The condition will be printed to the logs (e.g. ImagePullBackoff)
+    if status == "Failed":
+        raise KbatchJobException(
+            message=f"Job {job_name} failed, see logs.",
+            job_name=job_name,
+        )
 
-    # Capture the logs and stream to stdout
-    # * Allows one hour for pod to run
+    # Otherwise, wait up to 6 hours for the pod to finish running
     pod_name: str = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["metadata"]["name"]
-    while True:
-        try:
-            for log in kbc._logs(
-                pod_name=pod_name,
-                stream=True,
-                read_timeout=60 * 60 * 6,  # Timeout after 6 hours
-                **KBATCH_DICT,
-            ):
-                print(log)  # noqa: T201
-        except httpx.RemoteProtocolError as e:
-            if "incomplete chunked read" in str(e):
-                context.log.warning(f"Recoverable error encountered, re-trying read: {e}")
-                time.sleep(5)
-            else:
-                raise e
+    status = wait_for_status_change(old_status="Running", job_name=job_name, timeout=60 * 60 * 6)
 
-    # Pods take a short while to update status
-    wait_for_status_change(old_status="Running", job_name=job_name)
+    # Get the logs from the pod
+    try:
+        for log in kbc._logs(
+            pod_name=pod_name,
+            stream=False,
+            read_timeout=60 * 2,
+            **KBATCH_DICT,
+        ).splitlines():
+            print(log)  # noqa: T201
+    except httpx.RemoteProtocolError as e:
+        if "incomplete chunked read" in str(e):
+            context.log.warning(f"Recoverable error encountered, re-trying read: {e}")
+            time.sleep(5)
+        else:
+            raise e
 
     pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
     pod_status = pods_info[0]["status"]["phase"]
     context.log.info(f"Captured all logs for job {job_name}; status '{pod_status}'.")
+
+    if status == "Failed":
+        raise KbatchJobException(
+            message=f"Job {job_name} failed, see logs.",
+            job_name=job_name,
+        )
 
     return job_name
 

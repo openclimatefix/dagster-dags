@@ -121,33 +121,3 @@ def get_hf_zarr_file_metadata(
         }
         yield dg.Output(metadata, "file_metadata")
 
-
-@dg.op(
-    ins={"depends_on": dg.In(dg.Nothing)},
-)
-def delete_raw_dir(
-    context: dg.OpExecutionContext,
-    config: HFFileConfig,
-) -> None:
-    """Dagster op to delete the raw data directory for a given inittime from huggingface.
-
-    Implements a "Nothing" input to allow for the op to have upstream dependencies without
-    the passing of data.
-
-    Args:
-        context: The dagster context.
-        config: Configuration for where to look on huggingface.
-    """
-    api = HfApi(token=os.getenv("HUGGINGFACE_TOKEN", default=None))
-    context.log.info(
-        f"Deleting raw data from repo {config.hf_repo_id}.",
-    )
-    init_time: dt.datetime = dt.datetime.strptime(config.file_init_time, "%Y-%m-%d|%H:%M").replace(
-        tzinfo=dt.UTC
-    )
-    api.delete_folder(
-        repo_id=config.hf_repo_id,
-        repo_type="dataset",
-        path_in_repo=f"raw/{init_time.strftime('%Y/%m/%d')}",
-    )
-    context.log.info(f"Deleted data directory from repo {config.hf_repo_id}.")
