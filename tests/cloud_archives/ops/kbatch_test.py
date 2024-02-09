@@ -67,8 +67,9 @@ class TestWaitForStatusChange(unittest.TestCase):
         mock_list_pods: MagicMock,
         mock_sleep: MagicMock,
     ) -> None:
-        new_status = wait_for_status_change(old_status="Pending", job_name="test-job")
-        self.assertEqual(new_status, "Pending")
+        with self.assertRaises(KbatchJobException):
+            new_status = wait_for_status_change(old_status="Pending", job_name="test-job")
+            self.assertEqual(new_status, "Pending")
         # Make sure list_pods is called
         self.assertGreater(mock_list_pods.call_count, 1)
         # Make sure time.sleep is called multiple times
