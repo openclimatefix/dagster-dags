@@ -89,18 +89,23 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2
         # Get the status of the pod in the job
         try:
             pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
-        except (httpx.ConnectError, httpx.ReadTimeout) as e:
+        except httpx.ConnectError as e:
             if "Temporary failure in name resolution" in str(e):
                 dg.get_dagster_logger().debug(f"Name resolution error, retrying: {e}")
                 continue
-            elif "The read operation timed out" in str(e):
-                dg.get_dagster_logger().debug(f"Read timed out, retrying: {e}")
-                continue
             else:
                 raise e
+        except httpx.ReadTimeout as e:
+            dg.get_dagster_logger().debug(f"Read timeout, retrying: {e}")
+            continue
+        except Exception as e:
+            raise e
+
+        if len(pods_info) == 0:
+            dg.get_dagster_logger().debug(f"No pods found for job {job_name}.")
+            continue
 
         new_status: str = pods_info[0]["status"]["phase"]
-        condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
 
         # Exit if status has changed
         if new_status != old_status:
@@ -108,6 +113,7 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2
                 f"Job {job_name} is no longer {old_status}, status: {new_status}.",
             )
             if new_status == "Failed":
+                condition: str = pods_info[0]["status"]["container_statuses"][0]["state"]
                 dg.get_dagster_logger().error(f"Condition: {condition}")
             return new_status
 
@@ -119,6 +125,7 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2
 
     # Raise exception if timed out
     if time_spent >= timeout:
+        condition = pods_info[0]["status"]["container_statuses"][0]["state"]
         dg.get_dagster_logger().info(f"Condition: {condition}")
         raise KbatchJobException(
             message=f"Timed out waiting for status '{old_status}' to change.",
