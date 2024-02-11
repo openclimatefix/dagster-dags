@@ -69,9 +69,9 @@ def kbatch_job_failure_hook(context: dg.HookContext) -> None:
 
 
 def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2) -> str:
-    """Wait for the status of the job to change from old_status.
+    """Wait for the status of a kbatch job to change from old_status.
 
-    Waits up to 2 minutes for the status of the job to change from the given status.
+    The amount of time to wait is modified by the timeout parameter.
 
     Args:
         old_status: The status to wait for the job to change from.
@@ -87,6 +87,8 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2
         time_spent += 10
 
         # Get the status of the pod in the job
+        # * This can fail and be retried within the timeout limit so
+        #   catch a number of recoverable errors.
         try:
             pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
         except httpx.ConnectError as e:
@@ -95,8 +97,8 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2
                 continue
             else:
                 raise e
-        except httpx.ReadTimeout as e:
-            dg.get_dagster_logger().debug(f"Read timeout, retrying: {e}")
+        except (httpx.ReadTimeout, httpx.ConnectTimeout) as e:
+            dg.get_dagster_logger().debug(f"Timed out listing pods, retrying: {e}")
             continue
         except Exception as e:
             raise e
