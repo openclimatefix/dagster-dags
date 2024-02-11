@@ -36,7 +36,7 @@ archive_icon_global_job = kbatch_huggingface_graph.to_job(
             docker_tag="0.3.2",
             env={
                 "ICON_MODEL": "global",
-                "ICON_PARAMETER_GROUP": "default",
+                "ICON_PARAMETER_GROUP": "full",
                 "HUGGINGFACE_TOKEN": os.getenv("HUGGINGFACE_TOKEN", default="not-set"),
                 "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-global",
             },
