@@ -245,8 +245,21 @@ def submit_kbatch_job(context: dg.OpExecutionContext, job: Job) -> str:
     Returns:
         The name of the created job.
     """
+    # Request large pod sizes
+    profile: dict = {
+        "resources": {
+            "limits": {
+                "cpu": "8",
+                "memory": "59G",
+            },
+            "requests": {
+                "cpu": "7.0",
+                "memory": "54G",
+            },
+        },
+    }
     # Submit the job using kbatch core
-    result = kbc.submit_job(job=job, **KBATCH_DICT)
+    result = kbc.submit_job(job=job, profile=profile, **KBATCH_DICT)
     # Extract the job name from the result
     job_name: str = result["metadata"]["name"]
     context.log.info(f"Kbatch job {job_name} requested.")
