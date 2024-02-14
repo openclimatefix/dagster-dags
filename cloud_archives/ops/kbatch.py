@@ -83,8 +83,9 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2
     """
     time_spent: int = 0
     while time_spent < timeout:
-        time.sleep(10)
-        time_spent += 10
+        increment_secs: int = 30
+        time.sleep(increment_secs)
+        time_spent += increment_secs
 
         # Get the status of the pod in the job
         # * This can fail and be retried within the timeout limit so
@@ -100,6 +101,12 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2
         except (httpx.ReadTimeout, httpx.ConnectTimeout) as e:
             dg.get_dagster_logger().debug(f"Timed out listing pods, retrying: {e}")
             continue
+        except httpx.HTTPStatusError as e:
+            if "503" in str(e):
+                dg.get_dagster_logger().debug(f"Service unavailable, retrying: {e}")
+                continue
+            else:
+                raise e
         except Exception as e:
             raise e
 
@@ -119,8 +126,8 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2
                 dg.get_dagster_logger().error(f"Condition: {condition}")
             return new_status
 
-        # Log if still waiting
-        if time_spent % (5 * 60) == 0:
+        # Log if still waiting every 10 minutes
+        if time_spent % (10 * 60) == 0:
             dg.get_dagster_logger().debug(
                 f"Kbatch job {job_name} still {old_status} after {int(time_spent / 60)} mins.",
             )
@@ -289,7 +296,7 @@ def follow_kbatch_job(
 
     # Otherwise, wait up to 6 hours for the pod to finish running
     pod_name: str = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["metadata"]["name"]
-    status = wait_for_status_change(old_status="Running", job_name=job_name, timeout=60 * 60 * 6)
+    status = wait_for_status_change(old_status="Running", job_name=job_name, timeout=60 * 60 * 15)
 
     # Get the logs from the pod
     try:
