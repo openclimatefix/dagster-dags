@@ -68,7 +68,7 @@ def kbatch_job_failure_hook(context: dg.HookContext) -> None:
         kbc.delete_job(resource_name=job_name, **KBATCH_DICT)
 
 
-def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2) -> str:
+def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 5) -> str:
     """Wait for the status of a kbatch job to change from old_status.
 
     The amount of time to wait is modified by the timeout parameter.
@@ -134,8 +134,7 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 2
 
     # Raise exception if timed out
     if time_spent >= timeout:
-        condition = pods_info[0]["status"]["container_statuses"][0]["state"]
-        dg.get_dagster_logger().info(f"Condition: {condition}")
+        dg.get_dagster_logger().info(pods_info[0]["status"])
         raise KbatchJobException(
             message=f"Timed out waiting for status '{old_status}' to change.",
             job_name=job_name,
