@@ -294,7 +294,7 @@ def follow_kbatch_job(
             job_name=job_name,
         )
 
-    # Otherwise, wait up to 6 hours for the pod to finish running
+    # Otherwise, wait up to timout for the pod to finish running
     pod_name: str = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["metadata"]["name"]
     status = wait_for_status_change(old_status="Running", job_name=job_name, timeout=60 * 60 * 15)
 
