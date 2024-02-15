@@ -256,7 +256,7 @@ def submit_kbatch_job(context: dg.OpExecutionContext, job: Job) -> str:
         "resources": {
             "limits": {
                 "cpu": "8",
-                "memory": "59G",
+                "memory": "72G",
             },
             "requests": {
                 "cpu": "7.0",
