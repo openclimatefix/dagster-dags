@@ -40,6 +40,7 @@ archive_icon_europe_job = kbatch_huggingface_graph.to_job(
                 "ICON_PARAMETER_GROUP": "full",
                 "HUGGINGFACE_TOKEN": os.getenv("HUGGINGFACE_TOKEN", default="not-set"),
                 "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-europe",
+                "LOGLEVEL": "DEBUG",
             },
         ),
         hf_config=HFFileConfig(hf_repo_id="sol-ocf/test-dwd-europe"),
