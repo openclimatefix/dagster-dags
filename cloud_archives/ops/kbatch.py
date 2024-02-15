@@ -309,20 +309,25 @@ def follow_kbatch_job(
     status = wait_for_status_change(old_status="Running", job_name=job_name, timeout=60 * 60 * 24)
 
     # Get the logs from the pod
-    try:
-        for log in kbc._logs(
-            pod_name=pod_name,
-            stream=True,
-            read_timeout=60 * 6,
-            **KBATCH_DICT,
-        ):
-            print(log)  # noqa: T201
-    except httpx.RemoteProtocolError as e:
-        if "incomplete chunked read" in str(e):
-            context.log.warning(f"Recoverable error encountered, re-trying read: {e}")
-            time.sleep(5)
-        else:
-            raise e
+
+    total_attempts: int = 0
+    while total_attempts < 3:
+        try:
+            logs: str = kbc._logs(
+                pod_name=pod_name,
+                stream=False,
+                read_timeout=60 * 6,
+                **KBATCH_DICT,
+            )
+            for line in logs.split("\n"):
+                print(line)  # noqa: T201
+            break
+        except httpx.RemoteProtocolError as e:
+            time.sleep(20)
+            total_attempts += 1
+            continue
+
+        context.log().warn("Failed to read logs after 3 attempts.")
 
     pods_info: list[dict] = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"]
     pod_status = pods_info[0]["status"]["phase"]
