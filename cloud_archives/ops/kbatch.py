@@ -308,7 +308,7 @@ def follow_kbatch_job(
 
     # Otherwise, wait up to timout for the pod to finish running
     pod_name: str = kbc.list_pods(job_name=job_name, **KBATCH_DICT)["items"][0]["metadata"]["name"]
-    status = wait_for_status_change(old_status="Running", job_name=job_name, timeout=60 * 60 * 15)
+    status = wait_for_status_change(old_status="Running", job_name=job_name, timeout=60 * 60 * 24)
 
     # Get the logs from the pod
     try:
