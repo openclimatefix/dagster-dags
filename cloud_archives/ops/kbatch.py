@@ -111,7 +111,6 @@ def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 5
             raise e
 
         if len(pods_info) == 0:
-            dg.get_dagster_logger().debug(f"No pods found for job {job_name}.")
             continue
 
         new_status: str = pods_info[0]["status"]["phase"]
@@ -160,7 +159,6 @@ class NWPConsumerConfig(dg.Config):
     docker_tag: str = Field(
         description="The tag of the nwp-consumer docker image to use.",
         default="0.2.1",
-        regex=r"^[0-9]+.[0-9]+.[0-9]$",
     )
     source: str = Field(
         description="The source of the data to consume.",
@@ -314,8 +312,8 @@ def follow_kbatch_job(
     try:
         for log in kbc._logs(
             pod_name=pod_name,
-            stream=False,
-            read_timeout=60 * 2,
+            stream=True,
+            read_timeout=60 * 6,
             **KBATCH_DICT,
         ):
             print(log)  # noqa: T201
