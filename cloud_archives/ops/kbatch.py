@@ -13,6 +13,7 @@ resources on error or success.
 import datetime as dt
 import time
 
+from types import GeneratorType
 import dagster as dg
 import httpx
 import kbatch._core as kbc
@@ -319,8 +320,13 @@ def follow_kbatch_job(
                 read_timeout=60 * 6,
                 **KBATCH_DICT,
             )
-            for line in logs.split("\n"):
-                print(line)  # noqa: T201
+            # Kbatch/Httpx seem keen to return generators even when "stream" is False
+            if isinstance(logs, GeneratorType):
+                for log in logs:
+                    print(log)  # noqa: T201
+            else:
+                for line in logs.split("\n"):
+                    print(line)  # noqa: T201
             break
         except httpx.RemoteProtocolError as e:
             time.sleep(20)
