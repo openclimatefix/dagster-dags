@@ -312,7 +312,7 @@ def follow_kbatch_job(
     # Get the logs from the pod
 
     total_attempts: int = 0
-    while total_attempts < 3:
+    while total_attempts < 5:
         try:
             logs: str = kbc._logs(
                 pod_name=pod_name,
@@ -328,7 +328,7 @@ def follow_kbatch_job(
                 for line in logs.split("\n"):
                     print(line)  # noqa: T201
             break
-        except httpx.RemoteProtocolError as e:
+        except (httpx.RemoteProtocolError, httpx.HTTPStatusError) as e:
             time.sleep(20)
             total_attempts += 1
             continue
