@@ -216,6 +216,7 @@ def define_kbatch_consumer_job(
             f"--source={config.source}",
             f"--sink={config.sink}",
             "--rsink=local",
+            "--rdir=/tmp/nwpc/raw",
             "--zdir=data",
             f"--from={it.strftime('%Y-%m-%dT%H:%M')}",
         ],
