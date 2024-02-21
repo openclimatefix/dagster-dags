@@ -33,7 +33,7 @@ archive_icon_global_job = kbatch_huggingface_graph.to_job(
         nwp_config=NWPConsumerConfig(
             source="icon",
             sink="huggingface",
-            docker_tag="0.4.4",
+            docker_tag="0.4.5",
             env={
                 "ICON_MODEL": "global",
                 "ICON_PARAMETER_GROUP": "full",
