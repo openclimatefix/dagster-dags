@@ -69,7 +69,7 @@ def kbatch_job_failure_hook(context: dg.HookContext) -> None:
         kbc.delete_job(resource_name=job_name, **KBATCH_DICT)
 
 
-def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 10) -> str:
+def wait_for_status_change(old_status: str, job_name: str, timeout: int = 60 * 20) -> str:
     """Wait for the status of a kbatch job to change from old_status.
 
     The amount of time to wait is modified by the timeout parameter.
