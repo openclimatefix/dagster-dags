@@ -27,17 +27,18 @@ icon_europe_zarr_archive = dg.SourceAsset(
 )
 
 # Define the job to materialize the ICON europe zarr archive
-archive_icon_europe_job = kbatch_huggingface_graph.to_job(
-    name="archive_icon_europe_job",
+archive_icon_europe_sl_job = kbatch_huggingface_graph.to_job(
+    name="archive_icon_europe_sl_job",
     partitions_def=icon_europe_zarr_archive.partitions_def,
     config=create_kbatch_huggingface_graph_config(
         nwp_config=NWPConsumerConfig(
             source="icon",
             sink="huggingface",
-            docker_tag="0.4.6",
+            docker_tag="main",
+            zdir="single-level/data",
             env={
                 "ICON_MODEL": "europe",
-                "ICON_PARAMETER_GROUP": "full",
+                "ICON_PARAMETER_GROUP": "single-level",
                 "HUGGINGFACE_TOKEN": os.getenv("HUGGINGFACE_TOKEN", default="not-set"),
                 "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-europe",
             },

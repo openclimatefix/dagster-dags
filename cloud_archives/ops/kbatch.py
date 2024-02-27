@@ -169,6 +169,10 @@ class NWPConsumerConfig(dg.Config):
         description="The sink to write the data to.",
         default=...,
     )
+    zdir: str = Field(
+        description="The directory to write the data to.",
+        default="data",
+    )
     env: dict[str, str] = Field(
         description="Environment variables to pass to the nwp-consumer.",
         default_factory=lambda: {},
@@ -217,7 +221,7 @@ def define_kbatch_consumer_job(
             f"--sink={config.sink}",
             "--rsink=local",
             "--rdir=/tmp/nwpc/raw",
-            "--zdir=data",
+            f"--zdir={config.zdir}",
             f"--from={it.strftime('%Y-%m-%dT%H:%M')}",
         ],
         env=config.env,

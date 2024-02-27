@@ -26,17 +26,43 @@ icon_global_zarr_archive = dg.SourceAsset(
     ),
 )
 
-archive_icon_global_job = kbatch_huggingface_graph.to_job(
-    name="archive_icon_global_job",
+archive_icon_global_sl_job = kbatch_huggingface_graph.to_job(
+    name="archive_icon_global_sl_job",
     partitions_def=icon_global_zarr_archive.partitions_def,
     config=create_kbatch_huggingface_graph_config(
         nwp_config=NWPConsumerConfig(
             source="icon",
             sink="huggingface",
-            docker_tag="0.4.6",
+            docker_tag="main",
+            zdir="single-level/data",
             env={
                 "ICON_MODEL": "global",
-                "ICON_PARAMETER_GROUP": "full",
+                "ICON_PARAMETER_GROUP": "single-level",
+                "HUGGINGFACE_TOKEN": os.getenv("HUGGINGFACE_TOKEN", default="not-set"),
+                "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-global",
+            },
+        ),
+        hf_config=HFFileConfig(hf_repo_id="sol-ocf/test-dwd-global"),
+        am_config=AssetMaterializationConfig(
+            asset_key=list(icon_global_zarr_archive.key.path),
+            asset_description="Global ICON Zarr Archive stored in huggingface.",
+        ),
+    ),
+)
+
+
+archive_icon_global_ml_job = kbatch_huggingface_graph.to_job(
+    name="archive_icon_global_ml_job",
+    partitions_def=icon_global_zarr_archive.partitions_def,
+    config=create_kbatch_huggingface_graph_config(
+        nwp_config=NWPConsumerConfig(
+            source="icon",
+            sink="huggingface",
+            docker_tag="main",
+            zdir="multi-level/data",
+            env={
+                "ICON_MODEL": "global",
+                "ICON_PARAMETER_GROUP": "multi-level",
                 "HUGGINGFACE_TOKEN": os.getenv("HUGGINGFACE_TOKEN", default="not-set"),
                 "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-global",
             },
