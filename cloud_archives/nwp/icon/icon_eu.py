@@ -52,4 +52,29 @@ archive_icon_europe_sl_job = kbatch_huggingface_graph.to_job(
 )
 
 
+archive_icon_europe_ml_job = kbatch_huggingface_graph.to_job(
+    name="archive_icon_europe_ml_job",
+    partitions_def=icon_europe_zarr_archive.partitions_def,
+    config=create_kbatch_huggingface_graph_config(
+        nwp_config=NWPConsumerConfig(
+            source="icon",
+            sink="huggingface",
+            docker_tag="main",
+            zdir="multi-level/data",
+            env={
+                "ICON_MODEL": "europe",
+                "ICON_PARAMETER_GROUP": "multi-level",
+                "HUGGINGFACE_TOKEN": os.getenv("HUGGINGFACE_TOKEN", default="not-set"),
+                "HUGGINGFACE_REPO_ID": "sol-ocf/test-dwd-europe",
+            },
+        ),
+        hf_config=HFFileConfig(hf_repo_id="sol-ocf/test-dwd-europe"),
+        am_config=AssetMaterializationConfig(
+            asset_key=list(icon_europe_zarr_archive.key.path),
+            asset_description="Europe ICON Zarr Archive stored in huggingface.",
+        ),
+    ),
+)
+
+
 

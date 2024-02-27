@@ -15,6 +15,8 @@ eu_assets = dg.load_assets_from_modules(
 all_assets: list[dg.AssetsDefinition] = [*global_assets, *eu_assets]
 
 all_jobs: list[dg.JobDefinition] = [
-    icon_global.archive_icon_global_job,
-    icon_eu.archive_icon_europe_job,
+    icon_global.archive_icon_global_sl_job,
+    icon_global.archive_icon_global_ml_job,
+    icon_eu.archive_icon_europe_sl_job,
+    icon_eu.archive_icon_europe_ml_job,
 ]
