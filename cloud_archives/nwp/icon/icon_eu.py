@@ -34,7 +34,7 @@ archive_icon_europe_sl_job = kbatch_huggingface_graph.to_job(
         nwp_config=NWPConsumerConfig(
             source="icon",
             sink="huggingface",
-            docker_tag="main",
+            docker_tag="refactor-service-loop",
             zdir="single-level/data",
             env={
                 "ICON_MODEL": "europe",
