@@ -12,8 +12,8 @@ resources on error or success.
 
 import datetime as dt
 import time
-
 from types import GeneratorType
+
 import dagster as dg
 import httpx
 import kbatch._core as kbc
@@ -184,6 +184,14 @@ class NWPConsumerConfig(dg.Config):
         .strftime("%Y-%m-%d|%H:%M"),
         regex=r"^\d{4}-\d{2}-\d{2}\|\d{2}:\d{2}$",
     )
+    rename_vars: str = Field(
+        description="Whether to rename the variables in the data.",
+        default="False",
+    )
+    variable_dimension: str = Field(
+        description="Whether to create a dimension to hold all the datavars.",
+        default="False",
+    )
 
 
 @dg.op(
@@ -221,6 +229,8 @@ def define_kbatch_consumer_job(
             f"--sink={config.sink}",
             "--rsink=local",
             "--rdir=/tmp/nwpc/raw",
+            "--rename-vars=" + config.rename_vars,
+            "--variable-dim=" + config.variable_dimension,
             f"--zdir={config.zdir}",
             f"--from={it.strftime('%Y-%m-%dT%H:%M')}",
         ],
@@ -332,7 +342,7 @@ def follow_kbatch_job(
                 for line in logs.split("\n"):
                     print(line)  # noqa: T201
             break
-        except (httpx.RemoteProtocolError, httpx.HTTPStatusError) as e:
+        except (httpx.RemoteProtocolError, httpx.HTTPStatusError):
             time.sleep(20)
             total_attempts += 1
             continue
