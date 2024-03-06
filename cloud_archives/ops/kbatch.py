@@ -184,13 +184,13 @@ class NWPConsumerConfig(dg.Config):
         .strftime("%Y-%m-%d|%H:%M"),
         regex=r"^\d{4}-\d{2}-\d{2}\|\d{2}:\d{2}$",
     )
-    rename_vars: str = Field(
-        description="Whether to rename the variables in the data.",
-        default="False",
+    no_rename_vars: bool = Field(
+        description="Don't rename variables.",
+        default=False,
     )
-    variable_dimension: str = Field(
-        description="Whether to create a dimension to hold all the datavars.",
-        default="False",
+    no_variable_dimension: bool = Field(
+        description="Don't specify variable dimensions.",
+        default=False,
     )
 
 
@@ -220,20 +220,24 @@ def define_kbatch_consumer_job(
         itstring = context.partition_key
     it = dt.datetime.strptime(itstring, "%Y-%m-%d|%H:%M").replace(tzinfo=dt.UTC)
 
+    command = [
+        "consume",
+        f"--source={config.source}",
+        f"--sink={config.sink}",
+        "--rsink=local",
+        "--rdir=/tmp/nwpc/raw",
+        f"--zdir={config.zdir}",
+        f"--from={it.strftime('%Y-%m-%dT%H:%M')}",
+    ]
+
+    if config.no_rename_vars == "True":
+        command.append("--no-rename-vars")
+    if config.no_variable_dimension == "True":
+        command.append("--no-variable-dimension")
+
     job = Job(
         name=f"{config.source}-{config.sink}-backfill",
         image=f"ghcr.io/openclimatefix/nwp-consumer:{config.docker_tag}",
-        args=[
-            "consume",
-            f"--source={config.source}",
-            f"--sink={config.sink}",
-            "--rsink=local",
-            "--rdir=/tmp/nwpc/raw",
-            "--rename-vars=" + config.rename_vars,
-            "--variable-dim=" + config.variable_dimension,
-            f"--zdir={config.zdir}",
-            f"--from={it.strftime('%Y-%m-%dT%H:%M')}",
-        ],
         env=config.env,
     )
 
