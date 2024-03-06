@@ -186,11 +186,11 @@ class NWPConsumerConfig(dg.Config):
     )
     no_rename_vars: bool = Field(
         description="Don't rename variables.",
-        default=False,
+        default=True,
     )
     no_variable_dimension: bool = Field(
         description="Don't specify variable dimensions.",
-        default=False,
+        default=True,
     )
 
 
@@ -230,9 +230,9 @@ def define_kbatch_consumer_job(
         f"--from={it.strftime('%Y-%m-%dT%H:%M')}",
     ]
 
-    if config.no_rename_vars == "True":
+    if config.no_rename_vars:
         command.append("--no-rename-vars")
-    if config.no_variable_dimension == "True":
+    if config.no_variable_dimension:
         command.append("--no-variable-dimension")
 
     job = Job(
