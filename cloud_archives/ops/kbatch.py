@@ -239,6 +239,7 @@ def define_kbatch_consumer_job(
         name=f"{config.source}-{config.sink}-backfill",
         image=f"ghcr.io/openclimatefix/nwp-consumer:{config.docker_tag}",
         env=config.env,
+        command=command,
     )
 
     return job
