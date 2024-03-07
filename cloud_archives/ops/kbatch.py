@@ -233,7 +233,7 @@ def define_kbatch_consumer_job(
     if config.no_rename_vars:
         command.append("--no-rename-vars")
     if config.no_variable_dimension:
-        command.append("--no-variable-dimension")
+        command.append("--no-variable-dim")
 
     job = Job(
         name=f"{config.source}-{config.sink}-backfill",
