@@ -220,7 +220,7 @@ def define_kbatch_consumer_job(
         itstring = context.partition_key
     it = dt.datetime.strptime(itstring, "%Y-%m-%d|%H:%M").replace(tzinfo=dt.UTC)
 
-    command = [
+    args = [
         "consume",
         f"--source={config.source}",
         f"--sink={config.sink}",
@@ -231,17 +231,17 @@ def define_kbatch_consumer_job(
     ]
 
     if config.no_rename_vars:
-        command = [*command, "--no-rename-vars"]
+        args = [*args, "--no-rename-vars"]
     if config.no_variable_dimension:
-        command = [*command, "--no-variable-dim"]
+        args = [*args, "--no-variable-dim"]
 
-    context.log.info(f"Running nwp-consumer with command: {command}")
+    context.log.info(f"Running nwp-consumer with command: {args}")
 
     job = Job(
         name=f"{config.source}-{config.sink}-backfill",
         image=f"ghcr.io/openclimatefix/nwp-consumer:{config.docker_tag}",
         env=config.env,
-        command=command,
+        args=args,
     )
 
     return job
