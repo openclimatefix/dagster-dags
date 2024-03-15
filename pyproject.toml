@@ -31,7 +31,7 @@ dependencies = [
     "kbatch >= 0.4.2",
     "meteomatics == 2.11.1",
     "numpy >= 1.26.0",
-    "nwp-consumer >= 0.4.0",
+    "nwp-consumer >= 0.3.0",
     "ocf-blosc2 >= 0.0.3",
     "pathlib >= 1.0.1",
     "requests >= 2.31.0",
