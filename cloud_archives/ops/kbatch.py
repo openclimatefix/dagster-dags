@@ -182,7 +182,7 @@ class NWPConsumerConfig(dg.Config):
         default=dt.datetime.now(dt.UTC)
         .replace(hour=0, minute=0, second=0, microsecond=0)
         .strftime("%Y-%m-%d|%H:%M"),
-        regex=r"^\d{4}-\d{2}-\d{2}\|\d{2}:\d{2}$",
+        pattern=r"^\d{4}-\d{2}-\d{2}\|\d{2}:\d{2}$",
     )
     no_rename_vars: bool = Field(
         description="Don't rename variables.",
