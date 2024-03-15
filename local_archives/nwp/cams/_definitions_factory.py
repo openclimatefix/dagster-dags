@@ -6,14 +6,13 @@ from typing import Any, Literal
 
 import cdsapi
 import dagster as dg
-from nwp_consumer.internal import IT_FOLDER_FMTSTR
 
 from constants import LOCATIONS_BY_ENVIRONMENT
 from local_archives.partitions import InitTimePartitionsDefinition
 
 env = os.getenv("ENVIRONMENT", "local")
 RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].RAW_FOLDER
-
+IT_FOLDER_FORMATSTR = "%Y/%m/%d/%H%M"
 
 @dc.dataclass
 class VariableSelection:
