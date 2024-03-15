@@ -162,7 +162,7 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> pathlib.Path:
 
 
 @dg.asset(
-    key=["nwp", "meteomatics", "india", "wind_archive"],
+    key=["nwp", "meteomatics", "nw_india", "wind_archive"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m-%d|%H:%M",
         start="2019-01-01|00:00",
@@ -182,7 +182,7 @@ def meteomatics_wind_archive():
     )
 
 @dg.asset(
-    key=["nwp", "meteomatics", "india", "solar_archive"],
+    key=["nwp", "meteomatics", "nw_india", "solar_archive"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m-%d|%H:%M",
         start="2019-01-01|00:00",
