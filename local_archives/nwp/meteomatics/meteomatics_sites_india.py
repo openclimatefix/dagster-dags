@@ -133,7 +133,7 @@ def query_meteomatics_solar_api(context: dg.OpExecutionContext) -> pd.DataFrame:
         username,
         password,
         model=model,
-    ).reset_index(level=["lat", "lon"])
+    )
 
     return df
 
@@ -141,6 +141,7 @@ def query_meteomatics_solar_api(context: dg.OpExecutionContext) -> pd.DataFrame:
 
 @dg.op
 def map_df_ds(df: pd.DataFrame) -> xr.Dataset:
+    df = df.reset_index(level=["lat", "lon"])
     ds = xr.Dataset.from_dataframe(df).set_coords(("lat", "lon"))
     return ds
 
