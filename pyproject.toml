@@ -25,18 +25,18 @@ dependencies = [
     "dagster-cloud >= 1.6.2",
     "dagster-webserver >= 1.6.2",
     "dagster-graphql >= 1.6.2",
-    "dagster-docker >= 0.22.2",
+    "dagster-postgres >= 0.22.9",
+    "dagster-docker >= 0.22.9",
     "huggingface-hub >= 0.19.4",
     "kbatch >= 0.4.2",
-    "numpy >= 1.23.2",
-    "nwp-consumer >= 0.2.0",
+    "meteomatics == 2.11.1",
+    "numpy >= 1.26.0",
     "ocf-blosc2 >= 0.0.3",
     "pathlib >= 1.0.1",
     "requests >= 2.31.0",
     "requests-toolbelt >= 1.0.0",
     "xarray >= 2022.3.0",
     "zarr >= 2.13.3",
-    "satip >= 2.11.19",
 ]
 
 [project.optional-dependencies]
