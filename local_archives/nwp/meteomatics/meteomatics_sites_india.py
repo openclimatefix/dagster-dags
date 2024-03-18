@@ -117,6 +117,7 @@ def query_meteomatics_wind_api(context: dg.OpExecutionContext) -> pd.DataFrame:
 
     return df
 
+
 def query_meteomatics_solar_api(context: dg.OpExecutionContext) -> pd.DataFrame:
     """Job to run a meteomatics download."""
     start_cutoff = dt.datetime(2019, 3, 15, tzinfo=dt.UTC)
@@ -137,7 +138,9 @@ def query_meteomatics_solar_api(context: dg.OpExecutionContext) -> pd.DataFrame:
 
     return df
 
+
 # ==== Ops ====
+
 
 @dg.op
 def map_df_ds(df: pd.DataFrame) -> xr.Dataset:
@@ -160,7 +163,6 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> pathlib.Path:
     return path
 
 
-
 @dg.asset(
     key=["nwp", "meteomatics", "nw_india", "wind_archive"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
@@ -169,7 +171,7 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> pathlib.Path:
         cron_schedule="0 0 1 1 *",  # Once a year
     ),
 )
-def meteomatics_wind_archive():
+def meteomatics_wind_archive() -> dg.Output[str]:
     """Meteomatics wind archive asset."""
     df = query_meteomatics_wind_api()
     ds = map_df_ds(df)
@@ -178,8 +180,9 @@ def meteomatics_wind_archive():
         path,
         metadata={
             "ds": dg.MetadataValue.md(str(ds)),
-        }
+        },
     )
+
 
 @dg.asset(
     key=["nwp", "meteomatics", "nw_india", "solar_archive"],
@@ -189,7 +192,7 @@ def meteomatics_wind_archive():
         cron_schedule="0 0 1 1 *",  # Once a year
     ),
 )
-def meteomatics_solar_archive():
+def meteomatics_solar_archive() -> dg.Output[pathlib.Path]:
     """Meteomatics solar archive asset."""
     df = query_meteomatics_solar_api()
     ds = map_df_ds(df)
@@ -198,5 +201,5 @@ def meteomatics_solar_archive():
         path,
         metadata={
             "ds": dg.MetadataValue.md(str(ds)),
-        }
+        },
     )
