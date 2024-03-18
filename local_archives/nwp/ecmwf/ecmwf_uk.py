@@ -12,6 +12,7 @@ from local_archives.partitions import InitTimePartitionsDefinition
 
 fetcher: FetcherInterface = mars.Client(
     area="uk",
+    hours=84,
 )
 
 partitions: InitTimePartitionsDefinition = InitTimePartitionsDefinition(
