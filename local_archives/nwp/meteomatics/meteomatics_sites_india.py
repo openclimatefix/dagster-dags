@@ -63,14 +63,15 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> dg.Output[pathli
     path = pathlib.Path(
         f"{BASE_PATH}/{'/'.join(context.asset_key.path[:-1])}/{context.asset_key.path[-1]}_{pdt.strftime('%Y')}.zarr.zip",
     )
+    path.parent.mkdir(parents=True, exist_ok=True)
     with zarr.ZipStore(path.as_posix(), mode="w") as store:
         ds.to_zarr(store, encoding=encoding, mode="w")
 
     return dg.Output(
         path,
         metadata={
-            "dataset": dg.MetadataValue.md(str(ds)),
-            "path": dg.metadatavalue.path(path.as_posix()),
+            "dataset": dg.MetadataValue.md(ds.__repr__()),
+            "path": dg.MetadataValue.path(path.as_posix()),
         },
     )
 
