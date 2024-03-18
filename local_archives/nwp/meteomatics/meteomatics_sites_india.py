@@ -12,7 +12,7 @@ from ocf_blosc2 import Blosc2
 from constants import LOCATIONS_BY_ENVIRONMENT
 
 env = os.getenv("ENVIRONMENT", "local")
-BASE_PATH = LOCATIONS_BY_ENVIRONMENT[env]["NWP_ZARR_FOLDER"]
+BASE_PATH = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
 
 username = os.environ.get("METEOMATICS_USERNAME")
 password = os.environ.get("METEOMATICS_PASSWORD")
