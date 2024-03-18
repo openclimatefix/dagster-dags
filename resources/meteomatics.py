@@ -72,7 +72,7 @@ wind_parameters = [
 solar_parameters = [
     "direct_rad:W",
     "diffuse_rad:W",
-    "gloabl_rad:W",
+    "global_rad:W",
 ]
 
 
