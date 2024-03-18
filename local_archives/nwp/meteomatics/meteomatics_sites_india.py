@@ -118,11 +118,12 @@ def query_meteomatics_wind_api(context: dg.OpExecutionContext) -> pd.DataFrame:
         username,
         password,
         model=model,
-    ).reset_index(level=["lat", "lon"])
+    )
 
     return df
 
 
+@dg.op
 def query_meteomatics_solar_api(context: dg.OpExecutionContext) -> pd.DataFrame:
     """Job to run a meteomatics download."""
     start_cutoff = dt.datetime(2019, 3, 15, tzinfo=dt.UTC)
