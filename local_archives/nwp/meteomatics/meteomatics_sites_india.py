@@ -161,7 +161,7 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> pathlib.Path:
         encoding[var] = {"compressor": Blosc2(cname="zstd", clevel=5)}
 
     pdt: dt.datetime = dt.datetime.strptime(context.partition_key, "%Y-%m-%d|%H:%M").replace(
-        tzinfo=dt.UTC
+        tzinfo=dt.UTC,
     )
     path = pathlib.Path(
         f"{BASE_PATH}/{'/'.join(context.asset_key.path[:-1])}/{context.asset_key.path[-1]}_{pdt.strftime('%Y')}.zarr.zip",
@@ -179,6 +179,9 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> pathlib.Path:
         start="2019-01-01|00:00",
         cron_schedule="0 0 1 1 *",  # Once a year
     ),
+    metadata={
+        "path": dg.MetadataValue.path(f"{BASE_PATH}/nwp/meteomatics/nw_india/wind_archive"),
+    },
 )
 def meteomatics_wind_archive() -> dg.Output[str]:
     """Meteomatics wind archive asset."""
@@ -200,6 +203,9 @@ def meteomatics_wind_archive() -> dg.Output[str]:
         start="2019-01-01|00:00",
         cron_schedule="0 0 1 1 *",  # Once a year
     ),
+    metadata={
+        "path": dg.MetadataValue.path(f"{BASE_PATH}/nwp/meteomatics/nw_india/solar_archive"),
+    },
 )
 def meteomatics_solar_archive() -> dg.Output[pathlib.Path]:
     """Meteomatics solar archive asset."""
