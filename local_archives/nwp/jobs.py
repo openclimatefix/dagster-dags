@@ -7,8 +7,8 @@ import dagster as dg
 import ocf_blosc2  # noqa
 import xarray as xr
 from nwp_consumer.internal import (
-    IT_FOLDER_FMTSTR,
-    IT_FOLDER_GLOBSTR,
+    IT_FOLDER_STRUCTURE_RAW,
+    IT_FOLDER_GLOBSTR_RAW,
 )
 
 from constants import LOCATIONS_BY_ENVIRONMENT
@@ -59,12 +59,12 @@ def validate_existing_raw_files(
     config.check()
 
     total_archive_size_bytes: int = 0
-    for it_folder in [f for f in config.archive_path().glob(IT_FOLDER_GLOBSTR) if f.suffix == ""]:
+    for it_folder in [f for f in config.archive_path().glob(IT_FOLDER_GLOBSTR_RAW) if f.suffix == ""]:
         # Parse the folder as an inittime:
         try:
             it = dt.datetime.strptime(
                 it_folder.relative_to(config.archive_path()).as_posix(),
-                IT_FOLDER_FMTSTR,
+                IT_FOLDER_STRUCTURE_RAW,
             ).replace(tzinfo=dt.UTC)
         except ValueError:
             continue

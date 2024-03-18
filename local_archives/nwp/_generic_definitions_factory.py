@@ -10,7 +10,7 @@ from typing import Literal
 import dagster as dg
 import numpy as np
 import xarray as xr
-from nwp_consumer.internal import IT_FOLDER_FMTSTR, FetcherInterface, FileInfoModel
+from nwp_consumer.internal import IT_FOLDER_STRUCTURE_RAW, FetcherInterface, FileInfoModel
 
 from constants import LOCATIONS_BY_ENVIRONMENT
 from local_archives.partitions import InitTimePartitionsDefinition
@@ -104,7 +104,7 @@ def make_definitions(
         loc = "/".join(context.asset_key.path[:-1])
         for fi in fileinfos:
             dst = pathlib.Path(
-                f"{RAW_FOLDER}/{loc}/{fi.it().strftime(IT_FOLDER_FMTSTR)}/{fi.filename()}",
+                f"{RAW_FOLDER}/{loc}/{fi.it().strftime(IT_FOLDER_STRUCTURE_RAW)}/{fi.filename()}",
             )
 
             # If the file already exists, don't re download it
