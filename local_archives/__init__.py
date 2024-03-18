@@ -3,6 +3,7 @@ import os
 import dagster as dg
 
 import managers
+import resources
 from constants import LOCATIONS_BY_ENVIRONMENT
 
 from . import nwp
@@ -12,10 +13,18 @@ resources_by_env = {
         "nwp_xr_zarr_io": managers.LocalFilesystemXarrayZarrManager(
             base_path=LOCATIONS_BY_ENVIRONMENT["leo"].NWP_ZARR_FOLDER,
         ),
+        "meteomatics_api": resources.MeteomaticsAPIResource(
+            username=dg.EnvVar("METEOMATICS_USERNAME"),
+            password=dg.EnvVar("METEOMATICS_PASSWORD"),
+        ),
     },
     "local": {
         "nwp_xr_zarr_io": managers.LocalFilesystemXarrayZarrManager(
             base_path=LOCATIONS_BY_ENVIRONMENT["local"].NWP_ZARR_FOLDER,
+        ),
+        "meteomatics_api": resources.MeteomaticsAPIResource(
+            username=dg.EnvVar("METEOMATICS_USERNAME"),
+            password=dg.EnvVar("METEOMATICS_PASSWORD"),
         ),
     },
 }
