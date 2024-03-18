@@ -10,7 +10,7 @@ from local_archives.nwp._generic_definitions_factory import (
 )
 from local_archives.partitions import InitTimePartitionsDefinition
 
-fetcher: FetcherInterface = mars.Client(
+fetcher: FetcherInterface = mars.MARSClient(
     area="uk",
     hours=84,
 )
