@@ -72,6 +72,7 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> dg.Output[pathli
         metadata={
             "dataset": dg.MetadataValue.md(ds.__repr__()),
             "path": dg.MetadataValue.path(path.as_posix()),
+            "partition_size": dg.MetadataValue.int(path.stat().st_size),
         },
     )
 
