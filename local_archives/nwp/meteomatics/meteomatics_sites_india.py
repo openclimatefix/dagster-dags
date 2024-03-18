@@ -9,6 +9,11 @@ import xarray as xr
 import zarr
 from ocf_blosc2 import Blosc2
 
+from constants import LOCATIONS_BY_ENVIRONMENT
+
+env = os.getenv("ENVIRONMENT", "local")
+BASE_PATH = LOCATIONS_BY_ENVIRONMENT[env]["NWP_ZARR_FOLDER"]
+
 username = os.environ.get("METEOMATICS_USERNAME")
 password = os.environ.get("METEOMATICS_PASSWORD")
 
@@ -155,8 +160,12 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> pathlib.Path:
     for var in ds.data_vars:
         encoding[var] = {"compressor": Blosc2(cname="zstd", clevel=5)}
 
-    pdt: dt.datetime = dt.datetime.strptime(context.partition_key, "%Y-%m-%d|%H:%M")
-    path = pathlib.Path(f"wind-{pdt.strftime('%Y')}.zarr.zip")
+    pdt: dt.datetime = dt.datetime.strptime(context.partition_key, "%Y-%m-%d|%H:%M").replace(
+        tzinfo=dt.UTC
+    )
+    path = pathlib.Path(
+        f"{BASE_PATH}/{'/'.join(context.asset_key.path[:-1])}/{context.asset_key.path[-1]}_{pdt.strftime('%Y')}.zarr.zip",
+    )
     with zarr.ZipStore(path.as_posix(), mode="w") as store:
         ds.to_zarr(store, encoding=encoding, mode="w")
 
