@@ -57,9 +57,7 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> dg.Output[pathli
     for var in ds.data_vars:
         encoding[var] = {"compressor": Blosc2(cname="zstd", clevel=5)}
 
-    pdt: dt.datetime = dt.datetime.strptime(context.partition_key, "%Y-%m-%d|%H:%M").replace(
-        tzinfo=dt.UTC,
-    )
+    pdt = context.partition_time_window.start
     path = pathlib.Path(
         f"{BASE_PATH}/{'/'.join(context.asset_key.path[:-1])}/{context.asset_key.path[-1]}_{pdt.strftime('%Y')}.zarr.zip",
     )
@@ -70,9 +68,9 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> dg.Output[pathli
     return dg.Output(
         path,
         metadata={
-            "dataset": dg.MetadataValue.md(ds.__repr__()),
+            "dataset": dg.MetadataValue.text(ds.__str__()),
             "path": dg.MetadataValue.path(path.as_posix()),
-            "partition_size": dg.MetadataValue.int(path.stat().st_size),
+            "partition_size:kb": dg.MetadataValue.int(int(path.stat().st_size / 1024)),
         },
     )
 
@@ -82,8 +80,8 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> dg.Output[pathli
 @dg.graph_asset(
     key=["nwp", "meteomatics", "nw_india", "wind_archive"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
-        fmt="%Y-%m-%d|%H:%M",
-        start="2019-01-01|00:00",
+        fmt="%Y",
+        start="2019",
         cron_schedule="0 0 1 1 *",  # Once a year
     ),
     metadata={
@@ -100,8 +98,8 @@ def meteomatics_wind_archive() -> dg.Output[str]:
 @dg.graph_asset(
     key=["nwp", "meteomatics", "nw_india", "solar_archive"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
-        fmt="%Y-%m-%d|%H:%M",
-        start="2019-01-01|00:00",
+        fmt="%Y",
+        start="2019",
         cron_schedule="0 0 1 1 *",  # Once a year
     ),
     metadata={
