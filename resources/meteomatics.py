@@ -1,8 +1,10 @@
 import datetime as dt
+import numpy as np
 
 import dagster as dg
 import meteomatics.api
 import pandas as pd
+from pydantic import PrivateAttr
 
 wind_coords = [
     (27.035, 70.515),
@@ -83,28 +85,50 @@ solar_parameters = [
 class MeteomaticsAPIResource(dg.ConfigurableResource):
     """A resource for interacting with the Meteomatics API."""
 
-    # Authentication for the API
+    # Authentication for the API, set via environment
     username: str
     password: str
 
+    # Subscription limits
+    subscription_min_date: dt.datetime = PrivateAttr()
+    subscription_max_requestable_parameters = PrivateAttr()
+
+    def setup_for_execution(self, context: dg.ResourceContext) -> None:
+        """Set up the resource according to subscription limits."""
+        self.subscription_min_date = dt.datetime(2019, 3, 19, tzinfo=dt.UTC)
+        self.subscription_max_requestable_parameters = 10
+
     def query_api(self, start: dt.datetime, end: dt.datetime, energy_type: str) -> pd.DataFrame:
         """Query the Meteomatics API for NWP data."""
-        # The earliest possible queryable date
-        start_cutoff: dt.datetime  = dt.datetime(2019, 3, 18, tzinfo=dt.UTC)
+        coords, params = (
+            (wind_coords, wind_parameters)
+            if energy_type == "wind"
+            else (solar_coords, solar_parameters)
+        )
+
+        # Ensure subscription limits are respected
+        param_groups = np.split(params, self.subscription_max_requestable_parameters)
+
+        dfs: list[pd.DataFrame] = []
         try:
-            df: pd.DataFrame = meteomatics.api.query_time_series(
-                coordinate_list=wind_coords if energy_type == "wind" else solar_coords,
-                startdate=start if start > start_cutoff else start_cutoff,
-                enddate=end if end > start_cutoff else start_cutoff,
-                interval=dt.timedelta(minutes=15),
-                parameters=wind_parameters if energy_type == "wind" else solar_parameters,
-                username=self.username,
-                password=self.password,
-                model="ecmwf-ifs",
-            )
+            for param_group in param_groups:
+                df: pd.DataFrame = meteomatics.api.query_time_series(
+                    coordinate_list=coords,
+                    startdate=max(start, self.subscription_min_date),
+                    enddate=max(end, self.subscription_min_date),
+                    interval=dt.timedelta(minutes=15),
+                    parameters=param_group,
+                    username=self.username,
+                    password=self.password,
+                    model="ecmwf-ifs",
+                )
+                dfs.append(df)
         except Exception as e:
             raise dg.Failure(
                 description=f"Failed to query the Meteomatics API: {e}",
             ) from e
 
-        return df
+        if len(dfs) > 1:
+            return dfs[0].join(dfs[1:])
+        else:
+            return dfs[0]
