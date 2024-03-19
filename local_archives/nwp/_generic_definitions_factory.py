@@ -13,7 +13,6 @@ import xarray as xr
 from nwp_consumer.internal import IT_FOLDER_STRUCTURE_RAW, FetcherInterface, FileInfoModel
 
 from constants import LOCATIONS_BY_ENVIRONMENT
-from local_archives.partitions import InitTimePartitionsDefinition
 
 env = os.getenv("ENVIRONMENT", "local")
 RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].RAW_FOLDER
@@ -27,7 +26,7 @@ class MakeDefinitionsOptions:
     area: str
     fetcher: FetcherInterface
     source: Literal["ecmwf", "ceda", "cams"]
-    partitions: InitTimePartitionsDefinition
+    partitions: dg.TimeWindowPartitionsDefinition
 
     def key_prefix(self) -> list[str]:
         """Generate an asset key prefix based on the area.
@@ -85,7 +84,8 @@ def make_definitions(
         execution_start = dt.datetime.now(tz=dt.UTC)
 
         # List all available source files for this partition
-        it = opts.partitions.parse_key(key=context.partition_key)
+        # TODO: Enable single run backfills
+        it = context.partition_time_window.start
         context.log.info(
             f"Listing files for init time {it.strftime('%Y-%m-%d %H:%M')} from {opts.source}.",
         )

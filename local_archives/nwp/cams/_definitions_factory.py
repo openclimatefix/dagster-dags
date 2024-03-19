@@ -8,11 +8,10 @@ import cdsapi
 import dagster as dg
 
 from constants import LOCATIONS_BY_ENVIRONMENT
-from local_archives.partitions import InitTimePartitionsDefinition
 
 env = os.getenv("ENVIRONMENT", "local")
 RAW_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].RAW_FOLDER
-IT_FOLDER_FORMATSTR = "%Y/%m/%d/%H%M"
+IT_FOLDER_FMTSTR = "%Y/%m/%d/%H%M"
 
 @dc.dataclass
 class VariableSelection:
@@ -35,7 +34,7 @@ class MakeDefinitionsOptions:
 
     area: str
     file_format: Literal["grib", "netcdf"]
-    partitions: InitTimePartitionsDefinition
+    partitions: dg.TimeWindowPartitionsDefinition
     client: cdsapi.Client
     multilevel_vars: VariableSelection | None = None
     multilevel_levels: list[str] | None = None
@@ -110,7 +109,7 @@ def make_definitions(
         # Check if partition is targeting a time more than 30 days old
         # * CAMS data older than 30 days is only available from tape
         # * These variables are slower to collect
-        it = opts.partitions.parse_key(key=context.partition_key)
+        it = context.partition_time_window.start
         use_slow: bool = False
         if (dt.datetime.now(tz=dt.UTC) - it) > dt.timedelta(days=30):
             context.log.info(
