@@ -20,6 +20,7 @@ fetcher: FetcherInterface = ceda.Client(
 partitions: InitTimePartitionsDefinition = InitTimePartitionsDefinition(
     start="2017-01-01",
     init_times=["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"],
+    end_offset=-8,
 )
 
 defs: MakeDefinitionsOutputs = make_definitions(
