@@ -3,8 +3,6 @@ import datetime as dt
 import dagster as dg
 from cdsapi import Client
 
-from local_archives.partitions import InitTimePartitionsDefinition
-
 from ._definitions_factory import (
     MakeDefinitionsOptions,
     MakeDefinitionsOutputs,
