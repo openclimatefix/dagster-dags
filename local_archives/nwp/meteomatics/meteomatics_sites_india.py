@@ -81,7 +81,7 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> dg.Output[pathli
     key=["nwp", "meteomatics", "nw_india", "wind_archive"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m",
-        start="2019-01",
+        start="2019-03",
         cron_schedule="0 0 1 * *",  # Once a month
     ),
     metadata={
@@ -99,7 +99,7 @@ def meteomatics_wind_archive() -> dg.Output[str]:
     key=["nwp", "meteomatics", "nw_india", "solar_archive"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m",
-        start="2019-01",
+        start="2019-03",
         cron_schedule="0 0 1 * *",  # Once a month
     ),
     metadata={
