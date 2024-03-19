@@ -2,7 +2,6 @@ import datetime as dt
 
 import dagster as dg
 import meteomatics.api
-import numpy as np
 import pandas as pd
 from pydantic import PrivateAttr
 
@@ -108,14 +107,14 @@ class MeteomaticsAPIResource(dg.ConfigurableResource):
 
         # Ensure subscription limits are respected
         # * Split the parameters into groups of max size
-        param_groups = np.array_split(
-            np.array(params),
-            len(params) // self._subscription_max_requestable_parameters + 1,
-        )
+        groups = [
+            params[i : i + self._subscription_max_requestable_parameters]
+            for i in range(0, len(params), self._subscription_max_requestable_parameters)
+        ]
 
         dfs: list[pd.DataFrame] = []
         try:
-            for param_group in param_groups:
+            for param_group in groups:
                 df: pd.DataFrame = meteomatics.api.query_time_series(
                     coordinate_list=coords,
                     startdate=max(start, self._subscription_min_date),
