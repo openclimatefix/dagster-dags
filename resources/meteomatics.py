@@ -66,6 +66,10 @@ wind_parameters = [
     "wind_gusts_10m:ms",
     "wind_gusts_100m:ms",
     "wind_gusts_200m:ms",
+    "air_density_10m:kgm3",
+    "air_density_25m:kgm3",
+    "air_density_100m:kgm3",
+    "air_density_200m:kgm3",
     "cape:Jkg",
 ]
 
