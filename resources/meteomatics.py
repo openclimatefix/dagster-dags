@@ -90,13 +90,13 @@ class MeteomaticsAPIResource(dg.ConfigurableResource):
     password: str
 
     # Subscription limits
-    subscription_min_date: dt.datetime = PrivateAttr()
-    subscription_max_requestable_parameters = PrivateAttr()
+    _subscription_min_date: dt.datetime = PrivateAttr()
+    _subscription_max_requestable_parameters = PrivateAttr()
 
     def setup_for_execution(self, context) -> None:
         """Set up the resource according to subscription limits."""
-        self.subscription_min_date = dt.datetime(2019, 3, 19, tzinfo=dt.UTC)
-        self.subscription_max_requestable_parameters = 10
+        self._subscription_min_date = dt.datetime(2019, 3, 19, tzinfo=dt.UTC)
+        self._subscription_max_requestable_parameters = 10
 
     def query_api(self, start: dt.datetime, end: dt.datetime, energy_type: str) -> pd.DataFrame:
         """Query the Meteomatics API for NWP data."""
@@ -107,15 +107,15 @@ class MeteomaticsAPIResource(dg.ConfigurableResource):
         )
 
         # Ensure subscription limits are respected
-        param_groups = np.split(params, self.subscription_max_requestable_parameters)
+        param_groups = np.split(params, self._subscription_max_requestable_parameters)
 
         dfs: list[pd.DataFrame] = []
         try:
             for param_group in param_groups:
                 df: pd.DataFrame = meteomatics.api.query_time_series(
                     coordinate_list=coords,
-                    startdate=max(start, self.subscription_min_date),
-                    enddate=max(end, self.subscription_min_date),
+                    startdate=max(start, self._subscription_min_date),
+                    enddate=max(end, self._subscription_min_date),
                     interval=dt.timedelta(minutes=15),
                     parameters=param_group,
                     username=self.username,
