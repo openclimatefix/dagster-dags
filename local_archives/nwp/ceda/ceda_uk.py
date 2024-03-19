@@ -1,7 +1,7 @@
 """CEDA UK data pipeline."""
-
 import os
 
+import dagster as dg
 from nwp_consumer.internal import FetcherInterface
 from nwp_consumer.internal.inputs import ceda
 
@@ -10,17 +10,17 @@ from local_archives.nwp._generic_definitions_factory import (
     MakeDefinitionsOutputs,
     make_definitions,
 )
-from local_archives.partitions import InitTimePartitionsDefinition
 
 fetcher: FetcherInterface = ceda.Client(
     ftpUsername=os.getenv("CEDA_FTP_USER", "not-set"),
     ftpPassword=os.getenv("CEDA_FTP_PASS", "not-set"),
 )
 
-partitions: InitTimePartitionsDefinition = InitTimePartitionsDefinition(
-    start="2017-01-01",
-    init_times=["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"],
-    end_offset=-8,
+partitions: dg.TimeWindowPartitionsDefinition = dg.TimeWindowPartitionsDefinition(
+    start="2017-01-01T00:00",
+    cron_schedule="0 0/3 * * *",  # Every 3 hours
+    fmt="%Y-%m-%dT%H:%M",
+    end_offset=-(8 * 8),  # CEDA only available 8 days back (8 partitions per day)
 )
 
 defs: MakeDefinitionsOutputs = make_definitions(

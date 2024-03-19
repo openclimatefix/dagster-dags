@@ -1,5 +1,6 @@
 import datetime as dt
 
+import dagster as dg
 from cdsapi import Client
 
 from local_archives.partitions import InitTimePartitionsDefinition
@@ -13,9 +14,10 @@ from ._definitions_factory import (
 
 # CAMS data is only available from 3 years ago onwards
 start_date: dt.datetime = dt.datetime.now(tz=dt.UTC) - dt.timedelta(days=3 * 365)
-cams_eu_partitions: InitTimePartitionsDefinition = InitTimePartitionsDefinition(
-    start=start_date.strftime("%Y-%m-%d"),
-    init_times=["00:00"],
+cams_eu_partitions: dg.TimeWindowPartitionsDefinition = dg.TimeWindowPartitionsDefinition(
+    start=start_date.strftime("%Y-%m-%dT%H:%M"),
+    cron_schedule="0 0 * * *",  # Daily at midnight
+    fmt="%Y-%m-%dT%H:%M",
 )
 
 VARIABLES = [

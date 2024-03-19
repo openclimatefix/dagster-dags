@@ -1,6 +1,5 @@
+import dagster as dg
 from cdsapi import Client
-
-from local_archives.partitions import InitTimePartitionsDefinition
 
 from ._definitions_factory import (
     MakeDefinitionsOptions,
@@ -9,9 +8,10 @@ from ._definitions_factory import (
     make_definitions,
 )
 
-cams_global_partitions: InitTimePartitionsDefinition = InitTimePartitionsDefinition(
-    start="2015-01-01",
-    init_times=["00:00", "12:00"],
+cams_global_partitions = dg.TimeWindowPartitionsDefinition(
+    start="2015-01-01T00:00",
+    cron_schedule="0 0,12 * * *",
+    fmt="%Y-%m-%dT%H:%M",
 )
 
 singlelevel_fast_vars: list[str] = [

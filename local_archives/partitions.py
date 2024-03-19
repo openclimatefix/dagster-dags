@@ -5,13 +5,11 @@ import dagster as dg
 # TODO: Maybe move this out to the top level?
 
 
-class InitTimePartitionsDefinition(dg.MultiPartitionsDefinition):
-    """Defines a multi-dimensional partition set based on init times.
+class InitTimePartitionsDefinition(dg.TimeWindowPartitionsDefinition):
+    """Defines a partition set based on init times.
 
-    The first dimension of the partition set is the date part of the init
-    time, and the second is the hour/minute part of the init time.
-    The partition key therefore is of type MultiPartitionsKey, who's
-    `keys_by_dimension` property is a dict with keys `date` and `inittime`.
+    This class is a thin wrapper around the TimeWindowPartitionsDefinition class
+    that creates a partition set based on init times.
     """
 
     def __init__(
@@ -22,7 +20,7 @@ class InitTimePartitionsDefinition(dg.MultiPartitionsDefinition):
         init_times: list[str],
         end_offset: int = 0,
     ) -> None:
-        """Create a multipartitions definition for the given init times.
+        """Create a partitions definition for the given init times.
 
         Args:
             start: The start date of the partition set. Must be of the form

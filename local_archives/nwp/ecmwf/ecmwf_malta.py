@@ -8,16 +8,17 @@ from local_archives.nwp._generic_definitions_factory import (
     MakeDefinitionsOutputs,
     make_definitions,
 )
-from local_archives.partitions import InitTimePartitionsDefinition
 
 fetcher: FetcherInterface = mars.MARSClient(
     area="malta",
+    hours=84,
 )
 
-partitions: InitTimePartitionsDefinition = InitTimePartitionsDefinition(
-    start="2017-01-01",
-    init_times=["00:00", "12:00"],
-    end_offset=-2,
+partitions: dg.TimeWindowPartitionsDefinition = dg.TimeWindowPartitionsDefinition(
+    start="2017-01-01T00:00",
+    cron_schedule="0 0,12 * * *",  # 00:00 and 12:00
+    fmt="%Y-%m-%dT%H:%M",
+    end_offset=-(2 * 2),  # ECMWF only available 2 days back (2 partitions per day)
 )
 
 defs: MakeDefinitionsOutputs = make_definitions(
