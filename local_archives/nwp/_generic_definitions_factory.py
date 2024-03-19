@@ -124,7 +124,7 @@ def make_definitions(
             )
             # Download to temp fails soft, so we need to check the src
             # to see if it is an empty path.
-            fi, src = opts.fetcher.downloadToTemp(fi=fi)
+            src = opts.fetcher.downloadToCache(fi=fi)
             if src is None or src == pathlib.Path():
                 raise ValueError(
                     f"Error downloading file {fi.filename()}. See stdout logs for details.",
@@ -189,7 +189,7 @@ def make_definitions(
         datasets: list[xr.Dataset] = []
         for path in raw_paths:
             context.log.info(f"Converting raw file at {path.as_posix()} to xarray dataset.")
-            datasets.append(opts.fetcher.mapTemp(p=path))
+            datasets.append(opts.fetcher.mapCachedRaw(p=path))
         context.log.info(f"Merging {len(datasets)} datasets into one.")
         ds = xr.merge(datasets, combine_attrs="drop_conflicts")
 
