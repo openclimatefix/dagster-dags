@@ -93,7 +93,7 @@ class MeteomaticsAPIResource(dg.ConfigurableResource):
     subscription_min_date: dt.datetime = PrivateAttr()
     subscription_max_requestable_parameters = PrivateAttr()
 
-    def setup_for_execution(self, context: dg.ResourceContext) -> None:
+    def setup_for_execution(self, context) -> None:
         """Set up the resource according to subscription limits."""
         self.subscription_min_date = dt.datetime(2019, 3, 19, tzinfo=dt.UTC)
         self.subscription_max_requestable_parameters = 10
