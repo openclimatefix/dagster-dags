@@ -59,7 +59,7 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> dg.Output[pathli
 
     pdt = context.partition_time_window.start
     path = pathlib.Path(
-        f"{BASE_PATH}/{'/'.join(context.asset_key.path[:-1])}/{context.asset_key.path[-1]}_{pdt.strftime('%Y')}.zarr.zip",
+        f"{BASE_PATH}/{'/'.join(context.asset_key.path[:-1])}/{context.asset_key.path[-1]}_{pdt.strftime('%Y-%m')}.zarr.zip",
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     with zarr.ZipStore(path.as_posix(), mode="w") as store:
@@ -80,9 +80,9 @@ def store_ds(context: dg.OpExecutionContext, ds: xr.Dataset) -> dg.Output[pathli
 @dg.graph_asset(
     key=["nwp", "meteomatics", "nw_india", "wind_archive"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
-        fmt="%Y",
-        start="2019",
-        cron_schedule="0 0 1 1 *",  # Once a year
+        fmt="%Y-%m",
+        start="2019-01",
+        cron_schedule="0 0 1 * *",  # Once a month
     ),
     metadata={
         "path": dg.MetadataValue.path(f"{BASE_PATH}/nwp/meteomatics/nw_india/wind_archive"),
@@ -98,9 +98,9 @@ def meteomatics_wind_archive() -> dg.Output[str]:
 @dg.graph_asset(
     key=["nwp", "meteomatics", "nw_india", "solar_archive"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
-        fmt="%Y",
-        start="2019",
-        cron_schedule="0 0 1 1 *",  # Once a year
+        fmt="%Y-%m",
+        start="2019-01",
+        cron_schedule="0 0 1 * *",  # Once a month
     ),
     metadata={
         "path": dg.MetadataValue.path(f"{BASE_PATH}/nwp/meteomatics/nw_india/solar_archive"),
