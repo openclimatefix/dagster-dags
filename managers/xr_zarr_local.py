@@ -7,22 +7,6 @@ import zarr
 from ocf_blosc2 import Blosc2
 
 
-def map_partition_to_time(context: dg.InputContext | dg.OutputContext) -> dt.datetime:
-    """Map the partition key to a datetime object."""
-    if context.has_partition_key and type(context.partition_key) == dg.MultiPartitionKey:
-        partkeys = context.partition_key.keys_by_dimension
-        try:
-            it: dt.datetime = dt.datetime.strptime(
-                f"{partkeys['date']}|{partkeys['inittime']}",
-                "%Y-%m-%d|%H:%M",
-            ).replace(tzinfo=dt.UTC)
-            return it
-        except ValueError as e:
-            raise ValueError("Partition key does not contain 'date' and 'inittime' keys.") from e
-    else:
-        raise ValueError("No partition key found or partition key is not a MultiPartitionKey.")
-
-
 class LocalFilesystemXarrayZarrManager(dg.ConfigurableIOManager):
     """IOManager for reading and writing xarray datasets to the local filesystem.
 
@@ -49,7 +33,7 @@ class LocalFilesystemXarrayZarrManager(dg.ConfigurableIOManager):
                 )
 
             asset_prefixes: str = "/".join(context.asset_key.path[:-1])
-            it = map_partition_to_time(context)
+            it = context.asset_partitions_time_window.start
             return (
                 pathlib.Path(self.base_path) / asset_prefixes / it.strftime(self.filename_formatstr)
             )
@@ -79,7 +63,9 @@ class LocalFilesystemXarrayZarrManager(dg.ConfigurableIOManager):
                 "path": dg.MetadataValue.path(dst.as_posix()),
                 "size": dg.MetadataValue.int(dst.stat().st_size),
                 "modified": dg.MetadataValue.text(
-                    dt.datetime.fromtimestamp(dst.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                    dt.datetime.fromtimestamp(dst.stat().st_mtime, tz=dt.UTC).strftime(
+                        "%Y-%m-%d %H:%M:%S",
+                    ),
                 ),
             },
         )
