@@ -11,7 +11,7 @@ from local_archives.nwp._generic_definitions_factory import (
 
 fetcher: FetcherInterface = mars.MARSClient(
     area="nw-india",
-    hours=81,
+    hours=192,
 )
 
 partitions: dg.TimeWindowPartitionsDefinition = dg.TimeWindowPartitionsDefinition(
