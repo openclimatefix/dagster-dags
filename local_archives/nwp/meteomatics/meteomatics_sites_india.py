@@ -15,6 +15,84 @@ from resources import MeteomaticsAPIResource
 env = os.getenv("ENVIRONMENT", "local")
 BASE_PATH = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
 
+# ==== Constants ====
+
+# The order of these coordinate lists are used to determine the station_id
+solar_coords = [
+    (26.264, 71.237),
+    (26.671, 71.262),
+    (26.709, 71.413),
+    (26.871, 71.49),
+    (26.833, 71.815),
+    (26.792, 72.008),
+    (26.892, 72.06),
+    (27.179, 71.841),
+    (27.476, 71.971),
+    (27.387, 72.218),
+    (27.951, 72.987),
+    (28.276, 73.341),
+    (24.687, 75.132),
+    (26.731, 73.2),
+    (26.524, 72.862),
+    (27.207, 74.252),
+    (27.388, 72.208),
+    (27.634, 72.698),
+    (28.344, 73.435),
+    (28.022, 73.067),
+]
+
+wind_coords = [
+    (27.035, 70.515),
+    (27.188, 70.661),
+    (27.085, 70.638),
+    (27.055, 70.72),
+    (27.186, 70.81),
+    (27.138, 71.024),
+    (26.97, 70.917),
+    (26.898, 70.996),
+    (26.806, 70.732),
+    (26.706, 70.81),
+    (26.698, 70.875),
+    (26.708, 70.982),
+    (26.679, 71.027),
+    (26.8, 71.128),
+    (26.704, 71.127),
+    (26.5, 71.285),
+    (26.566, 71.369),
+    (26.679, 71.452),
+    (26.201, 71.295),
+    (26.501, 72.512),
+    (26.463, 72.836),
+    (26.718, 73.049),
+    (26.63, 73.581),
+    (24.142, 74.731),
+    (23.956, 74.625),
+    (23.657, 74.772),
+]
+
+wind_parameters = [
+    "wind_speed_10m:ms",
+    "wind_speed_100m:ms",
+    "wind_speed_200m:ms",
+    "wind_dir_10m:d",
+    "wind_dir_100m:d",
+    "wind_dir_200m:d",
+    "wind_gusts_10m:ms",
+    "wind_gusts_100m:ms",
+    "wind_gusts_200m:ms",
+    "air_density_10m:kgm3",
+    "air_density_25m:kgm3",
+    "air_density_100m:kgm3",
+    "air_density_200m:kgm3",
+    "cape:Jkg",
+]
+
+
+solar_parameters = [
+    "direct_rad:W",
+    "diffuse_rad:W",
+    "global_rad:W",
+]
 
 # ==== Ops ====
 
@@ -27,7 +105,8 @@ def query_meteomatics_wind_api(
     return meteomatics_api.query_api(
         start=context.partition_time_window.start,
         end=context.partition_time_window.end,
-        energy_type="wind",
+        coords=wind_coords,
+        params=wind_parameters,
     )
 
 @dg.op
@@ -39,14 +118,25 @@ def query_meteomatics_solar_api(
     return meteomatics_api.query_api(
         start=context.partition_time_window.start,
         end=context.partition_time_window.end,
-        energy_type="solar",
+        coords=solar_coords,
+        params=solar_parameters,
     )
 
 @dg.op
 def map_df_ds(df: pd.DataFrame) -> xr.Dataset:
     """Map DataFrame to xarray Dataset."""
-    df = df.reset_index(level=["lat", "lon"])
+    # Reset index to create columns for lat, lon, and validdate
+    df = df.reset_index(level=["lat", "lon", "validdate"])
+    # Create a station_id column based on the coordinates
+    df["station_id"] = df.groupby(["lat", "lon"], sort=False).ngroup() + 1
+    # Create a time_utc column based on the validdate
+    df["time_utc"] = pd.to_datetime(df["validdate"])
+    # Make a new index based on station_id and time_utc
+    df = df.set_index(["station_id", "time_utc"]).drop(columns=["validdate"])
+    # Create xarray dataset from dataframe
     ds = xr.Dataset.from_dataframe(df).set_coords(("lat", "lon"))
+    # Ensure time_utc is a timestamp object
+    ds["time_utc"] = pd.to_datetime(ds["time_utc"])
     return ds
 
 
