@@ -18,7 +18,7 @@ partitions: dg.TimeWindowPartitionsDefinition = dg.TimeWindowPartitionsDefinitio
     start="2017-01-01T00:00",
     cron_schedule="0 0,12 * * *",  # 00:00 and 12:00
     fmt="%Y-%m-%dT%H:%M",
-    end_offset=-(2 * 2),  # ECMWF only available 2 days back (2 partitions per day)
+    end_offset=-(3 * 2),  # ECMWF only available 3 days back (2 partitions per day)
 )
 
 defs: MakeDefinitionsOutputs = make_definitions(
