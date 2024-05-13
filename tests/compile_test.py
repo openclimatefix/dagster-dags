@@ -14,4 +14,4 @@ def test_nwp_asset_key_prefixes() -> None:
         # The second element should be the provider
         assert asset.key.path[1] in ["ecmwf", "metoffice", "eumetsat", "cams", "ceda", "meteomatics"]
         # The third element should be the region
-        assert asset.key.path[2] in ["uk", "eu", "global", "nw_india", "malta"]
+        assert asset.key.path[2] in ["uk", "eu", "global", "nw_india", "malta", "india"]
