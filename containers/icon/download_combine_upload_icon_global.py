@@ -3,6 +3,7 @@
 import bz2
 import datetime
 import os
+import pathlib
 import shutil
 from datetime import datetime
 from glob import glob
@@ -128,8 +129,8 @@ pressure_levels = [
 def run(path: str):
 
     for run in ["00", "06", "12", "18"]:
-        if not os.path.exists(f"{path}/{run}/"):
-            os.mkdir(f"{path}/{run}/")
+        if not pathlib.Path(f"{path}/{run}/").exists():
+            pathlib.Path(f"{path}/{run}/").mkdir(parents=True, exist_ok=True)
 
         def get_run():
             now = datetime.now()
@@ -271,8 +272,8 @@ def run(path: str):
             paths = [
                 list(
                     glob(
-                        f"{path}/{run}/icon_global_icosahedral_pressure-level_*_{str(s).zfill(3)}_*_{var_3d.upper()}.grib2"
-                    )
+                        f"{path}/{run}/icon_global_icosahedral_pressure-level_*_{str(s).zfill(3)}_*_{var_3d.upper()}.grib2",
+                    ),
                 )
                 for s in range(73)
             ]
@@ -347,7 +348,7 @@ def run(path: str):
             mode="w",
         ) as store:
             ds.chunk({"step": 37, "values": 122500, "isobaricInhPa": -1}).to_zarr(
-                store, encoding=encoding, compute=True
+                store, encoding=encoding, compute=True,
             )
         done = False
         while not done:
