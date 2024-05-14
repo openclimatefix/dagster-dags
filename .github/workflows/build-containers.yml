@@ -16,7 +16,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    needs: test-unit
     if: github.event_name != 'pull_request'
     strategy:
       matrix:
@@ -40,7 +39,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Container
         id: meta
-        uses: docker/metadata-action
+        uses: docker/metadata-action@v5
         with:
           images: ${{ matrix.image }}
           tags: |
