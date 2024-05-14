@@ -17,7 +17,7 @@ jobs:
       matrix:
         include:
           - folder: containers/icon
-            image: ghcr.io/icon-etl
+            image: ghcr.io/openclimatefix/icon-etl
 
     steps:
       - name: Checkout repository
