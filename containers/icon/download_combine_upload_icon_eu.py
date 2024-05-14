@@ -1,17 +1,18 @@
 """Jacob's icon eu processing script."""
 
-import os
-import xarray as xr
-from datetime import datetime
-import requests
 import bz2
-from multiprocessing import Pool, cpu_count
+import os
+import pathlib
+import shutil
+from datetime import datetime
 from glob import glob
-from ocf_blosc2 import Blosc2
+from multiprocessing import Pool, cpu_count
+
+import requests
+import xarray as xr
+import zarr
 from huggingface_hub import HfApi
 from ocf_blosc2 import Blosc2
-import zarr
-import shutil
 
 api = HfApi(token=os.environ["HF_TOKEN"])
 files = api.list_repo_files("openclimatefix/dwd-icon-eu", repo_type="dataset")
@@ -111,8 +112,8 @@ def run(path: str):
         "12",
         "18",
     ]:
-        if not os.path.exists(f"{path}/{run}/"):
-            os.mkdir(f"{path}/{run}/")
+        if not pathlib.Path(f"{path}/{run}/").exists():
+            pathlib.Path(f"{path}/{run}/").mkdir(parents=True, exist_ok=True)
 
         def get_run():
             now = datetime.now()
@@ -168,7 +169,7 @@ def run(path: str):
                                 date_string,
                                 f_time,
                                 var.upper(),
-                            )
+                            ),
                         )
                 if vars_3d is not None:
                     for var in vars_3d:
@@ -188,15 +189,15 @@ def run(path: str):
                                 f_time,
                                 plev,
                                 var_t.upper(),
-                            )
+                            ),
                         )
 
             return urls
 
         def download_extract_files(urls):
             """Given a list of urls download and bunzip2 them.
-            Return a list of the path of the extracted files"""
-
+            Return a list of the path of the extracted files
+            """
             if type(urls) is list:
                 urls_list = urls
             else:
@@ -270,8 +271,8 @@ def run(path: str):
             paths = [
                 list(
                     glob(
-                        f"{path}/{run}/icon-eu_europe_regular-lat-lon_pressure-level_*_{str(s).zfill(3)}_*_{var_3d.upper()}.grib2"
-                    )
+                        f"{path}/{run}/icon-eu_europe_regular-lat-lon_pressure-level_*_{str(s).zfill(3)}_*_{var_3d.upper()}.grib2",
+                    ),
                 )
                 for s in range(73)
             ]
@@ -279,7 +280,7 @@ def run(path: str):
                 ds = xr.concat(
                     [
                         xr.open_mfdataset(
-                            p, engine="cfgrib", combine="nested", concat_dim="isobaricInhPa"
+                            p, engine="cfgrib", combine="nested", concat_dim="isobaricInhPa",
                         ).sortby("isobaricInhPa")
                         for p in paths
                     ],
@@ -345,7 +346,7 @@ def run(path: str):
                     "latitude": 326,
                     "longitude": 350,
                     "isobaricInhPa": -1,
-                }
+                },
             ).to_zarr(store, encoding=encoding, compute=True)
         done = False
         while not done:
