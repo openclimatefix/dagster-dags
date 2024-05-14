@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - folder: .containers/icon
+          - folder: containers/icon
             image: ghcr.io/icon-etl
 
     steps:
