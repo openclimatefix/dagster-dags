@@ -6,10 +6,6 @@ on:
     paths-ignore:
       - 'README.md'
 
-# Registry for storing Container images
-env:
-  REGISTRY: ghcr.io
-
 jobs:
   build-container:
     runs-on: ubuntu-latest
@@ -20,8 +16,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - folder: .containers/icon
-            image: ${{ env.REGISTRY }}/icon-etl
+          - folder: containers/icon
+            image: ghcr.io/openclimatefix/icon-etl
 
     steps:
       - name: Checkout repository
@@ -33,7 +29,7 @@ jobs:
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -49,7 +45,7 @@ jobs:
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
         with:
-          context: $${{ matrix.folder }}
+          context: ${{ matrix.folder }}
           file: ${{ matrix.folder }}/Containerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
