@@ -45,7 +45,7 @@ jobs:
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
         with:
-          context: $${{ matrix.folder }}
+          context: ${{ matrix.folder }}
           file: ${{ matrix.folder }}/Containerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
