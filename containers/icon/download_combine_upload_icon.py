@@ -290,7 +290,7 @@ def find_file_name(
     to the download_extract_files function if the file does not
     exist it will simply not be downloaded.
     """
-    date_string = dt.datetime.now(tz=dt.UTC).strftime("%Y%m%d") + run_string
+    date_string = dt.datetime.now(tz=dt.timezone.utc).strftime("%Y%m%d") + run_string
     if (len(config.vars_2d) == 0) and (len(config.vars_3d) == 0):
         raise ValueError("You need to specify at least one 2D or one 3D variable")
 
