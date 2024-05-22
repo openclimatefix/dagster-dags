@@ -3,15 +3,15 @@
 import argparse
 import bz2
 import dataclasses
-import datetime
 import datetime as dt
+import logging
 import os
 import pathlib
 import shutil
+import sys
 from glob import glob
 from itertools import repeat
 from multiprocessing import Pool, cpu_count
-from typing import Optional
 
 import requests
 import xarray as xr
@@ -20,6 +20,10 @@ from huggingface_hub import HfApi
 from ocf_blosc2 import Blosc2
 
 api = HfApi(token=os.environ["HF_TOKEN"])
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+log = logging.getLogger("icon-etl")
 
 """
 # CDO grid description file for global regular grid of ICON.
@@ -285,12 +289,12 @@ def find_file_name(
     to the download_extract_files function if the file does not
     exist it will simply not be downloaded.
     """
-    date_string = dt.datetime.now(tz=datetime.UTC).strftime("%Y%m%d") + run_string
+    date_string = dt.datetime.now(tz=dt.UTC).strftime("%Y%m%d") + run_string
     if (len(config.vars_2d) == 0) and (len(config.vars_3d) == 0):
         raise ValueError("You need to specify at least one 2D or one 3D variable")
 
     urls = []
-    for f_time in config.f_times:
+    for f_time in config.f_steps:
         for var in config.vars_2d:
             var_url = config.var_url + "_single-level"
             urls.append(
@@ -313,7 +317,7 @@ def find_file_name(
     return urls
 
 
-def download_extract_url(url: str, folder: str) -> Optional[str]:
+def download_extract_url(url: str, folder: str) -> str | None:
     """Download and extract a file from a given url."""
     filename = folder + os.path.basename(url).replace(".bz2", "")
 
@@ -330,22 +334,20 @@ def download_extract_url(url: str, folder: str) -> Optional[str]:
 
 
 def run(path: str, config: Config) -> None:
-
+    """Download ICON data, combine and upload to Hugging Face Hub."""
     # Download files first
     for run in ["00", "06", "12", "18"]:
         if not pathlib.Path(f"{path}/{run}/").exists():
             pathlib.Path(f"{path}/{run}/").mkdir(parents=True, exist_ok=True)
 
-        f_steps = list(range(0, 73))
-
         not_done = True
         while not_done:
             try:
-                date_string = dt.datetime.now(tz=datetime.UTC).strftime("%Y%m%d") + run
                 urls = find_file_name(
                     config=config,
                     run_string=run,
                 )
+                log.info(f"Downloading {len(urls)} files")
 
                 results: list[str] = []
                 # We only parallelize if we have a number of files
@@ -367,10 +369,11 @@ def run(path: str, config: Config) -> None:
 
                 not_done = False
             except Exception as e:
-                print(e)
+                log.error(e)
                 continue
 
     # Write files to zarr
+    log.info("Converting files")
     for run in ["00", "06", "12", "18"]:
         if config.model_url == "icon/grib":
             lon_ds = xr.open_mfdataset(
@@ -408,7 +411,7 @@ def run(path: str, config: Config) -> None:
                     dim="step",
                 ).sortby("step")
             except Exception as e:
-                print(e)
+                log.error(e)
                 continue
             ds = ds.rename({v: var_3d for v in ds.data_vars})
             coords_to_remove = []
@@ -418,13 +421,13 @@ def run(path: str, config: Config) -> None:
             if len(coords_to_remove) > 0:
                 ds = ds.drop_vars(coords_to_remove)
             datasets.append(ds)
-            print(ds)
+            log.debug(ds)
         ds_atmos = xr.merge(datasets)
 
         total_dataset = []
         for var_2d in config.vars_2d:
             datasets = []
-            print(var_2d)
+            log.debug(var_2d)
             try:
                 ds = (
                     xr.open_mfdataset(
@@ -438,7 +441,7 @@ def run(path: str, config: Config) -> None:
                     .drop_vars("valid_time")
                 )
             except Exception as e:
-                print(e)
+                log.error(e)
                 continue
             # Rename data variable to name in list, so no conflicts
             ds = ds.rename({v: var_2d for v in ds.data_vars})
@@ -449,16 +452,16 @@ def run(path: str, config: Config) -> None:
                     coords_to_remove.append(coord)
             if len(coords_to_remove) > 0:
                 ds = ds.drop_vars(coords_to_remove)
-            print(ds)
+            log.debug(ds)
             total_dataset.append(ds)
         ds = xr.merge(total_dataset)
-        print(ds)
+        log.debug(ds)
         # Merge both
         ds = xr.merge([ds, ds_atmos])
         # Add lats and lons manually for icon global
         if config.model_url == "icon/grib":
             ds = ds.assign_coords({"latitude": lats, "longitude": lons})
-        print(ds)
+        log.debug(ds)
         encoding = {var: {"compressor": Blosc2("zstd", clevel=9)} for var in ds.data_vars}
         encoding["time"] = {"units": "nanoseconds since 1970-01-01"}
         with zarr.ZipStore(
@@ -484,7 +487,7 @@ def run(path: str, config: Config) -> None:
                 shutil.rmtree(f"{path}/{run}/")
                 os.remove(f"{path}/{run}.zarr.zip")
             except Exception as e:
-                print(e)
+                log.error(e)
 
 
 if __name__ == "__main__":
@@ -493,10 +496,11 @@ if __name__ == "__main__":
     parser.add_argument("area", choices=["eu", "global"])
     parser.add_argument("--path", default="/tmp/nwp")
 
-    print("Starting ICON download script")
+    log.info("Starting ICON download script")
     args = parser.parse_args()
 
+    path: str = f"{args.path}/{args.area}"
     if args.area == "eu":
-        run(path=args.path, config=EUROPE_CONFIG)
+        run(path=path, config=EUROPE_CONFIG)
     elif args.area == "global":
-        run(path=args.path, config=GLOBAL_CONFIG)
+        run(path=path, config=GLOBAL_CONFIG)
