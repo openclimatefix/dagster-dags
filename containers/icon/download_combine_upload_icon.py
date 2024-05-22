@@ -11,6 +11,7 @@ import shutil
 from glob import glob
 from itertools import repeat
 from multiprocessing import Pool, cpu_count
+from typing import Optional
 
 import requests
 import xarray as xr
@@ -312,7 +313,7 @@ def find_file_name(
     return urls
 
 
-def download_extract_url(url: str, folder: str) -> str | None:
+def download_extract_url(url: str, folder: str) -> Optional[str]:
     """Download and extract a file from a given url."""
     filename = folder + os.path.basename(url).replace(".bz2", "")
 
