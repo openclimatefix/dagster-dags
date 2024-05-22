@@ -75,7 +75,7 @@ def make_definitions(
             "source": dg.MetadataValue.text(opts.source),
         },
         compute_kind="download",
-        op_tags={"MAX_RUNTIME_SECONDS_TAG": int(60 * 100)},
+        op_tags={"dagster/max_runtime": int(60 * 100)},
     )
     def _raw_archive(
         context: dg.AssetExecutionContext,
@@ -177,7 +177,7 @@ def make_definitions(
             "area": dg.MetadataValue.text(opts.area),
             "source": dg.MetadataValue.text(opts.source),
         },
-        op_tags={"MAX_RUNTIME_SECONDS_TAG": 60 * 5},
+        op_tags={"dagster/max_runtime": 60 * 10},
     )
     def _zarr_archive(
         context: dg.AssetExecutionContext,
