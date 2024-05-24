@@ -17,6 +17,8 @@ from itertools import repeat
 from typing import Literal
 
 import diskcache as dc
+import eumdac
+import eumdac.cli
 import numpy as np
 import pandas as pd
 import pyproj
@@ -24,12 +26,13 @@ import pyresample
 import xarray as xr
 import yaml
 from ocf_blosc2 import Blosc2
-from typing import union
+from requests.exceptions import HTTPError
 from satpy import Scene
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+logging.getLogger("eumdac").setLevel(logging.WARN)
 log = logging.getLogger(__name__)
 
 # OSGB is also called "OSGB 1936 / British National Grid -- United
@@ -147,42 +150,41 @@ def download_scans(
     for scan_time in scan_times:
         # Authenticate
         # * Generates a new access token with short expiry
-        process = subprocess.run(
-            [
-                "eumdac",
-                "--set-credentials",
-                consumer_key,
-                consumer_secret,
-                "\n",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        if process.returncode != 0:
-            log.warn(f"Unable to authenticate with eumdac: {process.stdout} {process.stderr}")
-            failed_scan_times.append(scan_time)
-            continue
+        # * Equivalent to `eumdac --set-credentials <key> <secret>`
+        credentials_path = pathlib.Path.home() / ".eumdac" / "credentials"
+        credentials_path.parent.mkdir(exist_ok=True, parents=True)
+        token = eumdac.AccessToken(credentials=(consumer_key, consumer_secret))
+        try:
+            log.debug("Credentials are correct. Token generated: {token}")
+            credentials_path.write_text(f"{consumer_key},{consumer_secret}")
+            log.debug(f"Credentials written to file {credentials_path.as_posix()}")
+        except HTTPError as e:
+            if e.response.status_code == 401:
+                log.error("Invalid credentials. Please check your EUMETSAT credentials.")
+                break
+            else:
+                log.error(f"Error getting credentials: {e}")
+                failed_scan_times.append(scan_time)
+                continue
 
         # Download
+        # * Equivalent to `eumdac download -c <product_id> -s <start_time> -e <end_time> -o <output_dir> --entry *.nat -y`
         window_start: pd.Timestamp = scan_time - pd.Timedelta(sat_config.cadence)
         window_end: pd.Timestamp = scan_time + pd.Timedelta(sat_config.cadence)
-        process = subprocess.run(
-            [
-                "eumdac",
-                "download",
-                "-c", sat_config.product_id,
-                "-s", window_start.tz_localize(None).strftime("%Y-%m-%dT%H:%M:%S"),
-                "-e", window_end.tz_localize(None).strftime("%Y-%m-%dT%H:%M:%S"),
-                "-o", sat_config.native_path,
-                "--entry",
-                "*.nat",
-                "-y",
-            ],
-            capture_output=True,
-            text=True,
-        )
-        if process.returncode != 0:
-            log.debug(f"Failed to download scans for scan_time {scan_time}")
+        try:
+            eumdac.cli.download(
+                argparse.Namespace(
+                    entry=["*.nat"],
+                    output_dir=sat_config.native_path,
+                    product=sat_config.product_id,
+                    start=window_start,
+                    end=window_end,
+                    token=token,
+                    yes=True,
+                ),
+            )
+        except eumdac.errors.EumdacError as e:
+            log.error(f"Error downloading files: {e}")
             failed_scan_times.append(scan_time)
 
         pbar.update(1)
@@ -362,7 +364,7 @@ def _serialize_attrs(attrs: dict) -> dict:
 
     return attrs
 
-def _rescale(dataarray: xr.DataArray, channels: list[Channel]) -> Union[xr.DataArray, None]:
+def _rescale(dataarray: xr.DataArray, channels: list[Channel]) -> xr.DataArray | None:
         """Rescale Xarray DataArray so all values lie in the range [0, 1].
 
         Warning: The original `dataarray` will be modified in-place.

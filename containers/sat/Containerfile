@@ -5,14 +5,12 @@ FROM quay.io/condaforge/miniforge3:latest AS build-venv
 RUN apt -qq update && apt -qq install -y build-essential
 RUN conda create -p /venv python=3.12
 RUN /venv/bin/pip install --upgrade -q pip wheel setuptools
-RUN conda install -p /venv -c conda-forge -y cartopy satpy[all] eccodes numpy matplotlib rasterio
+RUN conda install -p /venv -c conda-forge -y cartopy satpy[all] numpy
 ENV GDAL_CONFIG=/venv/bin/gdal-config
 
 # Build the virtualenv
-# * We don't want the bufr eccodes definitions so save space by deleting them
 FROM build-venv as install-reqs
-RUN /venv/bin/python -m pip install -q satip
-RUN rm -r /venv/share/eccodes/definitions/bufr
+RUN /venv/bin/python -m pip install -q diskcache pyproj pyresample xarray pyyaml ocf_blosc2 tqdm
 
 
 # Copy the virtualenv into a distroless image
