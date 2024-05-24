@@ -33,6 +33,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger("eumdac").setLevel(logging.WARN)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
 
 # OSGB is also called "OSGB 1936 / British National Grid -- United
@@ -176,11 +177,37 @@ def download_scans(
                 argparse.Namespace(
                     entry=["*.nat"],
                     output_dir=sat_config.native_path,
-                    product=sat_config.product_id,
+                    collection=[sat_config.product_id],
                     start=window_start,
                     end=window_end,
                     token=token,
                     yes=True,
+                    test=False,
+                    query=None,
+                    product=None,
+                    publication_after=None,
+                    publication_before=None,
+                    sort=None,
+                    dtstart=None,
+                    dtend=None,
+                    bbox=None,
+                    geo=None,
+                    sat=None,
+                    cycle=None,
+                    orbit=None,
+                    relorbit=None,
+                    filename=None,
+                    timeliness=None,
+                    product_type=None,
+                    limit=None,
+                    integrity=None,
+                    download_coverage=None,
+                    tailor=None,
+                    chain=None,
+                    dirs=None,
+                    onedir=None,
+                    no_warning_logs=None,
+                    keep_order=None,
                 ),
             )
         except eumdac.errors.EumdacError as e:
