@@ -18,6 +18,8 @@ jobs:
         include:
           - folder: containers/icon
             image: ghcr.io/openclimatefix/icon-etl
+          - folder: containers/sat
+            image: ghcr.io/openclimatefix/sat-etl
 
     steps:
       - name: Checkout repository
