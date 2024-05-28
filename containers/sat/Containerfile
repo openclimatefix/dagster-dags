@@ -10,7 +10,7 @@ ENV GDAL_CONFIG=/venv/bin/gdal-config
 
 # Build the virtualenv
 FROM build-venv as install-reqs
-RUN /venv/bin/python -m pip install -q diskcache pyproj pyresample xarray pyyaml ocf_blosc2 tqdm eumdac
+RUN /venv/bin/python -m pip install -q diskcache pyproj pyresample xarray pyyaml ocf_blosc2 eumdac requests
 
 
 # Copy the virtualenv into a distroless image

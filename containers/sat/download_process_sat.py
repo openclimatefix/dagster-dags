@@ -28,13 +28,11 @@ import yaml
 from ocf_blosc2 import Blosc2
 from requests.exceptions import HTTPError
 from satpy import Scene
-from tqdm import tqdm
-from tqdm.contrib.logging import logging_redirect_tqdm
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logging.getLogger("eumdac").setLevel(logging.WARN)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
-log = logging.getLogger(__name__)
+log = logging.getLogger("sat-etl")
 
 # OSGB is also called "OSGB 1936 / British National Grid -- United
 # Kingdom Ordnance Survey".  OSGB is used in many UK electricity
@@ -140,15 +138,11 @@ def download_scans(
     consumer_key: str = os.environ["EUMETSAT_CONSUMER_KEY"]
     consumer_secret: str = os.environ["EUMETSAT_CONSUMER_SECRET"]
 
-    # Create progressbar
-    pbar = tqdm(
-        total=len(scan_times),
-        position=0 if scan_times[0] < scan_times[-1] else 1,
-        desc="forward" if scan_times[0] < scan_times[-1] else "backward",
-    )
-
+    log.info
+    direction: str = "forward" if scan_times[0] < scan_times[-1] else "backward"
+    i: int
     scan_time: pd.Timestamp
-    for scan_time in scan_times:
+    for i, scan_time in enumerate(scan_times):
         # Authenticate
         # * Generates a new access token with short expiry
         # * Equivalent to `eumdac --set-credentials <key> <secret>`
@@ -214,7 +208,7 @@ def download_scans(
             log.error(f"Error downloading files: {e}")
             failed_scan_times.append(scan_time)
 
-        pbar.update(1)
+        log.info(f"Download [{direction}]: {i}/{len(scan_times)}")
 
     return failed_scan_times
 
@@ -240,17 +234,12 @@ def process_scans(
     log.info(f"Found {len(native_files)} native files at {sat_config.native_path}")
     native_files.sort()
 
-    # Create progressbar
-    pbar = tqdm(
-        total=len(native_files),
-        position=0 if dstype == "hrv" else 1,
-        desc=f"{dstype}",
-    )
-
     # Convert native files to xarray datasets
     # * Append to the yearly zarr in hourly chunks
     datasets: list[xr.Dataset] = []
-    for f in native_files:
+    i: int
+    f: pathlib.Path
+    for i, f in enumerate(native_files):
         try:
             dataset: xr.Dataset | None = _open_and_scale_data(zarr_times, f.as_posix(), dstype)
         except Exception as e:
@@ -275,7 +264,7 @@ def process_scans(
             )
             datasets = []
 
-        pbar.update(1)
+        log.info(f"Process loop [{dstype}]: {i}/{len(native_files)}")
 
     # Consolidate zarr metadata
     _rewrite_zarr_times(zarr_path)
@@ -550,8 +539,6 @@ parser.add_argument(
 )
 
 if __name__ == "__main__":
-    # Prevent logs interfering with progressbar
-    logging_redirect_tqdm(loggers=[log])
     prog_start = dt.datetime.now(tz=dt.UTC)
 
     # Parse running args
