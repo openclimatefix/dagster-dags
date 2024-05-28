@@ -496,12 +496,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("area", choices=["eu", "global"])
     parser.add_argument("--path", default="/tmp/nwp")
+    parser.add_argument("--rm", action="store_true", help="Remove files on exit")
 
     log.info("Starting ICON download script")
     args = parser.parse_args()
 
     path: str = f"{args.path}/{args.area}"
+    # Cleanup any leftover files in path
+    if args.rm:
+        shutil.rmtree(path, ignore_errors=True)
     if args.area == "eu":
         run(path=path, config=EUROPE_CONFIG)
     elif args.area == "global":
         run(path=path, config=GLOBAL_CONFIG)
+    # Remove files
+    if args.rm:
+        shutil.rmtree(path, ignore_errors=True)
