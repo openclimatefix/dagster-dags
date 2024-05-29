@@ -20,6 +20,8 @@ jobs:
             image: ghcr.io/openclimatefix/icon-etl
           - folder: containers/sat
             image: ghcr.io/openclimatefix/sat-etl
+          - folder: containers/gfs
+            image: ghcr.io/openclimatefix/gfs-etl
 
     steps:
       - name: Checkout repository
