@@ -345,6 +345,7 @@ def run(path: str, config: Config) -> None:
         if not pathlib.Path(f"{path}/{run}/").exists():
             pathlib.Path(f"{path}/{run}/").mkdir(parents=True, exist_ok=True)
 
+        results: list[str] = []
         not_done = True
         while not_done:
             try:
@@ -354,7 +355,6 @@ def run(path: str, config: Config) -> None:
                 )
                 log.info(f"Downloading {len(urls)} files")
 
-                results: list[str] = []
                 # We only parallelize if we have a number of files
                 # larger than the cpu count
                 if len(urls) > cpu_count():
@@ -377,10 +377,12 @@ def run(path: str, config: Config) -> None:
                 log.error(e)
                 continue
 
+        log.info(f"Downloaded {len(results)} files for run {run}")
+
     # Write files to zarr
     log.info("Converting files")
     for run in ["00", "06", "12", "18"]:
-        if config.model_url == "icon/grib":
+        if config == GLOBAL_CONFIG:
             lon_ds = xr.open_mfdataset(
                 f"{path}/{run}/icon_global_icosahedral_time-invariant_*_CLON.grib2", engine="cfgrib",
             )
@@ -401,13 +403,14 @@ def run(path: str, config: Config) -> None:
                 )
                 for s in range(len(config.f_steps))
             ]
+            log.debug(f"Creating dataset for {var_3d} from {len(paths)} files")
             try:
                 ds = xr.concat(
                     [
                         xr.open_mfdataset(
                             p,
                             engine="cfgrib",
-                            backend_kwargs={"errors": "ignore"},
+                            backend_kwargs={"errors": "ignore"} if config == GLOBAL_CONFIG else {},
                             combine="nested",
                             concat_dim="isobaricInhPa",
                         ).sortby("isobaricInhPa")
@@ -426,7 +429,7 @@ def run(path: str, config: Config) -> None:
             if len(coords_to_remove) > 0:
                 ds = ds.drop_vars(coords_to_remove)
             datasets.append(ds)
-            log.debug(ds)
+            log.debug(f"Dataset for {var_3d} created: {ds}")
         ds_atmos = xr.merge(datasets)
 
         total_dataset = []
@@ -457,16 +460,16 @@ def run(path: str, config: Config) -> None:
                     coords_to_remove.append(coord)
             if len(coords_to_remove) > 0:
                 ds = ds.drop_vars(coords_to_remove)
-            log.debug(ds)
+            log.debug(f"Dataset for {var_2d} created: {ds}")
             total_dataset.append(ds)
         ds = xr.merge(total_dataset)
-        log.debug(ds)
+        log.debug("Merged 2D datasets")
         # Merge both
         ds = xr.merge([ds, ds_atmos])
         # Add lats and lons manually for icon global
-        if config.model_url == "icon/grib":
+        if config == GLOBAL_CONFIG:
             ds = ds.assign_coords({"latitude": lats, "longitude": lons})
-        log.debug(ds)
+        log.debug(f"Created final dataset for run {run}: {ds}")
         encoding = {var: {"compressor": Blosc2("zstd", clevel=9)} for var in ds.data_vars}
         encoding["time"] = {"units": "nanoseconds since 1970-01-01"}
         with zarr.ZipStore(
