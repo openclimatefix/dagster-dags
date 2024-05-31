@@ -63,18 +63,21 @@ def get_daily_passiv_data(start_date: datetime, upload_to_hf: bool = True):
 @dg.asset(
     key=["pv", "passiv", "daily"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
-        fmt="%Y-%m",
-        start="2023-01",
+        fmt="%Y-%m-%d",
+        start="2023-01-01",
         cron_schedule="12 1 * * *",  # Once a day, at 12 oclock
     ),
     # metadata={
     #     "path": dg.MetadataValue.path(f"{BASE_PATH}/nwp/meteomatics/nw_india/solar_archive"),
     # },
 )
-def pv_passiv_daily():
+def pv_passiv_daily(context: dg.AssetExecutionContext):
     """PV Passiv archive asset."""
 
-    start_date = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=2)
+    partition_date_str = context.partition_key
+    start_date = datetime.datetime.strptime(partition_date_str, "%Y-%m-%d")
+    start_date = pytz.utc.localize(start_date)
+
     get_daily_passiv_data(start_date)
 
 
