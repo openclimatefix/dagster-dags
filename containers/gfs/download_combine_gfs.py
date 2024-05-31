@@ -36,7 +36,7 @@ class Config:
     steps: list[int]
 
 DEFAULT_CONFIG = Config(
-    steps=list(range(0, 60, 3)),
+    steps=list(range(0, 84, 3)),
 )
 
 def download_url(url: str, folder: str) -> str | None:
