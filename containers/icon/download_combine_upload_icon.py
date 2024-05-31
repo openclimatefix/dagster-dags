@@ -361,7 +361,7 @@ def run(path: str, config: Config) -> None:
                     pool = Pool(cpu_count())
                     results = pool.starmap(
                         download_extract_url,
-                        zip(urls, repeat(f"{path}/{run}/")),
+                        [(url, f"{path}/{run}/") for url in urls],
                     )
                     pool.close()
                     pool.join()
@@ -429,7 +429,7 @@ def run(path: str, config: Config) -> None:
             if len(coords_to_remove) > 0:
                 ds = ds.drop_vars(coords_to_remove)
             datasets.append(ds)
-            log.debug(f"Dataset for {var_3d} created: {ds}")
+            log.debug(f"Dataset for {var_3d} created: {ds.to_dict(data=False)}")
         ds_atmos = xr.merge(datasets)
 
         total_dataset = []
@@ -460,7 +460,7 @@ def run(path: str, config: Config) -> None:
                     coords_to_remove.append(coord)
             if len(coords_to_remove) > 0:
                 ds = ds.drop_vars(coords_to_remove)
-            log.debug(f"Dataset for {var_2d} created: {ds}")
+            log.debug(f"Dataset for {var_2d} created: {ds.to_dict(data=False)}")
             total_dataset.append(ds)
         ds = xr.merge(total_dataset)
         log.debug("Merged 2D datasets")
@@ -469,7 +469,7 @@ def run(path: str, config: Config) -> None:
         # Add lats and lons manually for icon global
         if config == GLOBAL_CONFIG:
             ds = ds.assign_coords({"latitude": lats, "longitude": lons})
-        log.debug(f"Created final dataset for run {run}: {ds}")
+        log.debug(f"Created final dataset for run {run}: {ds.to_dict(data=False)}")
         encoding = {var: {"compressor": Blosc2("zstd", clevel=9)} for var in ds.data_vars}
         encoding["time"] = {"units": "nanoseconds since 1970-01-01"}
         with zarr.ZipStore(
