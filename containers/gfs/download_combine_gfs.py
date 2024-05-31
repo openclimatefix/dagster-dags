@@ -123,6 +123,8 @@ def convert_file(file: str, outfolder: str) -> str | None:
     with zarr.DirectoryStore(path=outfile) as store:
         total_ds.to_zarr(store, compute=True)
     del total_ds
+    # Delete the original raw file
+    os.remove(file)
     return outfile
 
 def _combine_datasets(dsp1: str, dsp2: str) -> str:
@@ -227,7 +229,11 @@ if __name__ == "__main__":
     prog_start = dt.datetime.now(tz=dt.UTC)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path", default="/tmp/gfs", help="Path to save the data")
+    parser.add_argument(
+        "--path",
+        default="/tmp/gfs",
+        help="Path to save the data",
+    )
     parser.add_argument(
         "--date",
         type=dt.date.fromisoformat,
