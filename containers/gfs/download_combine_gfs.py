@@ -238,8 +238,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
     log.info(f"{prog_start!s}: Running with args: {args}")
     out = run(path=args.path, config=DEFAULT_CONFIG, date=args.date)
+    ds = xr.open_zarr(out)
+    prog_end = dt.datetime.now(tz=dt.UTC)
 
     with dagster_pipes.open_dagster_pipes():
         context = dagster_pipes.PipesContext.get()
-        context.report_asset_materialization(metadata={"path": out, "size": os.path.getsize(out)})
+        context.report_asset_materialization(
+            metadata={
+                "path": out,
+                "dataset": str(ds),
+                "size_bytes": os.path.getsize(out),
+                "elapsed_time_seconds": (prog_end - prog_start).total_seconds(),
+            },
+        )
 

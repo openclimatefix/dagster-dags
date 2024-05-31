@@ -17,6 +17,7 @@ resources_by_env = {
             username=dg.EnvVar("METEOMATICS_USERNAME"),
             password=dg.EnvVar("METEOMATICS_PASSWORD"),
         ),
+        "pipes_subprocess_client": dg.PipesSubprocessClient(),
     },
     "local": {
         "nwp_xr_zarr_io": managers.LocalFilesystemXarrayZarrManager(
@@ -26,6 +27,7 @@ resources_by_env = {
             username=dg.EnvVar("METEOMATICS_USERNAME"),
             password=dg.EnvVar("METEOMATICS_PASSWORD"),
         ),
+        "pipes_subprocess_client": dg.PipesSubprocessClient(),
     },
 }
 

@@ -1,17 +1,22 @@
-import dagster as dg
-import dagster_docker as dgd
+import os
+import shutil
 
+import dagster as dg
+
+import containers.gfs.download_combine_gfs
 from constants import LOCATIONS_BY_ENVIRONMENT
 
+env = os.getenv("ENVIRONMENT", "local")
 ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
 
 @dg.asset(
     name="zarr_daily_archive",
+    description="Daily archive of GFS global NWP data",
     key_prefix=["nwp", "gfs", "global"],
     auto_materialize_policy=dg.AutoMaterializePolicy.eager(),
     partitions_def=dg.DailyPartitionsDefinition(
         start_date="2015-01-15",
-        offset=-2,
+        end_offset=-2,
     ),
     metadata={
         "archive_folder": dg.MetadataValue.text(f"{ZARR_FOLDER}/nwp/gfs/global"),
@@ -21,12 +26,13 @@ ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
 )
 def zarr_archive(
     context: dg.AssetExecutionContext,
-    pipes_client: dgd.PipesDockerClient,
+    pipes_subprocess_client: dg.PipesSubprocessClient,
 ):
-    return pipes_client.run(
+    return pipes_subprocess_client.run(
         context=context,
-        image="ghcr.io/openclimatefix/gfs-etl:main",
         command=[
+            shutil.which("python"),
+            os.path.abspath(containers.gfs.download_combine_gfs.__file__),
             "--date",
             context.partition_time_window.start.strftime("%Y-%m-%d"),
             "--path",
