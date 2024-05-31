@@ -60,7 +60,7 @@ def get_daily_passiv_data(start_date: datetime, upload_to_hf: bool = True):
         )
 
 
-@dg.graph_asset(
+@dg.asset(
     key=["pv", "passiv", "daily"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m",
@@ -72,9 +72,9 @@ def get_daily_passiv_data(start_date: datetime, upload_to_hf: bool = True):
     # },
 )
 def pv_passiv_daily():
-    """Meteomatics solar archive asset."""
+    """PV Passiv archive asset."""
 
-    start_date = datetime.datetime.now() - datetime.timedelta(days=2)
+    start_date = datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=2)
     get_daily_passiv_data(start_date)
 
 
