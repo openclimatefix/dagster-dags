@@ -194,7 +194,6 @@ def _iso8601_fn(dt):
 def _query_api(base_url, endpoint, params, proxies):
     """Query the API with some REST parameters."""
     url = _build_url(base_url, endpoint, params)
-    print(url)
     return _fetch_url(url, proxies)
 
 
