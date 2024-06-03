@@ -335,6 +335,7 @@ def download_extract_url(url: str, folder: str) -> str | None:
                 dest.write(bz2.decompress(source.read()))
             return filename
         else:
+            log.warn(f"Error downloading file at url {url}: {r.status_code}")
             return None
 
 
