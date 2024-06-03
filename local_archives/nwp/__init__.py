@@ -2,13 +2,14 @@
 
 import dagster as dg
 
-from . import cams, ceda, ecmwf, jobs, meteomatics
+from . import cams, ceda, ecmwf, jobs, meteomatics, gfs
 
 all_assets: list[dg.AssetsDefinition] = [
     *ceda.all_assets,
     *ecmwf.all_assets,
     *cams.all_assets,
     *meteomatics.all_assets,
+    *gfs.all_assets,
 ]
 
 all_jobs: list[dg.JobDefinition] = [
