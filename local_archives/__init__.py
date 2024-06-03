@@ -1,6 +1,7 @@
 import os
 
 import dagster as dg
+from dagster_docker import PipesDockerClient
 
 import managers
 import resources
@@ -18,6 +19,7 @@ resources_by_env = {
             password=dg.EnvVar("METEOMATICS_PASSWORD"),
         ),
         "pipes_subprocess_client": dg.PipesSubprocessClient(),
+        "pipes_docker_client": PipesDockerClient(),
     },
     "local": {
         "nwp_xr_zarr_io": managers.LocalFilesystemXarrayZarrManager(
@@ -28,6 +30,7 @@ resources_by_env = {
             password=dg.EnvVar("METEOMATICS_PASSWORD"),
         ),
         "pipes_subprocess_client": dg.PipesSubprocessClient(),
+        "pipes_docker_client": PipesDockerClient(),
     },
 }
 
