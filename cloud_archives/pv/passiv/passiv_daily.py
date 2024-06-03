@@ -7,10 +7,21 @@ from huggingface_hub.hf_api import HfApi
 import dagster as dg
 
 from .ss_rawdata_api import SSRawDataAPI
+from .filenames import get_daily_hf_file_name
+from huggingface_hub import HfFileSystem
 
 
-def get_daily_passiv_data(start_date: datetime, upload_to_hf: bool = True):
+def get_daily_passiv_data(start_date: datetime, upload_to_hf: bool = True, overwrite: bool = False):
     """ Get dail passiv data and save to Hugging Face"""
+
+    # check if we have data for that day already
+    huggingface_file = get_daily_hf_file_name(date=start_date)
+    if not overwrite:
+        fs = HfFileSystem()
+        if fs.exists(f'datasets/openclimatefix/uk_pv/{huggingface_file}'):
+            print(f"Data already exists for {start_date.date()}")
+            return
+
 
     # set end date
     end_date = start_date + datetime.timedelta(days=1)
@@ -49,12 +60,11 @@ def get_daily_passiv_data(start_date: datetime, upload_to_hf: bool = True):
 
     # upload to hugging face
     if upload_to_hf:
-        huggingface_dir = f"data/{start_date.strftime('%Y/%m/%d')}/5min.parquet"
         api = HfApi()
         api.token = os.getenv("HUGGINGFACE_TOKEN")
         api.upload_file(
             path_or_fileobj=file,
-            path_in_repo=huggingface_dir,
+            path_in_repo=huggingface_file,
             repo_id="openclimatefix/uk_pv",
             repo_type="dataset",
         )
@@ -65,7 +75,7 @@ def get_daily_passiv_data(start_date: datetime, upload_to_hf: bool = True):
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m-%d",
         start="2023-01-01",
-        cron_schedule="12 1 * * *",  # Once a day, at 12 oclock
+        cron_schedule="0 12 * * *",  # Once a day, at 12 oclock
     ),
     # metadata={
     #     "path": dg.MetadataValue.path(f"{BASE_PATH}/nwp/meteomatics/nw_india/solar_archive"),
