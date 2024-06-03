@@ -322,7 +322,7 @@ def find_file_name(
     return urls
 
 
-def download_extract_url(url: str, folder: str) -> Optional[str]:
+def download_extract_url(url: str, folder: str) -> str | None:
     """Download and extract a file from a given url."""
     filename = folder + os.path.basename(url).replace(".bz2", "")
 
@@ -345,7 +345,7 @@ def run(path: str, config: Config) -> None:
         if not pathlib.Path(f"{path}/{run}/").exists():
             pathlib.Path(f"{path}/{run}/").mkdir(parents=True, exist_ok=True)
 
-        results: list[str] = []
+        results: list[str | None] = []
         not_done = True
         while not_done:
             try:
@@ -374,10 +374,16 @@ def run(path: str, config: Config) -> None:
 
                 not_done = False
             except Exception as e:
-                log.error(e)
+                log.error("Error downloading files: {e}")
                 continue
 
-        log.info(f"Downloaded {len(results)} files for run {run}")
+        filepaths: list[str] = list(filter(None, results))
+        nbytes: int = sum([os.path.getsize(f) for f in filepaths])
+        log.info(
+            f"Downloaded {len(filepaths)} files"
+            f"with {len(results) - len(filepaths)} failed downloads"
+            f"for run {run}: {nbytes} bytes",
+        )
 
     # Write files to zarr
     log.info("Converting files")
@@ -396,14 +402,15 @@ def run(path: str, config: Config) -> None:
         for var_3d in config.vars_3d:
             paths = [
                 list(
-                    glob(
-                        f"{path}/{run}/{config.var_url}_pressure-level_*_"
-                        f"{str(s).zfill(3)}_*_{var_3d.upper()}.grib2",
+                    pathlib.Path(f"{path}/{run}").glob(
+                        f"{config.var_url}_pressure-level_*_{str(s).zfill(3)}_*_{var_3d.upper()}.grib2",
                     ),
                 )
                 for s in range(len(config.f_steps))
             ]
-            log.debug(f"Creating dataset for {var_3d} from {len(paths)} files")
+            log.debug(
+                f"Creating dataset for {var_3d} from {len(paths)} filesets of {len(paths[0])} files",
+            )
             try:
                 ds = xr.concat(
                     [
