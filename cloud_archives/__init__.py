@@ -7,6 +7,6 @@ from .pv import passiv
 
 defs = dg.Definitions(
     assets=[*icon.all_assets, *passiv.all_assets],
-    jobs=[*icon.all_jobs], # TODO all jobs?
+    jobs=[*icon.all_jobs],
     schedules=[dg.build_schedule_from_partitioned_job(job) for job in icon.all_jobs],
 )

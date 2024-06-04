@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_monthly_passiv_data(start_date: datetime, upload_to_hf: bool = True, overwrite: bool = False, period:int=5):
-    """ Get dail passiv data and save to Hugging Face"""
+    """ Get monthly passiv data and save to Hugging Face"""
 
     logger.info(f"Getting data for {start_date}")
 
