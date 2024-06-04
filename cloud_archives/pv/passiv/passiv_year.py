@@ -10,11 +10,11 @@ from huggingface_hub import HfFileSystem
 from .filenames import get_monthly_hf_file_name, get_yearly_hf_file_name
 
 
-def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, overwrite: bool = False):
+def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, overwrite: bool = False, period:int=5):
     """ Get yearly passiv data and save to Hugging Face"""
 
     # set up HF and check if we have data for that day already
-    huggingface_file = get_yearly_hf_file_name(date=start_date)
+    huggingface_file = get_yearly_hf_file_name(date=start_date, period=period)
     fs = HfFileSystem()
     if not overwrite:
         if fs.exists(f'datasets/openclimatefix/uk_pv/{huggingface_file}'):
@@ -30,7 +30,7 @@ def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, over
     while date < end_date:
 
         # load file from hugging face
-        huggingface_load_file = get_monthly_hf_file_name(date=date)
+        huggingface_load_file = get_monthly_hf_file_name(date=date, period=period)
 
         # load data
         print(f"Loading data from {huggingface_load_file}")
@@ -48,7 +48,7 @@ def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, over
     generation_data = pd.concat(data_df)
 
     # save to parquet file
-    local_file = f"passiv_5min_yearly_{start_date.date()}.parquet"
+    local_file = f"passiv_{period}min_yearly_{start_date.date()}.parquet"
     generation_data.to_parquet(local_file)
 
     # upload to hugging face
@@ -65,21 +65,39 @@ def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, over
 
 
 @dg.asset(
-    key=["pv", "passiv", "yearly"],
+    key=["pv", "passiv", "yearly_5min"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y",
         start="2023",
         cron_schedule="0 12 2 1 *",  # 2nd day of January, at 12 oclock,
     ),
 )
-def pv_passiv_yearly(context: dg.AssetExecutionContext):
+def pv_passiv_yearly_5min(context: dg.AssetExecutionContext):
     """PV Passiv archive yearly data."""
 
     partition_date_str = context.partition_key
     start_date = datetime.datetime.strptime(partition_date_str, "%Y")
     start_date = pytz.utc.localize(start_date)
 
-    get_yearly_passiv_data(start_date)
+    get_yearly_passiv_data(start_date, period=5)
+
+
+@dg.asset(
+    key=["pv", "passiv", "yearly_30min"],
+    partitions_def=dg.TimeWindowPartitionsDefinition(
+        fmt="%Y",
+        start="2023",
+        cron_schedule="0 12 2 1 *",  # 2nd day of January, at 12 oclock,
+    ),
+)
+def pv_passiv_yearly_30min(context: dg.AssetExecutionContext):
+    """PV Passiv archive yearly data."""
+
+    partition_date_str = context.partition_key
+    start_date = datetime.datetime.strptime(partition_date_str, "%Y")
+    start_date = pytz.utc.localize(start_date)
+
+    get_yearly_passiv_data(start_date, period=30)
 
 
 
