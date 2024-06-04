@@ -344,7 +344,6 @@ def download_extract_url(url: str, folder: str) -> str | None:
                 dest.write(bz2.decompress(source.read()))
             return filename
         else:
-            log.warning(f"Error downloading file at url {url}: {r.status_code}")
             return None
 
 
@@ -431,7 +430,7 @@ def run(path: str, config: Config, run: str) -> None:
                         combine="nested",
                         concat_dim="isobaricInhPa",
                     ).sortby("isobaricInhPa")
-                    for p in paths
+                    for p in paths if len(p) > 0
                 ],
                 dim="step",
             ).sortby("step")
@@ -452,12 +451,19 @@ def run(path: str, config: Config, run: str) -> None:
 
     total_dataset = []
     for var_2d in config.vars_2d:
-        datasets = []
+        paths = list(
+            pathlib.Path(f"{path}/{run}").glob(
+                f"{config.var_url}_single-level_*_*_{var_2d.upper()}.grib2",
+            )
+        )
+        if len(paths) == 0:
+            log.warning(f"No files found for 2D var {var_2d} at {run}")
+            continue
         log.debug(f"Creating dataset for 2D var {var_2d}")
         try:
             ds = (
                 xr.open_mfdataset(
-                    f"{path}/{run}/{config.var_url}_single-level_*_*_{var_2d.upper()}.grib2",
+                    paths,
                     engine="cfgrib",
                     backend_kwargs={"errors": "ignore"},
                     combine="nested",
