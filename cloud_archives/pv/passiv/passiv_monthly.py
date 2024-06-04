@@ -30,13 +30,10 @@ def get_monthly_passiv_data(start_date: datetime, upload_to_hf: bool = True, ove
     # set end date
     end_date = (start_date + datetime.timedelta(days=31)).replace(day=1)
 
-    SS_USER_ID = '293'
-    SS_API_KEY = '65c31b9d5f64c2f27c98f229655d77093d4d1234'
-
     # setup class
     ss_rawdata_api = SSRawDataAPI(
-        user_id=SS_USER_ID,
-        api_key=SS_API_KEY
+        user_id=os.getenv("SS_USER_ID"),
+        api_key=os.getenv("SS_API_KEY")
     )
 
     # only get passiv systems
