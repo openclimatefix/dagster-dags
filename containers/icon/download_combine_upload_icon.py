@@ -1,4 +1,9 @@
-"""Jacob's ICON global processing script."""
+"""Jacob's ICON global processing script.
+
+ICON data arrives as follows:
+    Global: 2hrs 45 mins after the run hour
+    Europe: 2hrs 45 to 3hrs 45 mins after the run hour
+"""
 
 import argparse
 import bz2
@@ -294,7 +299,11 @@ def find_file_name(
     to the download_extract_files function if the file does not
     exist it will simply not be downloaded.
     """
-    date_string = dt.datetime.now(tz=dt.timezone.utc).strftime("%Y%m%d") + run_string
+    # New data comes in 3 ish hours after the run time
+    if dt.datetime.now(tz=dt.UTC).hour >= int(run_string) + 4:
+        date_string = dt.datetime.now(tz=dt.UTC).strftime("%Y%m%d") + run_string
+    else:
+        date_string = (dt.datetime.now(tz=dt.UTC) - dt.timedelta(days=1)).strftime("%Y%m%d") + run_string
     if (len(config.vars_2d) == 0) and (len(config.vars_3d) == 0):
         raise ValueError("You need to specify at least one 2D or one 3D variable")
 
@@ -335,175 +344,176 @@ def download_extract_url(url: str, folder: str) -> str | None:
                 dest.write(bz2.decompress(source.read()))
             return filename
         else:
-            log.warn(f"Error downloading file at url {url}: {r.status_code}")
+            log.warning(f"Error downloading file at url {url}: {r.status_code}")
             return None
 
 
-def run(path: str, config: Config) -> None:
+def run(path: str, config: Config, run: str) -> None:
     """Download ICON data, combine and upload to Hugging Face Hub."""
-    # Download files first
-    for run in ["00", "06", "12", "18"]:
-        if not pathlib.Path(f"{path}/{run}/").exists():
-            pathlib.Path(f"{path}/{run}/").mkdir(parents=True, exist_ok=True)
+    # Download files first for run
+    if not pathlib.Path(f"{path}/{run}/").exists():
+        pathlib.Path(f"{path}/{run}/").mkdir(parents=True, exist_ok=True)
 
-        results: list[str | None] = []
-        not_done = True
-        while not_done:
-            try:
-                urls = find_file_name(
-                    config=config,
-                    run_string=run,
+    results: list[str | None] = []
+    not_done = True
+    while not_done:
+        try:
+            urls = find_file_name(
+                config=config,
+                run_string=run,
+            )
+            log.info(f"Downloading {len(urls)} files")
+
+            # We only parallelize if we have a number of files
+            # larger than the cpu count
+            if len(urls) > cpu_count():
+                pool = Pool(cpu_count())
+                results = pool.starmap(
+                    download_extract_url,
+                    [(url, f"{path}/{run}/") for url in urls],
                 )
-                log.info(f"Downloading {len(urls)} files")
+                pool.close()
+                pool.join()
+            else:
+                results = []
+                for url in urls:
+                    result = download_extract_url(url, f"{path}/{run}/")
+                    if result is not None:
+                        results.append(result)
 
-                # We only parallelize if we have a number of files
-                # larger than the cpu count
-                if len(urls) > cpu_count():
-                    pool = Pool(cpu_count())
-                    results = pool.starmap(
-                        download_extract_url,
-                        [(url, f"{path}/{run}/") for url in urls],
-                    )
-                    pool.close()
-                    pool.join()
-                else:
-                    results = []
-                    for url in urls:
-                        result = download_extract_url(url, f"{path}/{run}/")
-                        if result is not None:
-                            results.append(result)
+            not_done = False
+        except Exception as e:
+            log.error("Error downloading files: {e}")
+            continue
 
-                not_done = False
-            except Exception as e:
-                log.error("Error downloading files: {e}")
-                continue
-
-        filepaths: list[str] = list(filter(None, results))
-        nbytes: int = sum([os.path.getsize(f) for f in filepaths])
-        log.info(
-            f"Downloaded {len(filepaths)} files"
-            f"with {len(results) - len(filepaths)} failed downloads"
-            f"for run {run}: {nbytes} bytes",
-        )
+    filepaths: list[str] = list(filter(None, results))
+    if len(filepaths) == 0:
+        log.info(f"No files downloaded for run {run}: Data not yet available")
+        return
+    nbytes: int = sum([os.path.getsize(f) for f in filepaths])
+    log.info(
+        f"Downloaded {len(filepaths)} files "
+        f"with {len(results) - len(filepaths)} failed downloads "
+        f"for run {run}: {nbytes} bytes",
+    )
 
     # Write files to zarr
-    log.info("Converting files")
-    for run in ["00", "06", "12", "18"]:
-        if config == GLOBAL_CONFIG:
-            lon_ds = xr.open_mfdataset(
-                f"{path}/{run}/icon_global_icosahedral_time-invariant_*_CLON.grib2", engine="cfgrib",
-            )
-            lat_ds = xr.open_mfdataset(
-                f"{path}/{run}/icon_global_icosahedral_time-invariant_*_CLAT.grib2", engine="cfgrib",
-            )
-            lons = lon_ds.tlon.values
-            lats = lat_ds.tlat.values
+    log.info("fConverting files for run {run}")
+    if config == GLOBAL_CONFIG:
+        lon_ds = xr.open_mfdataset(
+            f"{path}/{run}/icon_global_icosahedral_time-invariant_*_CLON.grib2", engine="cfgrib",
+        )
+        lat_ds = xr.open_mfdataset(
+            f"{path}/{run}/icon_global_icosahedral_time-invariant_*_CLAT.grib2", engine="cfgrib",
+        )
+        lons = lon_ds.tlon.values
+        lats = lat_ds.tlat.values
 
-        datasets = []
-        for var_3d in config.vars_3d:
-            paths = [
-                list(
-                    pathlib.Path(f"{path}/{run}").glob(
-                        f"{config.var_url}_pressure-level_*_{str(s).zfill(3)}_*_{var_3d.upper()}.grib2",
-                    ),
-                )
-                for s in range(len(config.f_steps))
-            ]
-            log.debug(
-                f"Creating dataset for {var_3d} from {len(paths)} filesets of {len(paths[0])} files",
+    datasets = []
+    for var_3d in config.vars_3d:
+        paths = [
+            list(
+                pathlib.Path(f"{path}/{run}").glob(
+                    f"{config.var_url}_pressure-level_*_{str(s).zfill(3)}_*_{var_3d.upper()}.grib2",
+                ),
             )
-            try:
-                ds = xr.concat(
-                    [
-                        xr.open_mfdataset(
-                            p,
-                            engine="cfgrib",
-                            backend_kwargs={"errors": "ignore"} if config == GLOBAL_CONFIG else {},
-                            combine="nested",
-                            concat_dim="isobaricInhPa",
-                        ).sortby("isobaricInhPa")
-                        for p in paths
-                    ],
-                    dim="step",
-                ).sortby("step")
-            except Exception as e:
-                log.error(e)
-                continue
-            ds = ds.rename({v: var_3d for v in ds.data_vars})
-            coords_to_remove = []
-            for coord in ds.coords:
-                if coord not in ds.dims and coord != "time":
-                    coords_to_remove.append(coord)
-            if len(coords_to_remove) > 0:
-                ds = ds.drop_vars(coords_to_remove)
-            datasets.append(ds)
-            log.debug(f"Dataset for {var_3d} created: {ds.to_dict(data=False)}")
-        ds_atmos = xr.merge(datasets)
-
-        total_dataset = []
-        for var_2d in config.vars_2d:
-            datasets = []
-            log.debug(var_2d)
-            try:
-                ds = (
+            for s in range(len(config.f_steps))
+        ]
+        log.debug(
+            f"Creating dataset for {var_3d} from {len(paths)} filesets of {len(paths[0])} files",
+        )
+        try:
+            ds = xr.concat(
+                [
                     xr.open_mfdataset(
-                        f"{path}/{run}/{config.var_url}_single-level_*_*_{var_2d.upper()}.grib2",
+                        p,
                         engine="cfgrib",
-                        backend_kwargs={"errors": "ignore"},
+                        backend_kwargs={"errors": "ignore"} if config == GLOBAL_CONFIG else {},
                         combine="nested",
-                        concat_dim="step",
-                    )
-                    .sortby("step")
-                    .drop_vars("valid_time")
+                        concat_dim="isobaricInhPa",
+                    ).sortby("isobaricInhPa")
+                    for p in paths
+                ],
+                dim="step",
+            ).sortby("step")
+        except Exception as e:
+            log.error(e)
+            continue
+        ds = ds.rename({v: var_3d for v in ds.data_vars})
+        coords_to_remove = []
+        for coord in ds.coords:
+            if coord not in ds.dims and coord != "time":
+                coords_to_remove.append(coord)
+        if len(coords_to_remove) > 0:
+            ds = ds.drop_vars(coords_to_remove)
+        datasets.append(ds)
+        log.debug(f"Dataset for {var_3d} created: {ds.to_dict(data=False)}")
+    ds_atmos = xr.merge(datasets)
+
+    total_dataset = []
+    for var_2d in config.vars_2d:
+        datasets = []
+        log.debug(var_2d)
+        try:
+            ds = (
+                xr.open_mfdataset(
+                    f"{path}/{run}/{config.var_url}_single-level_*_*_{var_2d.upper()}.grib2",
+                    engine="cfgrib",
+                    backend_kwargs={"errors": "ignore"},
+                    combine="nested",
+                    concat_dim="step",
                 )
-            except Exception as e:
-                log.error(e)
-                continue
-            # Rename data variable to name in list, so no conflicts
-            ds = ds.rename({v: var_2d for v in ds.data_vars})
-            # Remove extra coordinates that are not dimensions or time
-            coords_to_remove = []
-            for coord in ds.coords:
-                if coord not in ds.dims and coord != "time":
-                    coords_to_remove.append(coord)
-            if len(coords_to_remove) > 0:
-                ds = ds.drop_vars(coords_to_remove)
-            log.debug(f"Dataset for {var_2d} created: {ds.to_dict(data=False)}")
-            total_dataset.append(ds)
-        ds = xr.merge(total_dataset)
-        log.debug("Merged 2D datasets")
-        # Merge both
-        ds = xr.merge([ds, ds_atmos])
-        # Add lats and lons manually for icon global
-        if config == GLOBAL_CONFIG:
-            ds = ds.assign_coords({"latitude": lats, "longitude": lons})
-        log.debug(f"Created final dataset for run {run}: {ds.to_dict(data=False)}")
-        encoding = {var: {"compressor": Blosc2("zstd", clevel=9)} for var in ds.data_vars}
-        encoding["time"] = {"units": "nanoseconds since 1970-01-01"}
-        with zarr.ZipStore(
-            f"{path}/{run}.zarr.zip",
-            mode="w",
-        ) as store:
-            ds.chunk(config.chunking).to_zarr(
-                store, encoding=encoding, compute=True,
+                .sortby("step")
+                .drop_vars("valid_time")
             )
-        done = False
-        while not done:
-            try:
-                api.upload_file(
-                    path_or_fileobj=f"{path}/{run}.zarr.zip",
-                    path_in_repo=f"data/{ds.time.dt.year.values}/" \
-                      + f"{ds.time.dt.month.values}/{ds.time.dt.day.values}/" \
-                      + f"{ds.time.dt.year.values}{ds.time.dt.month.values}" \
-                      + f"{ds.time.dt.day.values}_{ds.time.dt.hour.values}.zarr.zip",
-                    repo_id=config.repo_id,
-                    repo_type="dataset",
-                )
-                done = True
-                shutil.rmtree(f"{path}/{run}/")
-                os.remove(f"{path}/{run}.zarr.zip")
-            except Exception as e:
-                log.error(e)
+        except Exception as e:
+            log.error(e)
+            continue
+        # Rename data variable to name in list, so no conflicts
+        ds = ds.rename({v: var_2d for v in ds.data_vars})
+        # Remove extra coordinates that are not dimensions or time
+        coords_to_remove = []
+        for coord in ds.coords:
+            if coord not in ds.dims and coord != "time":
+                coords_to_remove.append(coord)
+        if len(coords_to_remove) > 0:
+            ds = ds.drop_vars(coords_to_remove)
+        log.debug(f"Dataset for {var_2d} created: {ds.to_dict(data=False)}")
+        total_dataset.append(ds)
+    ds = xr.merge(total_dataset)
+    log.debug("Merged 2D datasets")
+    # Merge both
+    ds = xr.merge([ds, ds_atmos])
+    # Add lats and lons manually for icon global
+    if config == GLOBAL_CONFIG:
+        ds = ds.assign_coords({"latitude": lats, "longitude": lons})
+    log.debug(f"Created final dataset for run {run}: {ds.to_dict(data=False)}")
+    encoding = {var: {"compressor": Blosc2("zstd", clevel=9)} for var in ds.data_vars}
+    encoding["time"] = {"units": "nanoseconds since 1970-01-01"}
+    with zarr.ZipStore(
+        f"{path}/{run}.zarr.zip",
+        mode="w",
+    ) as store:
+        ds.chunk(config.chunking).to_zarr(
+            store, encoding=encoding, compute=True,
+        )
+    done = False
+    while not done:
+        try:
+            api.upload_file(
+                path_or_fileobj=f"{path}/{run}.zarr.zip",
+                path_in_repo=f"data/{ds.time.dt.year.values}/" \
+                  + f"{ds.time.dt.month.values}/{ds.time.dt.day.values}/" \
+                  + f"{ds.time.dt.year.values}{ds.time.dt.month.values}" \
+                  + f"{ds.time.dt.day.values}_{ds.time.dt.hour.values}.zarr.zip",
+                repo_id=config.repo_id,
+                repo_type="dataset",
+            )
+            done = True
+            shutil.rmtree(f"{path}/{run}/")
+            os.remove(f"{path}/{run}.zarr.zip")
+        except Exception as e:
+            log.error(e)
 
 
 if __name__ == "__main__":
@@ -518,12 +528,13 @@ if __name__ == "__main__":
 
     path: str = f"{args.path}/{args.area}"
     # Cleanup any leftover files in path
-    if args.rm:
-        shutil.rmtree(path, ignore_errors=True)
-    if args.area == "eu":
-        run(path=path, config=EUROPE_CONFIG)
-    elif args.area == "global":
-        run(path=path, config=GLOBAL_CONFIG)
-    # Remove files
-    if args.rm:
-        shutil.rmtree(path, ignore_errors=True)
+    for hour in ["00", "06", "12", "18"]:
+        if args.rm:
+            shutil.rmtree(path, ignore_errors=True)
+        if args.area == "eu":
+            run(path=path, config=EUROPE_CONFIG, run=hour)
+        elif args.area == "global":
+            run(path=path, config=GLOBAL_CONFIG, run=hour)
+        # Remove files
+        if args.rm:
+            shutil.rmtree(path, ignore_errors=True)
