@@ -31,7 +31,7 @@ logging.basicConfig(
     stream=sys.stdout,
     format="{" +\
         '"message": "%(message)s", ' +\
-        '"severity": "%(levelname)s", "time": "%(asctime)s.%(msecs)03dZ", ' +\
+        '"severity": "%(levelname)s", "timestamp": "%(asctime)s.%(msecs)03dZ", ' +\
         '"logging.googleapis.com/labels": {"python_logger": "%(name)s"}, ' +\
         '"logging.googleapis.com/sourceLocation": {"file": "%(filename)s", "line": %(lineno)d, "function": "%(funcName)s"}' +\
         "}",
@@ -367,7 +367,7 @@ def run(path: str, config: Config, run: str) -> None:
                 config=config,
                 run_string=run,
             )
-            log.info(f"Downloading {len(urls)} files")
+            log.info(f"Downloading {len(urls)} files for run {run}")
 
             # We only parallelize if we have a number of files
             # larger than the cpu count
@@ -388,7 +388,7 @@ def run(path: str, config: Config, run: str) -> None:
 
             not_done = False
         except Exception:
-            log.error("Error downloading files: {e}")
+            log.error("Error downloading files for run {run}: {e}")
 
     filepaths: list[str] = list(filter(None, results))
     if len(filepaths) == 0:
@@ -402,7 +402,7 @@ def run(path: str, config: Config, run: str) -> None:
     )
 
     # Write files to zarr
-    log.info("fConverting files for run {run}")
+    log.info(f"Converting {len(filepaths)} files for run {run}")
     if config == GLOBAL_CONFIG:
         lon_ds = xr.open_mfdataset(
             f"{path}/{run}/icon_global_icosahedral_time-invariant_*_CLON.grib2", engine="cfgrib",
@@ -492,6 +492,7 @@ def run(path: str, config: Config, run: str) -> None:
                 coords_to_remove.append(coord)
         if len(coords_to_remove) > 0:
             ds = ds.drop_vars(coords_to_remove)
+        log.debug(f"Dataset for 2D var {var_2d} processed: {ds}")
         total_dataset.append(ds)
     ds = xr.merge(total_dataset)
     log.debug("Merged 2D datasets: {ds}")
