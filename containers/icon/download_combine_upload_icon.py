@@ -415,17 +415,19 @@ def run(path: str, config: Config, run: str) -> None:
 
     datasets = []
     for var_3d in config.vars_3d:
-        paths = [
-            list(
-                pathlib.Path(f"{path}/{run}").glob(
-                    f"{config.var_url}_pressure-level_*_{str(s).zfill(3)}_*_{var_3d.upper()}.grib2",
-                ),
-            )
-            for s in range(len(config.f_steps))
-        ]
-        log.debug(
-            f"Creating dataset for 3D var {var_3d} from {len(paths)} filesets of {len(paths[0])} files",
-        )
+        var_paths: list[list[pathlib.Path]] = []
+        for step in config.f_steps:
+            step_paths: list[pathlib.Path] = list(pathlib.Path(f"{path}/{run}").glob(
+                f"{config.var_url}_pressure-level_*_{str(step).zfill(3)}_*_{var_3d.upper()}.grib2",
+            ))
+            if len(step_paths) == 0:
+                continue
+            else:
+                var_paths.append(step_paths)
+        if len(var_paths) == 0:
+            log.warn(f"No files found for 3D var {var_3d} for run {run}")
+            continue
+        log.debug(f"Creating dataset for 3D var {var_3d}")
         try:
             ds = xr.concat(
                 [
@@ -436,7 +438,7 @@ def run(path: str, config: Config, run: str) -> None:
                         combine="nested",
                         concat_dim="isobaricInhPa",
                     ).sortby("isobaricInhPa")
-                    for p in paths if len(p) > 0
+                    for p in var_paths
                 ],
                 dim="step",
             ).sortby("step")
@@ -454,7 +456,7 @@ def run(path: str, config: Config, run: str) -> None:
         datasets.append(ds)
         log.debug(f"Dataset for 3D var {var_3d} processed: {ds}")
     ds_atmos = xr.merge(datasets)
-    log.debug(f"Merged 3D datasets: {ds}")
+    log.debug(f"Merged 3D datasets: {ds_atmos}")
 
     total_dataset = []
     for var_2d in config.vars_2d:
