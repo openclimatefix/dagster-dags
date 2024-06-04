@@ -37,6 +37,7 @@ logging.basicConfig(
 )
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("cfgrib.dataset").setLevel(logging.WARNING)
 log = logging.getLogger("icon-etl")
 
 """
@@ -443,7 +444,6 @@ def run(path: str, config: Config, run: str) -> None:
                 ],
                 dim="step",
             ).sortby("step")
-            log.debug(f"Dataset for 3D var {var_3d} before postproccessing: {ds}")
         except Exception as e:
             log.error(e)
             continue
@@ -455,7 +455,6 @@ def run(path: str, config: Config, run: str) -> None:
         if len(coords_to_remove) > 0:
             ds = ds.drop_vars(coords_to_remove)
         datasets.append(ds)
-        log.debug(f"Dataset for 3D var {var_3d} processed: {ds}")
     ds_atmos = xr.merge(datasets)
     log.debug(f"Merged 3D datasets: {ds_atmos}")
 
@@ -482,7 +481,6 @@ def run(path: str, config: Config, run: str) -> None:
                 .sortby("step")
                 .drop_vars("valid_time")
             )
-            log.debug(f"Dataset for 2D var {var_2d} before postproccessing: {ds}")
         except Exception as e:
             log.error(e)
             continue
@@ -495,7 +493,6 @@ def run(path: str, config: Config, run: str) -> None:
                 coords_to_remove.append(coord)
         if len(coords_to_remove) > 0:
             ds = ds.drop_vars(coords_to_remove)
-        log.debug(f"Dataset for 2D var {var_2d} processed: {ds}")
         total_dataset.append(ds)
     ds = xr.merge(total_dataset)
     log.debug("Merged 2D datasets: {ds}")
