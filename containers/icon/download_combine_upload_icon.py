@@ -22,8 +22,6 @@ import zarr
 from huggingface_hub import HfApi
 from ocf_blosc2 import Blosc2
 
-# Authenticate with huggingface
-api = HfApi(token=os.environ["HF_TOKEN"])
 # Set up logging
 handler = logging.StreamHandler(sys.stdout)
 logging.basicConfig(
@@ -231,7 +229,6 @@ pressure_levels_europe = [
     100,
     70,
     50,
-    30,
 ]
 
 
@@ -418,15 +415,19 @@ def run(path: str, config: Config, run: str) -> None:
     for var_3d in config.vars_3d:
         var_paths: list[list[pathlib.Path]] = []
         for step in config.f_steps:
-            step_paths: list[pathlib.Path] = list(pathlib.Path(f"{path}/{run}").glob(
+            step_paths: list[pathlib.Path] = list(pathlib.Path(f"{path}/{run}/").glob(
                 f"{config.var_url}_pressure-level_*_{str(step).zfill(3)}_*_{var_3d.upper()}.grib2",
             ))
             if len(step_paths) == 0:
+                log.debug(f"No files found for 3D var {var_3d} for run {run} and step {step}")
+                log.debug(list(pathlib.Path(f"{path}/{run}/").glob(
+                    f"{config.var_url}_pressure-level_*_{var_3d.upper()}.grib2",
+                )))
                 continue
             else:
                 var_paths.append(step_paths)
         if len(var_paths) == 0:
-            log.warn(f"No files found for 3D var {var_3d} for run {run}")
+            log.warning(f"No files found for 3D var {var_3d} for run {run}")
             continue
         log.debug(f"Creating dataset for 3D var {var_3d}")
         try:
@@ -517,6 +518,8 @@ def run(path: str, config: Config, run: str) -> None:
     done = False
     while not done:
         try:
+            # Authenticate with huggingface
+            api = HfApi(token=os.environ["HF_TOKEN"])
             api.upload_file(
                 path_or_fileobj=f"{path}/{run}.zarr.zip",
                 path_in_repo=f"data/{ds.time.dt.year.values}/" \
@@ -539,7 +542,8 @@ if __name__ == "__main__":
     parser.add_argument("area", choices=["eu", "global"])
     parser.add_argument("--path", default="/tmp/nwp")
     parser.add_argument("--rm", action="store_true", help="Remove files on exit")
-
+    # Check HF_TOKEN env var is present
+    _ = os.environ["HF_TOKEN"]
     log.info("Starting ICON download script")
     args = parser.parse_args()
 
