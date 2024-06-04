@@ -138,7 +138,6 @@ def download_scans(
     consumer_key: str = os.environ["EUMETSAT_CONSUMER_KEY"]
     consumer_secret: str = os.environ["EUMETSAT_CONSUMER_SECRET"]
 
-    log.info
     direction: str = "forward" if scan_times[0] < scan_times[-1] else "backward"
     i: int
     scan_time: pd.Timestamp
@@ -208,7 +207,7 @@ def download_scans(
             log.error(f"Error downloading files: {e}")
             failed_scan_times.append(scan_time)
 
-        log.info(f"Download [{direction}]: {i}/{len(scan_times)}")
+        log.info(f"Download [{direction}]: completed {i + 1}/{len(scan_times)}")
 
     return failed_scan_times
 
@@ -573,7 +572,7 @@ if __name__ == "__main__":
     for pass_num in [0, 1]:
         pool = multiprocessing.Pool()
         log.info(f"Performing pass {pass_num}")
-        results = pool.starmap(
+        failed_scans = pool.starmap(
                 download_scans,
                 [
                     (sat_config, scan_times),
@@ -582,7 +581,7 @@ if __name__ == "__main__":
         )
         pool.close()
         pool.join()
-        for result in results:
+        for result in failed_scans:
             log.info(f"Completed download with {len(result)} failed scan times.")
 
     log.info("Converting raw data to HRV and non-HRV Zarr Stores.")
@@ -602,7 +601,7 @@ if __name__ == "__main__":
     cache.set("latest_time", end.isoformat())
 
     # Calculate the new average time per timestamp
-    runtime: dt.timedelta = dt.datetime.now(tz=dt.datetime.utc) - prog_start
+    runtime: dt.timedelta = dt.datetime.now(tz=dt.UTC) - prog_start
     new_average_secs_per_scan: int = int((secs_per_scan + (runtime.total_seconds() / len(scan_times))) / 2)
     cache.set("secs_per_scan", new_average_secs_per_scan)
     log.info(f"Completed archive for args: {args}. ({new_average_secs_per_scan} seconds per scan).")
