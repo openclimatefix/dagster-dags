@@ -27,11 +27,7 @@ from ocf_blosc2 import Blosc2
 api = HfApi(token=os.environ["HF_TOKEN"])
 
 # Set up python logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    stream=sys.stdout,
-    format='{"time": "%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s"}',
-)
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 log = logging.getLogger("icon-etl")
