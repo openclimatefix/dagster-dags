@@ -53,7 +53,8 @@ def get_monthly_passiv_data(start_date: datetime, upload_to_hf: bool = True, ove
 
     # format datetime_GMT as datetime and timezone
     generation_data["datetime_GMT"] = pd.to_datetime(generation_data["datetime_GMT"])
-    generation_data["datetime_GMT"] = generation_data["datetime_GMT"].dt.tz_localize("UTC")
+    if generation_data["datetime_GMT"].iloc[0].tzinfo is None:
+        generation_data["datetime_GMT"] = generation_data["datetime_GMT"].dt.tz_localize("UTC")
 
     # dont include the last end date
     generation_data = generation_data[generation_data.datetime_GMT < end_date.replace(tzinfo=pytz.utc)]
