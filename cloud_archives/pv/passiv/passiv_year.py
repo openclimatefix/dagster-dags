@@ -53,6 +53,7 @@ def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, over
 
     # upload to hugging face
     if upload_to_hf:
+
         api = HfApi()
         api.token = os.getenv("HUGGINGFACE_TOKEN")
         api.upload_file(
@@ -68,14 +69,11 @@ def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, over
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y",
         start="2023",
-        cron_schedule="0 12 3 1 *",  # 3nd day of January, at 12 oclock,
+        cron_schedule="0 12 2 1 *",  # 2nd day of January, at 12 oclock,
     ),
-    # metadata={
-    #     "path": dg.MetadataValue.path(f"{BASE_PATH}/nwp/meteomatics/nw_india/solar_archive"),
-    # },
 )
 def pv_passiv_yearly(context: dg.AssetExecutionContext):
-    """PV Passiv archive asset."""
+    """PV Passiv archive yearly data."""
 
     partition_date_str = context.partition_key
     start_date = datetime.datetime.strptime(partition_date_str, "%Y")
