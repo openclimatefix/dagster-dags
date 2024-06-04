@@ -16,7 +16,6 @@ import shutil
 import sys
 from multiprocessing import Pool, cpu_count
 
-import google.cloud.logging
 import requests
 import xarray as xr
 import zarr
@@ -25,13 +24,22 @@ from ocf_blosc2 import Blosc2
 
 # Authenticate with huggingface
 api = HfApi(token=os.environ["HF_TOKEN"])
-
-# Set up python logging
-logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+# Set up logging
+handler = logging.StreamHandler(sys.stdout)
+logging.basicConfig(
+    level=logging.DEBUG,
+    stream=sys.stdout,
+    format="{" +\
+        '"message": "%(message)s", ' +\
+        '"severity": "%(levelname)s", "time": "%(asctime)s.%(msecs)03dZ", ' +\
+        '"logging.googleapis.com/labels": {"python_logger": "%(name)s"}, ' +\
+        '"logging.googleapis.com/sourceLocation": {"file": "%(filename)s", "line": %(lineno)d, "function": "%(funcName)s"}' +\
+        "}",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 log = logging.getLogger("icon-etl")
-log.addHandler(google.cloud.logging.handlers.StructuredLogHandler())
 
 """
 # CDO grid description file for global regular grid of ICON.
@@ -43,8 +51,6 @@ xinc      = 0.15
 yfirst    = -90
 yinc      = 0.15
 """
-
-
 
 var_2d_list_europe = [
     "alb_rad",
@@ -274,7 +280,7 @@ EUROPE_CONFIG = Config(
     base_url="https://opendata.dwd.de/weather/nwp",
     model_url="icon-eu/grib",
     var_url="icon-eu_europe_regular-lat-lon",
-    f_steps=list(range(0, 73)),
+    f_steps=list(range(0, 92)),
     repo_id="openclimatefix/dwd-icon-eu",
     chunking={
         "step": 37,
@@ -300,7 +306,7 @@ def find_file_name(
     exist it will simply not be downloaded.
     """
     # New data comes in 3 ish hours after the run time
-    if dt.datetime.now(tz=dt.UTC).hour >= int(run_string) + 4:
+    if dt.datetime.now(tz=dt.UTC).hour - 3 > int(run_string):
         date_string = dt.datetime.now(tz=dt.UTC).strftime("%Y%m%d") + run_string
     else:
         date_string = (dt.datetime.now(tz=dt.UTC) - dt.timedelta(days=1)).strftime("%Y%m%d") + run_string
@@ -381,7 +387,7 @@ def run(path: str, config: Config, run: str) -> None:
                         results.append(result)
 
             not_done = False
-        except Exception as e:
+        except Exception:
             log.error("Error downloading files: {e}")
 
     filepaths: list[str] = list(filter(None, results))
@@ -418,7 +424,7 @@ def run(path: str, config: Config, run: str) -> None:
             for s in range(len(config.f_steps))
         ]
         log.debug(
-            f"Creating dataset for {var_3d} from {len(paths)} filesets of {len(paths[0])} files",
+            f"Creating dataset for 3D var {var_3d} from {len(paths)} filesets of {len(paths[0])} files",
         )
         try:
             ds = xr.concat(
@@ -434,6 +440,7 @@ def run(path: str, config: Config, run: str) -> None:
                 ],
                 dim="step",
             ).sortby("step")
+            log.debug(f"Dataset for 3D var {var_3d} before postproccessing: {ds}")
         except Exception as e:
             log.error(e)
             continue
@@ -445,16 +452,16 @@ def run(path: str, config: Config, run: str) -> None:
         if len(coords_to_remove) > 0:
             ds = ds.drop_vars(coords_to_remove)
         datasets.append(ds)
-        log.debug(f"Dataset for {var_3d} created")
+        log.debug(f"Dataset for 3D var {var_3d} processed: {ds}")
     ds_atmos = xr.merge(datasets)
-    log.debug("Merged 3D datasets: {ds}")
+    log.debug(f"Merged 3D datasets: {ds}")
 
     total_dataset = []
     for var_2d in config.vars_2d:
         paths = list(
             pathlib.Path(f"{path}/{run}").glob(
                 f"{config.var_url}_single-level_*_*_{var_2d.upper()}.grib2",
-            )
+            ),
         )
         if len(paths) == 0:
             log.warning(f"No files found for 2D var {var_2d} at {run}")
@@ -472,6 +479,7 @@ def run(path: str, config: Config, run: str) -> None:
                 .sortby("step")
                 .drop_vars("valid_time")
             )
+            log.debug(f"Dataset for 2D var {var_2d} before postproccessing: {ds}")
         except Exception as e:
             log.error(e)
             continue
