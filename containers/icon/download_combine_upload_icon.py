@@ -105,7 +105,6 @@ var_2d_list_europe = [
     "v_10m",
     "vmax_10m",
     "w_snow",
-    "w_so",
     "ww",
     "z0",
 ]
@@ -277,7 +276,7 @@ EUROPE_CONFIG = Config(
     base_url="https://opendata.dwd.de/weather/nwp",
     model_url="icon-eu/grib",
     var_url="icon-eu_europe_regular-lat-lon",
-    f_steps=list(range(0, 92)),
+    f_steps=list(range(0, 79)),
     repo_id="openclimatefix/dwd-icon-eu",
     chunking={
         "step": 37,
@@ -412,7 +411,7 @@ def run(path: str, config: Config, run: str) -> None:
         lats = lat_ds.tlat.values
 
     datasets = []
-    for var_3d in config.vars_3d:
+    for var_3d in [v.split("@")[0] for v in config.vars_3d]:
         var_paths: list[list[pathlib.Path]] = []
         for step in config.f_steps:
             step_paths: list[pathlib.Path] = list(pathlib.Path(f"{path}/{run}/").glob(
