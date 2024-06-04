@@ -350,6 +350,7 @@ def download_extract_url(url: str, folder: str) -> str | None:
                 dest.write(bz2.decompress(source.read()))
             return filename
         else:
+            log.debug(f"Failed to download {url}")
             return None
 
 
