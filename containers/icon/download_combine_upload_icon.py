@@ -511,6 +511,9 @@ def run(path: str, config: Config, run: str) -> None:
         ds.chunk(config.chunking).to_zarr(
             store, encoding=encoding, compute=True,
         )
+
+    # Upload to huggingface
+    log.info(f"Uploading {run} to Hugging Face Hub")
     done = False
     while not done:
         try:
@@ -530,6 +533,8 @@ def run(path: str, config: Config, run: str) -> None:
             os.remove(f"{path}/{run}.zarr.zip")
         except Exception as e:
             log.error(e)
+            return
+    log.info(f"Uploaded {run} to Hugging Face Hub")
 
 
 if __name__ == "__main__":
