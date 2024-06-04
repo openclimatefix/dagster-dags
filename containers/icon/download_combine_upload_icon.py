@@ -14,18 +14,19 @@ import os
 import pathlib
 import shutil
 import sys
-from glob import glob
-from itertools import repeat
 from multiprocessing import Pool, cpu_count
-from typing import Optional
 
+import google.cloud.logging
 import requests
 import xarray as xr
 import zarr
 from huggingface_hub import HfApi
 from ocf_blosc2 import Blosc2
 
+# Authenticate with huggingface
 api = HfApi(token=os.environ["HF_TOKEN"])
+
+# Set up python logging
 logging.basicConfig(
     level=logging.DEBUG,
     stream=sys.stdout,
@@ -34,6 +35,7 @@ logging.basicConfig(
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 log = logging.getLogger("icon-etl")
+log.addHandler(google.cloud.logging.handlers.StructuredLogHandler())
 
 """
 # CDO grid description file for global regular grid of ICON.
@@ -178,8 +180,10 @@ var_2d_list_global = [
     "z0",
 ]
 
-var_3d_list_global = ["clc", "fi", "p", "qv", "relhum", "t", "tke", "u", "v", "w"]
-var_3d_list_europe = ["clc", "fi", "omega", "p", "qv", "relhum", "t", "tke", "u", "v", "w"]
+# "p", "omega", "clc", "qv", "tke", "w" are model-level only in global so have been removed
+var_3d_list_global = ["fi", "relhum", "t", "u", "v"]
+# "p", "omega", "qv", "tke", "w" are model-level only in europe so have been removed
+var_3d_list_europe = ["clc", "fi", "omega", "relhum", "t", "u", "v"]
 
 invarient_list = ["clat", "clon"]
 
@@ -384,7 +388,6 @@ def run(path: str, config: Config, run: str) -> None:
             not_done = False
         except Exception as e:
             log.error("Error downloading files: {e}")
-            continue
 
     filepaths: list[str] = list(filter(None, results))
     if len(filepaths) == 0:
@@ -447,13 +450,14 @@ def run(path: str, config: Config, run: str) -> None:
         if len(coords_to_remove) > 0:
             ds = ds.drop_vars(coords_to_remove)
         datasets.append(ds)
-        log.debug(f"Dataset for {var_3d} created: {ds.to_dict(data=False)}")
+        log.debug(f"Dataset for {var_3d} created")
     ds_atmos = xr.merge(datasets)
+    log.debug("Merged 3D datasets: {ds}")
 
     total_dataset = []
     for var_2d in config.vars_2d:
         datasets = []
-        log.debug(var_2d)
+        log.debug(f"Creating dataset for 2D var {var_2d}")
         try:
             ds = (
                 xr.open_mfdataset(
@@ -478,16 +482,15 @@ def run(path: str, config: Config, run: str) -> None:
                 coords_to_remove.append(coord)
         if len(coords_to_remove) > 0:
             ds = ds.drop_vars(coords_to_remove)
-        log.debug(f"Dataset for {var_2d} created: {ds.to_dict(data=False)}")
         total_dataset.append(ds)
     ds = xr.merge(total_dataset)
-    log.debug("Merged 2D datasets")
+    log.debug("Merged 2D datasets: {ds}")
     # Merge both
     ds = xr.merge([ds, ds_atmos])
     # Add lats and lons manually for icon global
     if config == GLOBAL_CONFIG:
         ds = ds.assign_coords({"latitude": lats, "longitude": lons})
-    log.debug(f"Created final dataset for run {run}: {ds.to_dict(data=False)}")
+    log.debug(f"Created final dataset for run {run}: {ds}")
     encoding = {var: {"compressor": Blosc2("zstd", clevel=9)} for var in ds.data_vars}
     encoding["time"] = {"units": "nanoseconds since 1970-01-01"}
     with zarr.ZipStore(
