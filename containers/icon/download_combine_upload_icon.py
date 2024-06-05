@@ -541,7 +541,7 @@ def run(path: str, config: Config, run: str) -> None:
     # Upload to huggingface
     log.info(f"Uploading {run} to Hugging Face Hub")
     done = False
-    hf_path = str(ds.coords["time"].dt.strftime("data/%Y/%m/%d/%Y%m%d_%H.zarr.zip").values)
+    hf_path = str(ds.coords["time"].dt.strftime("data/%Y/%-m/%-d/%Y%m%d_%H.zarr.zip").values)
     while not done:
         try:
             # Authenticate with huggingface
