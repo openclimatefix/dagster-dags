@@ -3,6 +3,32 @@
 ICON data arrives as follows:
     Global: 2hrs 45 mins after the run hour
     Europe: 2hrs 45 to 3hrs 45 mins after the run hour
+
+Example ICON-EU dataset:
+
+<xarray.Dataset> Dimensions: (step: 93, latitude: 657, longitude: 1377, isobaricInhPa: 20)
+
+Coordinates:
+    * isobaricInhPa (isobaricInhPa) float64 50.0 70.0 100.0 ... 950.0 1e+03
+    * latitude (latitude) float64 29.5 29.56 29.62 ... 70.44 70.5
+    * longitude (longitude) float64 -23.5 -23.44 -23.38 ... 62.44 62.5
+    * step (step) timedelta64[ns] 00:00:00 ... 5 days 00:00:00 time datetime64[ns] ...
+    valid_time (step) datetime64[ns] dask.array<chunksize=(93,), meta=np.ndarray>
+
+Data variables: (12/60) 
+    alb_rad (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    alhfl_s (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    ashfl_s (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    asob_s (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    asob_t (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    aswdifd_s (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    ... ...
+    v (step, isobaricInhPa, latitude, longitude) float32 dask.array<chunksize=(37, 20, 326, 350), meta=np.ndarray>
+    v_10m (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    vmax_10m (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    w_snow (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    ww (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    z0 (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
 """
 
 import argparse
@@ -508,6 +534,7 @@ def run(path: str, config: Config, run: str) -> None:
         f"{path}/{run}.zarr.zip",
         mode="w",
     ) as store:
+        log.debug(f"Compressing and storing dataset	for run	{run}")
         ds.chunk(config.chunking).to_zarr(
             store, encoding=encoding, compute=True,
         )
@@ -515,16 +542,14 @@ def run(path: str, config: Config, run: str) -> None:
     # Upload to huggingface
     log.info(f"Uploading {run} to Hugging Face Hub")
     done = False
+    hf_path = str(ds.coords["time"].dt.strftime("data/%Y/%m/%d/%Y%m%d_%H.zarr.zip").values)
     while not done:
         try:
             # Authenticate with huggingface
             api = HfApi(token=os.environ["HF_TOKEN"])
             api.upload_file(
                 path_or_fileobj=f"{path}/{run}.zarr.zip",
-                path_in_repo=f"data/{ds.time.dt.year.values}/" \
-                  + f"{ds.time.dt.month.values}/{ds.time.dt.day.values}/" \
-                  + f"{ds.time.dt.year.values}{ds.time.dt.month.values}" \
-                  + f"{ds.time.dt.day.values}_{ds.time.dt.hour.values}.zarr.zip",
+                path_in_repo=hf_path,
                 repo_id=config.repo_id,
                 repo_type="dataset",
             )
@@ -534,7 +559,7 @@ def run(path: str, config: Config, run: str) -> None:
         except Exception as e:
             log.error(e)
             return
-    log.info(f"Uploaded {run} to Hugging Face Hub")
+    log.info(f"Uploaded {run} to Hugging Face Hub at {hf_path}")
 
 
 if __name__ == "__main__":
