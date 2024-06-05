@@ -1,34 +1,36 @@
-"""Jacob's ICON global processing script.
+"""Jacob's ICON global processing script, modified a little bit.
 
-ICON data arrives as follows:
-    Global: 2hrs 45 mins after the run hour
-    Europe: 2hrs 45 to 3hrs 45 mins after the run hour
+Usage
+=====
 
-Example ICON-EU dataset:
+For usage see:
 
-<xarray.Dataset> Dimensions: (step: 93, latitude: 657, longitude: 1377, isobaricInhPa: 20)
+    $ python download_combine_upload_icon.py --help
 
-Coordinates:
-    * isobaricInhPa (isobaricInhPa) float64 50.0 70.0 100.0 ... 950.0 1e+03
-    * latitude (latitude) float64 29.5 29.56 29.62 ... 70.44 70.5
-    * longitude (longitude) float64 -23.5 -23.44 -23.38 ... 62.44 62.5
-    * step (step) timedelta64[ns] 00:00:00 ... 5 days 00:00:00 time datetime64[ns] ...
-    valid_time (step) datetime64[ns] dask.array<chunksize=(93,), meta=np.ndarray>
+For ease the script is also packaged as a docker container:
 
-Data variables: (12/60) 
-    alb_rad (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
-    alhfl_s (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
-    ashfl_s (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
-    asob_s (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
-    asob_t (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
-    aswdifd_s (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
-    ... ...
-    v (step, isobaricInhPa, latitude, longitude) float32 dask.array<chunksize=(37, 20, 326, 350), meta=np.ndarray>
-    v_10m (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
-    vmax_10m (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
-    w_snow (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
-    ww (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
-    z0 (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+    $ docker run -e HF_TOKEN=<SOME_TOKEN> -v /some/path:/tmp/nwp ghcr.io/openclimatefix/icon-etl:main --help
+
+
+Datasets
+========
+
+Example ICON-EU dataset (~20Gb):
+
+     <xarray.Dataset> Dimensions: (step: 93, latitude: 657, longitude: 1377, isobaricInhPa: 20)
+
+     Coordinates:
+         * isobaricInhPa (isobaricInhPa) float64 50.0 70.0 100.0 ... 950.0 1e+03
+         * latitude (latitude) float64 29.5 29.56 29.62 ... 70.44 70.5
+         * longitude (longitude) float64 -23.5 -23.44 -23.38 ... 62.44 62.5
+         * step (step) timedelta64[ns] 00:00:00 ... 5 days 00:00:00 time datetime64[ns] ...
+         valid_time (step) datetime64[ns] dask.array<chunksize=(93,), meta=np.ndarray>
+
+     Data variables: (3/60) 
+         alb_rad (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+         ... ...
+         v (step, isobaricInhPa, latitude, longitude) float32 dask.array<chunksize=(37, 20, 326, 350), meta=np.ndarray>
+         z0 (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
 """
 
 import argparse
@@ -328,11 +330,8 @@ def find_file_name(
     to the download_extract_files function if the file does not
     exist it will simply not be downloaded.
     """
-    # New data comes in 3 ish hours after the run time
-    if dt.datetime.now(tz=dt.UTC).hour - 3 > int(run_string):
-        date_string = dt.datetime.now(tz=dt.UTC).strftime("%Y%m%d") + run_string
-    else:
-        date_string = (dt.datetime.now(tz=dt.UTC) - dt.timedelta(days=1)).strftime("%Y%m%d") + run_string
+    # New data comes in 3 ish hours after the run time, ensure the script is running with a decent buffer
+    date_string = dt.datetime.now(tz=dt.UTC).strftime("%Y%m%d") + run_string
     if (len(config.vars_2d) == 0) and (len(config.vars_3d) == 0):
         raise ValueError("You need to specify at least one 2D or one 3D variable")
 
@@ -534,7 +533,7 @@ def run(path: str, config: Config, run: str) -> None:
         f"{path}/{run}.zarr.zip",
         mode="w",
     ) as store:
-        log.debug(f"Compressing and storing dataset	for run	{run}")
+        log.debug(f"Compressing and storing dataset for run {run}")
         ds.chunk(config.chunking).to_zarr(
             store, encoding=encoding, compute=True,
         )
@@ -565,17 +564,22 @@ def run(path: str, config: Config, run: str) -> None:
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("area", choices=["eu", "global"])
-    parser.add_argument("--path", default="/tmp/nwp")
-    parser.add_argument("--rm", action="store_true", help="Remove files on exit")
+    parser.add_argument("area", choices=["eu", "global"], help="Area to download data for")
+    parser.add_argument("--path", default="/tmp/nwp", help="Folder in which to save files")
+    parser.add_argument("--run", default="all", choices=["00", "06", "12", "18", "all"], help="Run time to download")
+    parser.add_argument("--rm", action="store_true", help="Remove files on completion")
     # Check HF_TOKEN env var is present
     _ = os.environ["HF_TOKEN"]
     log.info("Starting ICON download script")
     args = parser.parse_args()
 
     path: str = f"{args.path}/{args.area}"
+    if args.run == "all":
+        runs: list[str] = ["00", "06", "12", "18"]
+    else:
+        runs: list[str] = [args.run]
     # Cleanup any leftover files in path
-    for hour in ["00", "06", "12", "18"]:
+    for hour in runs:
         if args.rm:
             shutil.rmtree(path, ignore_errors=True)
         if args.area == "eu":
