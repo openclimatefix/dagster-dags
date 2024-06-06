@@ -454,7 +454,6 @@ def run(path: str, config: Config, run: str) -> None:
         if len(var_paths) == 0:
             log.warning(f"No files found for 3D var {var_3d} for run {run}")
             continue
-        log.debug(f"Creating dataset for 3D var {var_3d}")
         try:
             ds = xr.concat(
                 [
@@ -493,7 +492,6 @@ def run(path: str, config: Config, run: str) -> None:
         if len(paths) == 0:
             log.warning(f"No files found for 2D var {var_2d} at {run}")
             continue
-        log.debug(f"Creating dataset for 2D var {var_2d}")
         try:
             ds = (
                 xr.open_mfdataset(
@@ -542,10 +540,12 @@ def run(path: str, config: Config, run: str) -> None:
     log.info(f"Uploading {run} to Hugging Face Hub")
     done = False
     hf_path = str(ds.coords["time"].dt.strftime("data/%Y/%-m/%-d/%Y%m%d_%H.zarr.zip").values)
+    attempts: int = 0
     while not done:
         try:
             # Authenticate with huggingface
             api = HfApi(token=os.environ["HF_TOKEN"])
+            attempts += 1
             api.upload_file(
                 path_or_fileobj=f"{path}/{run}.zarr.zip",
                 path_in_repo=hf_path,
@@ -556,8 +556,10 @@ def run(path: str, config: Config, run: str) -> None:
             shutil.rmtree(f"{path}/{run}/")
             os.remove(f"{path}/{run}.zarr.zip")
         except Exception as e:
-            log.error(e)
-            return
+            log.error(f"Encountered error uploading to huggingface after {attempts} attempts: {e}")
+            if attempts > 50:
+                shutil.move(f"{path}/{run}.zarr.zip", f"{path}/failed/{os.path.basename(hf_path)}")
+                return
     log.info(f"Uploaded {run} to Hugging Face Hub at {hf_path}")
 
 
