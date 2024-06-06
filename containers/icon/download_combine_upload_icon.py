@@ -318,6 +318,7 @@ EUROPE_CONFIG = Config(
 def find_file_name(
     config: Config,
     run_string: str,
+    date: dt.date,
 ) -> list[str]:
     """Find file names to be downloaded.
 
@@ -331,7 +332,7 @@ def find_file_name(
     exist it will simply not be downloaded.
     """
     # New data comes in 3 ish hours after the run time, ensure the script is running with a decent buffer
-    date_string = dt.datetime.now(tz=dt.UTC).strftime("%Y%m%d") + run_string
+    date_string = date.strftime("%Y%m%d") + run_string
     if (len(config.vars_2d) == 0) and (len(config.vars_3d) == 0):
         raise ValueError("You need to specify at least one 2D or one 3D variable")
 
@@ -363,8 +364,20 @@ def download_extract_url(url: str, folder: str) -> str | None:
     """Download and extract a file from a given url."""
     filename = folder + os.path.basename(url).replace(".bz2", "")
 
+    # If the file already exists, do nothing
     if os.path.exists(filename):
         return filename
+    # If the file exists as a .bz2, convert it
+    elif os.path.exists(filename + ".bz2"):
+        with open(filename + ".bz2", "rb") as source, open(filename, "wb") as dest:
+            try:
+                dest.write(bz2.decompress(source.read()))
+            except Exception as e:
+                log.error(f"Failed to decompress {filename}.bz2: {e}")
+                return None
+            os.remove(filename + ".bz2")
+        return filename
+    # If the file does not exist, attempt to download and extract it
     else:
         r = requests.get(url, stream=True)
         if r.status_code == requests.codes.ok:
@@ -376,7 +389,7 @@ def download_extract_url(url: str, folder: str) -> str | None:
             return None
 
 
-def run(path: str, config: Config, run: str) -> None:
+def run(path: str, config: Config, run: str, date: dt.date) -> None:
     """Download ICON data, combine and upload to Hugging Face Hub."""
     # Download files first for run
     if not pathlib.Path(f"{path}/{run}/").exists():
@@ -389,6 +402,7 @@ def run(path: str, config: Config, run: str) -> None:
             urls = find_file_name(
                 config=config,
                 run_string=run,
+                date=date,
             )
             log.info(f"Downloading {len(urls)} files for run {run}")
 
@@ -553,7 +567,6 @@ def run(path: str, config: Config, run: str) -> None:
                 repo_type="dataset",
             )
             done = True
-            shutil.rmtree(f"{path}/{run}/")
             os.remove(f"{path}/{run}.zarr.zip")
         except Exception as e:
             log.error(f"Encountered error uploading to huggingface after {attempts} attempts: {e}")
@@ -570,10 +583,25 @@ if __name__ == "__main__":
     parser.add_argument("--path", default="/tmp/nwp", help="Folder in which to save files")
     parser.add_argument("--run", default="all", choices=["00", "06", "12", "18", "all"], help="Run time to download")
     parser.add_argument("--rm", action="store_true", help="Remove files on completion")
+    parser.add_argument(
+        "--date",
+        type=dt.date.fromisoformat,
+        default=dt.datetime.now(tz=dt.UTC).date(),
+        help="Date to download data for (YYY-MM-DD)",
+    )
+
     # Check HF_TOKEN env var is present
     _ = os.environ["HF_TOKEN"]
     log.info("Starting ICON download script")
     args = parser.parse_args()
+
+    if args.date < dt.datetime.now(tz=dt.UTC).date() and args.rm:
+        log.warning(
+            "The script is set to remove downloaded files. "
+            "If all your files are in the same 'run' folder, "
+            "you will lose data before it has a chance to be processed. "
+            "Consider running the script without the --rm flag."
+        )
 
     path: str = f"{args.path}/{args.area}"
     if args.run == "all":
@@ -585,9 +613,9 @@ if __name__ == "__main__":
         if args.rm:
             shutil.rmtree(path, ignore_errors=True)
         if args.area == "eu":
-            run(path=path, config=EUROPE_CONFIG, run=hour)
+            run(path=path, config=EUROPE_CONFIG, run=hour, date=args.date)
         elif args.area == "global":
-            run(path=path, config=GLOBAL_CONFIG, run=hour)
+            run(path=path, config=GLOBAL_CONFIG, run=hour, date=args.date)
         # Remove files
         if args.rm:
             shutil.rmtree(path, ignore_errors=True)
