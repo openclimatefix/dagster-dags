@@ -404,7 +404,7 @@ def run(path: str, config: Config, run: str, date: dt.date) -> None:
                 run_string=run,
                 date=date,
             )
-            log.info(f"Downloading {len(urls)} files for run {run}")
+            log.info(f"Downloading {len(urls)} files for {date} run {run}")
 
             # We only parallelize if we have a number of files
             # larger than the cpu count

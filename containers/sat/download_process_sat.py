@@ -5,15 +5,14 @@ Consolidates the old cli_downloader, backfill_hrv and backfill_nonhrv scripts.
 import argparse
 import dataclasses
 import datetime as dt
+import itertools
 import json
 import logging
-import multiprocessing
 import os
 import pathlib
 import shutil
-import subprocess
 import sys
-from itertools import repeat
+from multiprocessing import Pool, cpu_count
 from typing import Literal
 
 import diskcache as dc
@@ -26,12 +25,28 @@ import pyresample
 import xarray as xr
 import yaml
 from ocf_blosc2 import Blosc2
-from requests.exceptions import HTTPError
 from satpy import Scene
 
+handler = logging.StreamHandler(sys.stdout)
+logging.basicConfig(
+    level=logging.DEBUG,
+    stream=sys.stdout,
+    format="{" +\
+        '"message": "%(message)s", ' +\
+        '"severity": "%(levelname)s", "timestamp": "%(asctime)s.%(msecs)03dZ", ' +\
+        '"logging.googleapis.com/labels": {"python_logger": "%(name)s"}, ' +\
+        '"logging.googleapis.com/sourceLocation": {"file": "%(filename)s", "line": %(lineno)d, "function": "%(funcName)s"}' +\
+        "}",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-logging.getLogger("eumdac").setLevel(logging.WARN)
-logging.getLogger("urllib3").setLevel(logging.ERROR)
+for logger in [
+    "satpy", "cfgrib.dataset", "urllib3",
+    "requests", "charset_normalizer", "native_msg",
+    "pyorbital", "pyresample",
+]:
+    logging.getLogger(logger).setLevel(logging.WARNING)
+logging.getLogger("eumdac").setLevel(logging.ERROR)
 log = logging.getLogger("sat-etl")
 
 # OSGB is also called "OSGB 1936 / British National Grid -- United
@@ -57,7 +72,6 @@ class Config:
     region: str
     cadence: str
     product_id: str
-    native_path: str
     zarr_path: dict[str, str]
 
 CONFIGS: dict[str, Config] = {
@@ -65,7 +79,6 @@ CONFIGS: dict[str, Config] = {
         region="india",
         cadence="15min",
         product_id="EO:EUM:DAT:MSG:HRSEVIRI-IODC",
-        native_path="/mnt/disks/sat/native_files_india/",
         zarr_path={
             "hrv": "/mnt/disks/sat/%Y_hrv_iodc.zarr",
             "nonhrv": "/mnt/disks/sat/%Y_nonhrv_iodc.zarr",
@@ -75,7 +88,6 @@ CONFIGS: dict[str, Config] = {
         region="europe",
         cadence="5min",
         product_id="EO:EUM:DAT:MSG:MSG15-RSS",
-        native_path="/mnt/disks/sat/native_files/",
         zarr_path={
             "hrv": "/mnt/disks/sat/%Y_hrv.zarr",
             "nonhrv": "/mnt/disks/sat/%Y_nonhrv.zarr",
@@ -86,7 +98,6 @@ CONFIGS: dict[str, Config] = {
         region="europe, africa",
         cadence="15min",
         product_id="EO:EUM:DAT:MSG:HRSEVIRI",
-        native_path="/mnt/disks/sat/native_files_odegree/",
         zarr_path={
             "hrv": "/mnt/disks/sat/%Y_hrv_odegree.zarr",
             "nonhrv": "/mnt/disks/sat/%Y_nonhrv_odegree.zarr",
@@ -125,94 +136,72 @@ CHANNELS: dict[str, list[Channel]] = {
 
 def download_scans(
         sat_config: Config,
-        scan_times: list[pd.Timestamp],
-    ) -> list[pd.Timestamp]:
-    """Download satellite scans for a given config over the given scan times.
+        folder: pathlib.Path,
+        scan_time: pd.Timestamp,
+    ) -> list[pathlib.Path]:
+    """Download satellite scans for a satellite at a given time.
+
+    Args:
+        sat_config: Configuration for the satellite.
+        folder: Folder to download the files to.
+        scan_time: Time to download the files for.
 
     Returns:
-        List of scan times that failed to download.
+        List of downloaded files.
     """
-    failed_scan_times: list[pd.Timestamp] = []
+    files: list[pathlib.Path] = []
 
     # Get credentials from environment
     consumer_key: str = os.environ["EUMETSAT_CONSUMER_KEY"]
     consumer_secret: str = os.environ["EUMETSAT_CONSUMER_SECRET"]
 
-    direction: str = "forward" if scan_times[0] < scan_times[-1] else "backward"
-    i: int
-    scan_time: pd.Timestamp
-    for i, scan_time in enumerate(scan_times):
-        # Authenticate
-        # * Generates a new access token with short expiry
-        # * Equivalent to `eumdac --set-credentials <key> <secret>`
-        credentials_path = pathlib.Path.home() / ".eumdac" / "credentials"
-        credentials_path.parent.mkdir(exist_ok=True, parents=True)
-        token = eumdac.AccessToken(credentials=(consumer_key, consumer_secret))
-        try:
-            log.debug("Credentials are correct. Token generated: {token}")
-            credentials_path.write_text(f"{consumer_key},{consumer_secret}")
-            log.debug(f"Credentials written to file {credentials_path.as_posix()}")
-        except HTTPError as e:
-            if e.response.status_code == 401:
-                log.error("Invalid credentials. Please check your EUMETSAT credentials.")
-                break
-            else:
-                log.error(f"Error getting credentials: {e}")
-                failed_scan_times.append(scan_time)
+    # Authenticate
+    token = eumdac.AccessToken(credentials=(consumer_key, consumer_secret))
+
+    # Download
+    window_start: pd.Timestamp = scan_time - pd.Timedelta(sat_config.cadence)
+    window_end: pd.Timestamp = scan_time + pd.Timedelta(sat_config.cadence)
+
+    try:
+        datastore = eumdac.DataStore(token)
+        collection = datastore.get_collection(sat_config.product_id)
+        products = collection.search(
+            dtstart=window_start.to_pydatetime(),
+            dtend=window_end.to_pydatetime(),
+        )
+    except Exception as e:
+        log.error(f"Error finding products: {e}")
+        return []
+
+    log.info(f"Found {len(products)} products for {scan_time}")
+    for product in products:
+        for entry in list(filter(lambda p: p.endswith(".nat"), product.entries)):
+            filepath: pathlib.Path = folder / entry
+            # Prevent downloading existing files
+            if filepath.exists():
+                files.append(filepath)
                 continue
+            # Try download a few times
+            attempts: int = 1
+            while attempts < 6:
+                try:
+                    folder.mkdir(parents=True, exist_ok=True)
+                    with (
+                        product.open(entry) as fsrc,
+                        filepath.open("wb") as fdst,
+                    ):
+                        shutil.copyfileobj(fsrc, fdst)
+                    files.append(filepath)
+                    attempts = 1000
+                except Exception as e:
+                    log.warning(f"Error downloading product '{product}' (attempt {attempts}): '{e}'")
+                    attempts += 1
 
-        # Download
-        # * Equivalent to `eumdac download -c <product_id> -s <start_time> -e <end_time> -o <output_dir> --entry *.nat -y`
-        window_start: pd.Timestamp = scan_time - pd.Timedelta(sat_config.cadence)
-        window_end: pd.Timestamp = scan_time + pd.Timedelta(sat_config.cadence)
-        try:
-            eumdac.cli.download(
-                argparse.Namespace(
-                    entry=["*.nat"],
-                    output_dir=sat_config.native_path,
-                    collection=[sat_config.product_id],
-                    start=window_start,
-                    end=window_end,
-                    token=token,
-                    yes=True,
-                    test=False,
-                    query=None,
-                    product=None,
-                    publication_after=None,
-                    publication_before=None,
-                    sort=None,
-                    dtstart=None,
-                    dtend=None,
-                    bbox=None,
-                    geo=None,
-                    sat=None,
-                    cycle=None,
-                    orbit=None,
-                    relorbit=None,
-                    filename=None,
-                    timeliness=None,
-                    product_type=None,
-                    limit=None,
-                    integrity=None,
-                    download_coverage=None,
-                    tailor=None,
-                    chain=None,
-                    dirs=None,
-                    onedir=None,
-                    no_warning_logs=None,
-                    keep_order=None,
-                ),
-            )
-        except eumdac.errors.EumdacError as e:
-            log.error(f"Error downloading files: {e}")
-            failed_scan_times.append(scan_time)
-
-        log.info(f"Download [{direction}]: completed {i + 1}/{len(scan_times)}")
-
-    return failed_scan_times
+    return files
 
 def process_scans(
         sat_config: Config,
+        folder: pathlib.Path,
         start: dt.date,
         end: dt.date,
         dstype: Literal["hrv", "nonhrv"],
@@ -229,8 +218,8 @@ def process_scans(
         zarr_times = [last_zarr_time, last_zarr_time]
 
     # Get native files in order
-    native_files = list(pathlib.Path(sat_config.native_path).glob("*/*.nat"))
-    log.info(f"Found {len(native_files)} native files at {sat_config.native_path}")
+    native_files = list(folder.glob("*.nat"))
+    log.info(f"Found {len(native_files)} native files at {folder.as_posix()}")
     native_files.sort()
 
     # Convert native files to xarray datasets
@@ -250,11 +239,12 @@ def process_scans(
         # Append to zarrs in hourly chunks (12 sets of 5 minute datasets)
         # * This is so zarr doesn't complain about mismatching chunk sizes
         if len(datasets) == 12:
-            if os.path.exists(zarr_path):
+            if pathlib.Path(zarr_path).exists():
+                log.info(f"Appending to existing zarr store at {zarr_path}")
                 mode = "a"
             else:
+                log.info(f"Creating new zarr store at {zarr_path}")
                 mode = "w"
-                log.debug(f"No zarr store found for year. Creating new store at {zarr_path}.")
             _write_to_zarr(
                 xr.concat(datasets, dim="time"),
                 zarr_path,
@@ -263,7 +253,7 @@ def process_scans(
             )
             datasets = []
 
-        log.info(f"Process loop [{dstype}]: {i}/{len(native_files)}")
+        log.info(f"Process loop [{dstype}]: {i+1}/{len(native_files)}")
 
     # Consolidate zarr metadata
     _rewrite_zarr_times(zarr_path)
@@ -457,6 +447,7 @@ def _preprocess_function(xr_data: xr.Dataset) -> xr.Dataset:
 
 def _write_to_zarr(dataset: xr.Dataset, zarr_name: str, mode: str, chunks: dict) -> None:
     """Writes the given dataset to the given zarr store."""
+    log.info("Writing to Zarr")
     mode_extra_kwargs = {
         "a": {"append_dim": "time"},
         "w": {
@@ -524,6 +515,12 @@ parser.add_argument(
     choices=list(CONFIGS.keys()),
 )
 parser.add_argument(
+    "--path",
+    help="Path to store the downloaded data",
+    default="/mnt/disks/sat",
+    type=pathlib.Path,
+)
+parser.add_argument(
     "--start_date",
     help="Date to download from (YYYY-MM-DD)",
     type=dt.date.fromisoformat,
@@ -550,12 +547,15 @@ if __name__ == "__main__":
         try:
             args.start_date = dt.date.fromisoformat(cache.get("latest_time"))
         except Exception as e:
-            raise Exception("Can't get last runtime from cache. Pass start_date in manually.") from e
+            raise Exception(
+                "Can't get last runtime from cache. Pass start_date in manually."
+            ) from e
 
     log.info(f"{prog_start!s}: Running with args: {args}")
 
     # Get config for desired satellite
     sat_config = CONFIGS[args.sat]
+    folder: pathlib.Path = args.path / args.sat
 
     # Get start and end times for run
     start: dt.date = args.start_date
@@ -567,33 +567,41 @@ if __name__ == "__main__":
     expected_runtime = pd.Timedelta(secs_per_scan * len(scan_times), "seconds")
     log.info(f"Downloading {len(scan_times)} scans. Expected runtime: {expected_runtime!s}")
 
-    # Perform data download passes
-    # * Each pass has two simultaneous forward and backward download streams
-    for pass_num in [0, 1]:
-        pool = multiprocessing.Pool()
-        log.info(f"Performing pass {pass_num}")
-        failed_scans = pool.starmap(
-                download_scans,
-                [
-                    (sat_config, scan_times),
-                    (sat_config, list(reversed(scan_times))),
-                ],
+    # Download data
+    # We only parallelize if we have a number of files larger than the cpu count
+    if len(scan_times) > cpu_count():
+        log.debug("Concurrency: {cpu_count()}")
+        pool = Pool(max(cpu_count(), 50)) # EUMDAC only allows for 50 concurrent requests
+        results = pool.starmap(
+            download_scans,
+            [(sat_config, folder, scan_time) for scan_time in scan_times],
         )
         pool.close()
         pool.join()
-        for result in failed_scans:
-            log.info(f"Completed download with {len(result)} failed scan times.")
+        results = list(itertools.chain(*results))
+    else:
+        results = []
+        for scan_time in scan_times:
+            result = download_scans(sat_config, folder, scan_time)
+            if len(result) > 0:
+                results.extend(result)
 
     log.info("Converting raw data to HRV and non-HRV Zarr Stores.")
 
-    # Process the HRV and non-HRV data
-    pool = multiprocessing.Pool()
-    results = pool.starmap(
-        process_scans,
-        zip(repeat(sat_config), repeat(start), repeat(end), ["hrv", "nonhrv"]),
-    )
-    pool.close()
-    pool.join()
+    # Process the HRV and non-HRV data concurrently if possible
+    if cpu_count() > 1:
+        pool = Pool(cpu_count())
+        results = pool.starmap(
+            process_scans,
+            [(sat_config, folder, start, end, t) for t in ["hrv", "nonhrv"]],
+        )
+        pool.close()
+        pool.join()
+    else:
+        results = []
+        for t in ["hrv", "nonhrv"]:
+            result = process_scans(sat_config, folder, start, end, t)
+            results.append(result)
     for result in results:
         log.info(f"Processed {result} data.")
 
