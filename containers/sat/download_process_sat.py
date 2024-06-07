@@ -46,7 +46,7 @@ for logger in [
     "pyorbital", "pyresample",
 ]:
     logging.getLogger(logger).setLevel(logging.WARNING)
-logging.getLogger("eumdac").setLevel(logging.ERROR)
+logging.getLogger("eumdac").setLevel(logging.WARNING)
 log = logging.getLogger("sat-etl")
 
 # OSGB is also called "OSGB 1936 / British National Grid -- United
@@ -138,6 +138,7 @@ def download_scans(
         sat_config: Config,
         folder: pathlib.Path,
         scan_time: pd.Timestamp,
+        token: eumdac.AccessToken,
     ) -> list[pathlib.Path]:
     """Download satellite scans for a satellite at a given time.
 
@@ -150,13 +151,6 @@ def download_scans(
         List of downloaded files.
     """
     files: list[pathlib.Path] = []
-
-    # Get credentials from environment
-    consumer_key: str = os.environ["EUMETSAT_CONSUMER_KEY"]
-    consumer_secret: str = os.environ["EUMETSAT_CONSUMER_SECRET"]
-
-    # Authenticate
-    token = eumdac.AccessToken(credentials=(consumer_key, consumer_secret))
 
     # Download
     window_start: pd.Timestamp = scan_time - pd.Timedelta(sat_config.cadence)
@@ -173,7 +167,6 @@ def download_scans(
         log.error(f"Error finding products: {e}")
         return []
 
-    log.info(f"Found {len(products)} products for {scan_time}")
     for product in products:
         for entry in list(filter(lambda p: p.endswith(".nat"), product.entries)):
             filepath: pathlib.Path = folder / entry
@@ -539,8 +532,10 @@ if __name__ == "__main__":
 
     # Parse running args
     args = parser.parse_args()
+    folder: pathlib.Path = args.path / args.sat
+
     # Create a reusable cache
-    cache = dc.Cache(f"/mnt/disks/sat/.cache/{args.sat}")
+    cache = dc.Cache(folder / ".cache/{args.sat}")
 
     if args.start_date is None:
         # Try to get the start date from the last cached datetime
@@ -555,7 +550,6 @@ if __name__ == "__main__":
 
     # Get config for desired satellite
     sat_config = CONFIGS[args.sat]
-    folder: pathlib.Path = args.path / args.sat
 
     # Get start and end times for run
     start: dt.date = args.start_date
@@ -569,12 +563,16 @@ if __name__ == "__main__":
 
     # Download data
     # We only parallelize if we have a number of files larger than the cpu count
+    consumer_key: str = os.environ["EUMETSAT_CONSUMER_KEY"]
+    consumer_secret: str = os.environ["EUMETSAT_CONSUMER_SECRET"]
+    token = eumdac.AccessToken(credentials=(consumer_key, consumer_secret))
+
     if len(scan_times) > cpu_count():
-        log.debug("Concurrency: {cpu_count()}")
-        pool = Pool(max(cpu_count(), 50)) # EUMDAC only allows for 50 concurrent requests
+        log.debug(f"Concurrency: {cpu_count()}")
+        pool = Pool(max(cpu_count(), 10)) # EUMDAC only allows for 10 concurrent requests
         results = pool.starmap(
             download_scans,
-            [(sat_config, folder, scan_time) for scan_time in scan_times],
+            [(sat_config, folder, scan_time, token) for scan_time in scan_times],
         )
         pool.close()
         pool.join()
@@ -582,7 +580,7 @@ if __name__ == "__main__":
     else:
         results = []
         for scan_time in scan_times:
-            result = download_scans(sat_config, folder, scan_time)
+            result = download_scans(sat_config, folder, scan_time, token)
             if len(result) > 0:
                 results.extend(result)
 
