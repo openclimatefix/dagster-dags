@@ -80,7 +80,7 @@ def get_monthly_passiv_data(start_date: datetime, upload_to_hf: bool = True, ove
     key=["pv", "passiv", "monthly_30min"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m",
-        start="2023-01",
+        start="2010-01",
         cron_schedule="0 12 1 * *",  # 1st day of the month, at 12 oclock
     ),
 )
@@ -100,7 +100,7 @@ def pv_passiv_monthly_30min(context: dg.AssetExecutionContext):
     key=["pv", "passiv", "monthly_5min"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m",
-        start="2023-01",
+        start="2018-01",
         cron_schedule="0 12 1 * *",  # 1st day of the month, at 12 oclock
     ),
 )

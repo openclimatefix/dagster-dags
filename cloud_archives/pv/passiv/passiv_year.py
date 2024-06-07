@@ -68,7 +68,7 @@ def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, over
     key=["pv", "passiv", "yearly_5min"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y",
-        start="2023",
+        start="2018",
         cron_schedule="0 12 2 1 *",  # 2nd day of January, at 12 oclock,
     ),
 )
@@ -86,7 +86,7 @@ def pv_passiv_yearly_5min(context: dg.AssetExecutionContext):
     key=["pv", "passiv", "yearly_30min"],
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y",
-        start="2023",
+        start="2010",
         cron_schedule="0 12 2 1 *",  # 2nd day of January, at 12 oclock,
     ),
 )
