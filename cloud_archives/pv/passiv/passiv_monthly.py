@@ -22,7 +22,8 @@ def get_monthly_passiv_data(start_date: datetime, upload_to_hf: bool = True, ove
     # check if we have data for that day already
     huggingface_file = get_monthly_hf_file_name(date=start_date, period=period)
     if not overwrite:
-        fs = HfFileSystem()
+        token = os.getenv("HUGGINGFACE_TOKEN")
+        fs = HfFileSystem(token=token)
         if fs.exists(f'datasets/openclimatefix/uk_pv/{huggingface_file}'):
             print(f"Data already exists for {start_date.date()}")
             return
