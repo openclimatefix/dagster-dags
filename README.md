@@ -86,5 +86,5 @@ Add your assets to the relevant code location. See [Repository Structure](#repos
 
 ## Useful links
 
-- (Detecting existing assets)[https://github.com/dagster-io/dagster/discussions/17847]
+- [Detecting existing assets](https://github.com/dagster-io/dagster/discussions/17847)
 

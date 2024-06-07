@@ -35,6 +35,7 @@ dependencies = [
     "nwp-consumer >= 0.5.8",
     "ocf-blosc2 >= 0.0.3",
     "pathlib >= 1.0.1",
+    "pyarrow >= 10.0.1",
     "requests >= 2.31.0",
     "requests-toolbelt >= 1.0.0",
     "xarray >= 2022.3.0",
