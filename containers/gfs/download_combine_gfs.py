@@ -24,9 +24,8 @@ logging.basicConfig(
     stream=sys.stdout,
     format='{"time": "%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s"}',
 )
-logging.getLogger("requests").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
-logging.getLogger("cfgrib.dataset").setLevel(logging.WARNING)
+for logger in ["requests", "urllib3", "cfgrib.dataset"]:
+    logging.getLogger(logger).setLevel(logging.WARNING)
 log = logging.getLogger("gfs-etl")
 
 @dataclasses.dataclass
@@ -49,8 +48,9 @@ def download_url(url: str, folder: str) -> str | None:
         log.debug(f"Downloading {url} to {filename}")
         r = requests.get(url.strip(), allow_redirects=True, stream=True)
         if r.status_code == requests.codes.ok:
-            with r.raw as source, open(filename, "wb") as dest:
-                dest.write(source.read())
+            with open(filename, "wb") as dest:
+                for chunk in r.iter_content(chunk_size=128):
+                    dest.write(chunk)
             return filename
         else:
             log.debug(f"Failed to download {url}: {r.content}")
@@ -199,6 +199,7 @@ def run(path: str, config: Config, date: dt.date) -> str:
         dataset_paths: list[str] = []
         with tempfile.TemporaryDirectory() as tmpdir:
             for file in list(glob(f"{path}/{date:%Y%m%d}/{hour}/*{hour}.*.grib2")):
+                log.debug(f"Converting {file}")
                 ds_path = convert_file(file=file, outfolder=tmpdir)
                 if ds_path is not None:
                     dataset_paths.append(ds_path)
@@ -229,6 +230,8 @@ if __name__ == "__main__":
     prog_start = dt.datetime.now(tz=dt.UTC)
 
     parser = argparse.ArgumentParser(
+        prog="GFS ETL",
+        description="Download and combine GFS data",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
