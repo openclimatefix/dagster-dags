@@ -501,6 +501,7 @@ def _rewrite_zarr_times(output_name: str) -> None:
 parser = argparse.ArgumentParser(
     prog="EUMETSTAT Pipeline",
     description="Downloads and processes data from EUMETSTAT",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
     "sat",
@@ -519,6 +520,7 @@ parser.add_argument(
     help="Date to download from (YYYY-MM-DD)",
     type=dt.date.fromisoformat,
     required=False,
+    default=str(dt.datetime.now(tz=dt.UTC).date()),
 )
 parser.add_argument(
     "--end_date",
@@ -538,23 +540,13 @@ if __name__ == "__main__":
     # Create a reusable cache
     cache = dc.Cache(folder / ".cache/{args.sat}")
 
-    if args.start_date is None:
-        # Try to get the start date from the last cached datetime
-        try:
-            args.start_date = dt.date.fromisoformat(cache.get("latest_time"))
-        except Exception as e:
-            raise Exception(
-                "Can't get last runtime from cache. Pass start_date in manually.",
-            ) from e
-
     log.info(f"{prog_start!s}: Running with args: {args}")
-
     # Get config for desired satellite
     sat_config = CONFIGS[args.sat]
 
     # Get start and end times for run
     start: dt.date = args.start_date
-    end: dt.date = args.end_date
+    end: dt.date = args.end_date + dt.timedelta(days=1) if args.end_date == start else args.end_date
     scan_times: list[pd.Timestamp] = pd.date_range(start=start, end=end, freq=sat_config.cadence).tolist()
 
     # Get average runtime from cache
@@ -603,9 +595,6 @@ if __name__ == "__main__":
             results.append(result)
     for result in results:
         log.info(f"Processed {result} data.")
-
-    # Save the last processed time to cache
-    cache.set("latest_time", end.isoformat())
 
     # Calculate the new average time per timestamp
     runtime: dt.timedelta = dt.datetime.now(tz=dt.UTC) - prog_start

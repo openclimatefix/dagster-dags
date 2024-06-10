@@ -578,7 +578,9 @@ def run(path: str, config: Config, run: str, date: dt.date) -> None:
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument("area", choices=["eu", "global"], help="Area to download data for")
     parser.add_argument("--path", default="/tmp/nwp", help="Folder in which to save files")
     parser.add_argument("--run", default="all", choices=["00", "06", "12", "18", "all"], help="Run time to download")

@@ -228,7 +228,9 @@ def run(path: str, config: Config, date: dt.date) -> str:
 if __name__ == "__main__":
     prog_start = dt.datetime.now(tz=dt.UTC)
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument(
         "--path",
         default="/tmp/gfs",
@@ -238,7 +240,7 @@ if __name__ == "__main__":
         "--date",
         type=dt.date.fromisoformat,
         default=str(dt.datetime.now(tz=dt.UTC).date()),
-        help="Date to download (YYYY-MM-DD)",
+        help="Date to download data for (YYYY-MM-DD)",
     )
 
     args = parser.parse_args()
