@@ -24,6 +24,7 @@ import pyproj
 import pyresample
 import xarray as xr
 import yaml
+import zarr
 from ocf_blosc2 import Blosc2
 from satpy import Scene
 
@@ -472,7 +473,6 @@ def _rewrite_zarr_times(output_name: str) -> None:
     for v in list(ds.coords.keys()):
         if ds.coords[v].dtype == object:
             ds[v].encoding.clear()
-
     for v in list(ds.variables.keys()):
         if ds[v].dtype == object:
             ds[v].encoding.clear()
@@ -495,6 +495,7 @@ def _rewrite_zarr_times(output_name: str) -> None:
         data["metadata"]["time/.zarray"] = coord_data["metadata"]["time/.zarray"]
     with open(f"{output_name}/.zmetadata", "w") as f:
         json.dump(data, f)
+    zarr.consolidate_metadata(output_name)
 
 
 parser = argparse.ArgumentParser(
@@ -543,7 +544,7 @@ if __name__ == "__main__":
             args.start_date = dt.date.fromisoformat(cache.get("latest_time"))
         except Exception as e:
             raise Exception(
-                "Can't get last runtime from cache. Pass start_date in manually."
+                "Can't get last runtime from cache. Pass start_date in manually.",
             ) from e
 
     log.info(f"{prog_start!s}: Running with args: {args}")
