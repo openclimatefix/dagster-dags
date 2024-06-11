@@ -1,5 +1,5 @@
+import datetime as dt
 import os
-import shutil
 
 import dagster as dg
 
@@ -26,17 +26,22 @@ ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
 )
 def zarr_archive(
     context: dg.AssetExecutionContext,
-    pipes_subprocess_client: dg.PipesSubprocessClient,
-) -> dg.MaterializeResult:
-    return pipes_subprocess_client.run(
-        context=context,
-        command=(
-            shutil.which("python"),
-            dg.file_relative_path(download_combine_gfs.__file__, "download_combine_gfs.py"),
-            "--date",
-            context.partition_time_window.start.strftime("%Y-%m-%d"),
-            "--path",
-            ZARR_FOLDER + "/nwp/gfs/global",
-        ),
-    ).get_materialize_result()
-
+) -> dg.Output:
+    start: dt.datetime.now(tz=dt.UTC)
+    outfile: str = download_combine_gfs.run(
+        path=ZARR_FOLDER + "/nwp/gfs/global",
+        date=context.partition_time_window.start,
+        config=download_combine_gfs.DEFAULT_CONFIG,
+    )
+    end: dt.datetime.now(tz=dt.UTC)
+    return dg.Output(
+        value=outfile,
+        metadata={
+            "archive_folder": dg.MetadataValue.text(f"{ZARR_FOLDER}/nwp/gfs/global"),
+            "area": dg.MetadataValue.text("global"),
+            "source": dg.MetadataValue.text("gfs"),
+            "partition_elapsed_time_minutes": dg.MetadataValue.int(
+                (end - start).total_seconds() // 60,
+            ),
+        },
+    )
