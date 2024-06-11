@@ -15,6 +15,7 @@ from multiprocessing import Pool, cpu_count
 import cfgrib
 import dagster_pipes
 import requests
+import urllib3
 import xarray as xr
 import zarr
 from ocf_blosc2 import Blosc2
@@ -46,15 +47,21 @@ def download_url(url: str, folder: str) -> str | None:
         return filename
     else:
         log.debug(f"Downloading {url} to {filename}")
-        r = requests.get(url.strip(), allow_redirects=True, stream=True)
-        if r.status_code == requests.codes.ok:
-            with open(filename, "wb") as dest:
-                for chunk in r.iter_content(chunk_size=128):
-                    dest.write(chunk)
-            return filename
-        else:
-            log.debug(f"Failed to download {url}: {r.content}")
-            return None
+        attempts: int = 1
+        while attempts < 6:
+            try:
+                r = requests.get(url.strip(), allow_redirects=True, stream=True)
+                if r.status_code == requests.codes.ok:
+                    with open(filename, "wb") as dest:
+                        for chunk in r.iter_content(chunk_size=1024):
+                            dest.write(chunk)
+                    return filename
+            except urllib3.exceptions.IncompleteRead:
+                log.warning(f"Encountered IncompleteRead error: retrying ({attempts})")
+                attempts += 1
+            except Exception as e:
+                log.error(f"Failed to download {url}: {e}")
+                return None
 
 def find_file_names(it: dt.datetime, config: Config) -> list[str]:
     """Find file names for the given init time."""
