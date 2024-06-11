@@ -39,20 +39,4 @@ def zarr_archive(
             ZARR_FOLDER + "/nwp/gfs/global",
         ),
     ).get_materialize_result()
-    """
-    return pipes_docker_client.run(
-        context=context,
-        image="ghcr.io/openclimatefix/gfs-etl:main",
-        command=[
-            "--date",
-            context.partition_time_window.start.strftime("%Y-%m-%d"),
-            "--path",
-            "/data",
-        ],
-        container_kwargs={
-            "volumes": {
-                f"{ZARR_FOLDER}/nwp/gfs/global": {"bind": "/data", "mode": "rw"},
-            },
-        },
-    ).get_materialize_result()
-    """
+
