@@ -101,11 +101,20 @@ def convert_file(file: str, outfolder: str) -> str | None:
             d = d.rename({variable: f"{variable}_{d[f'{variable}'].attrs['GRIB_stepType']}"})
         heightAboveGround[i] = d
 
-    surface_merged: xr.Dataset = xr.merge(surface).drop_vars("unknown_surface_instant", errors="ignore")
+    surface_merged: xr.Dataset = xr.merge(surface).drop_vars(
+        ["unknown_surface_instant", "valid_time"],
+        errors="ignore",
+    )
     del surface
-    heightAboveGround_merged: xr.Dataset = xr.merge(heightAboveGround)
+    heightAboveGround_merged: xr.Dataset = xr.merge(heightAboveGround).drop_vars(
+        "valid_time",
+        errors="ignore",
+    )
     del heightAboveGround
-    isobaricInhPa_merged: xr.Dataset = xr.merge(isobaricInhPa)
+    isobaricInhPa_merged: xr.Dataset = xr.merge(isobaricInhPa).drop_vars(
+        "valid_time",
+        errors="ignore",
+    )
     del isobaricInhPa
 
     total_ds: xr.Dataset = (

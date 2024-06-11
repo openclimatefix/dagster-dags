@@ -1,9 +1,10 @@
 import os
+import shutil
 
 import dagster as dg
-from dagster_docker import PipesDockerClient
 
 from constants import LOCATIONS_BY_ENVIRONMENT
+from containers.gfs import download_combine_gfs
 
 env = os.getenv("ENVIRONMENT", "local")
 ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
@@ -25,20 +26,17 @@ ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
 )
 def zarr_archive(
     context: dg.AssetExecutionContext,
-    pipes_docker_client: PipesDockerClient,
+    pipes_subprocess_client: dg.PipesSubprocessClient,
 ) -> dg.MaterializeResult:
-    return pipes_docker_client.run(
+    return pipes_subprocess_client.run(
         context=context,
-        image="ghcr.io/openclimatefix/gfs-etl:main",
-        command=[
+        command=(
+            shutil.which("python"),
+            dg.file_relative_path(download_combine_gfs.__file__, "download_combine_gfs.py"),
             "--date",
             context.partition_time_window.start.strftime("%Y-%m-%d"),
             "--path",
-            "/data",
-        ],
-        container_kwargs={
-            "volumes": {
-                f"{ZARR_FOLDER}/nwp/gfs/global": {"bind": "/data", "mode": "rw"},
-            },
-        },
+            ZARR_FOLDER + "/nwp/gfs/global",
+        ),
     ).get_materialize_result()
+
