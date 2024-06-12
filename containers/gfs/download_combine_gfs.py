@@ -81,7 +81,14 @@ def convert_file(file: str, outfolder: str) -> str | None:
     """
     # Convert the file
     try:
-        ds: list[xr.Dataset] = cfgrib.open_datasets(file, backend_kwargs={"indexpath": ""})
+        ds: list[xr.Dataset] = cfgrib.open_datasets(
+            file,
+            backend_kwargs={
+                "indexpath": "",
+                "grib_errors": "ignore",
+                "errors": "ignore",
+            },
+        )
     except Exception as e:
         log.error(f"Error opening dataset for file {file}: {e}")
         return None
