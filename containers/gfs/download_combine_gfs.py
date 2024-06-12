@@ -79,6 +79,7 @@ def convert_file(file: str, outfolder: str) -> str | None:
 
     Storing the dile and passing that instead of an xaray dataset object saves memory.
     """
+    log.debug(f"Converting {file} to zarr")
     # Convert the file
     try:
         ds: list[xr.Dataset] = cfgrib.open_datasets(
@@ -202,7 +203,6 @@ def run(path: str, config: Config, date: dt.date, run: str) -> str:
         dataset_paths = [dp for dp in dataset_paths if dp is not None]
     else:
         for file in run_files:
-            log.debug(f"Converting {file}")
             ds_path = convert_file(file=file, outfolder=path + "/.work")
             if ds_path is not None:
                 dataset_paths.append(ds_path)
