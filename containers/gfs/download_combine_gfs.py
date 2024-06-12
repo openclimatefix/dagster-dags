@@ -54,7 +54,8 @@ def download_url(url: str, folder: str) -> str | None:
                 if r.status_code == requests.codes.ok:
                     with open(filename, "wb") as dest:
                         for chunk in r.iter_content(chunk_size=1024):
-                            dest.write(chunk)
+                            if chunk:
+                                dest.write(chunk)
                     return filename
             except urllib3.exceptions.IncompleteRead:
                 log.warning(f"Encountered IncompleteRead error: retrying ({attempts})")
