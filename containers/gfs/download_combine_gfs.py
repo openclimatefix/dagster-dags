@@ -85,7 +85,6 @@ def convert_file(file: str, outfolder: str) -> str | None:
             file,
             backend_kwargs={
                 "indexpath": "",
-                "grib_errors": "ignore",
                 "errors": "ignore",
             },
         )
