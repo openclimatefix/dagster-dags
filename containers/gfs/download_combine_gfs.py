@@ -132,7 +132,7 @@ def convert_file(file: str, outfolder: str) -> str | None:
         .expand_dims("step")
         .transpose("init_time", "step", ...)
         .sortby("step")
-        .chunk({"init_time": 1, "step": -1})
+        .chunk({"init_time": 1, "step": 1})
     )
     del surface_merged, heightAboveGround_merged, isobaricInhPa_merged
 
