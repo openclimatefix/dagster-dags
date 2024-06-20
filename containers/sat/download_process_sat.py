@@ -496,13 +496,17 @@ def _write_to_zarr(dataset: xr.Dataset, zarr_name: str, mode: str, chunks: dict)
         },
     }
     extra_kwargs = mode_extra_kwargs[mode]
-    dataset.isel(x_geostationary=slice(0, 5548)).chunk(chunks).to_zarr(
-        store=zarr_name,
-        compute=True,
-        consolidated=True,
-        mode=mode,
-        **extra_kwargs,
-    )
+    sliced_ds: xr.Dataset = dataset.isel(x_geostationary=slice(0, 5548)).chunk(chunks)
+    try:
+        sliced_ds.to_zarr(
+            store=zarr_name,
+            compute=True,
+            consolidated=True,
+            mode=mode,
+            **extra_kwargs,
+        )
+    except Exception as e:
+        log.error(f"Error writing to zarr: {e}")
 
 
 def _rewrite_zarr_times(output_name: str) -> None:
