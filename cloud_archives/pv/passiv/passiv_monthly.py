@@ -79,6 +79,7 @@ def get_monthly_passiv_data(start_date: datetime, upload_to_hf: bool = True, ove
 
 @dg.asset(
     key=["pv", "passiv", "monthly_30min"],
+    auto_materialize_policy=dg.AutoMaterializePolicy.eager(),
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m",
         start="2010-01",
@@ -99,6 +100,7 @@ def pv_passiv_monthly_30min(context: dg.AssetExecutionContext):
 
 @dg.asset(
     key=["pv", "passiv", "monthly_5min"],
+    auto_materialize_policy=dg.AutoMaterializePolicy.eager(),
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y-%m",
         start="2018-01",
