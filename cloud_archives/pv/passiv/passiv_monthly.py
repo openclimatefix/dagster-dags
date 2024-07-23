@@ -76,6 +76,10 @@ def get_monthly_passiv_data(start_date: datetime, upload_to_hf: bool = True, ove
             repo_type="dataset",
         )
 
+        # remove local file
+        logger.info("Removing local file")
+        os.remove(file)
+
 
 @dg.asset(
     key=["pv", "passiv", "monthly_30min"],
