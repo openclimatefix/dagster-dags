@@ -75,10 +75,10 @@ def get_monthly_passiv_data(start_date: datetime, upload_to_hf: bool = True, ove
             repo_id="openclimatefix/uk_pv",
             repo_type="dataset",
         )
-        
-    # remove local file
-    logger.info("Removing local file")
-    os.remove(file)
+
+        # remove local file
+        logger.info("Removing local file")
+        os.remove(file)
 
 
 @dg.asset(
