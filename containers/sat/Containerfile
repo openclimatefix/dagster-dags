@@ -5,7 +5,7 @@ FROM quay.io/condaforge/miniforge3:latest AS build-venv
 RUN apt -qq update && apt -qq install -y build-essential
 RUN conda create -p /venv python=3.12
 RUN /venv/bin/pip install --upgrade -q pip wheel setuptools
-RUN conda install -p /venv -c conda-forge -y cartopy satpy[all] numpy
+RUN conda install -p /venv -c conda-forge -y cartopy satpy[all]=0.50.0 numpy
 ENV GDAL_CONFIG=/venv/bin/gdal-config
 
 # Build the virtualenv
