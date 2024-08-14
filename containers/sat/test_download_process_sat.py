@@ -27,13 +27,14 @@ class TestDownloadProcessSat(unittest.TestCase):
 
         token = dps._gen_token()
 
-        paths = dps.download_scans(
-            sat_config=dps.CONFIGS["iodc"],
-            folder=pathlib.Path("/tmp/test_sat_data"),
-            scan_time=TIMESTAMP,
-            token=token,
-        )
-        cls.paths = paths
+        for t in [TIMESTAMP + pd.Timedelta(t) for t in ["0m", "15m", "30m", "45m"]]:
+            paths = dps.download_scans(
+                sat_config=dps.CONFIGS["iodc"],
+                folder=pathlib.Path("/tmp/test_sat_data"),
+                scan_time=t,
+                token=token,
+            )
+            cls.paths = paths
 
         attrs: dict = {
             "end_time": TIMESTAMP + pd.Timedelta("15m"),
@@ -111,3 +112,16 @@ class TestDownloadProcessSat(unittest.TestCase):
         ds.to_zarr("/tmp/test_sat_data/test.zarr", mode="w", consolidated=True)
         ds2 = xr.open_zarr("/tmp/test_sat_data/test.zarr")
         self.assertDictEqual(dict(ds.sizes), dict(ds2.sizes))
+        self.assertNotEqual(dict(ds.attrs), {})
+
+    def test_process_scans(self) -> None:
+
+        out: str = dps.process_scans(
+            dps.CONFIGS["iodc"],
+            pathlib.Path("/tmp/test_sat_data"),
+            pd.Timestamp("2024-01-01"),
+            pd.Timestamp("2024-01-02"), "nonhrv",
+        )
+
+        self.assertTrue(False)
+
