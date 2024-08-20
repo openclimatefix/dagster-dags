@@ -541,7 +541,7 @@ def _rewrite_zarr_times(output_name: str) -> None:
     # Need to remove these encodings to avoid chunking
     del ds.time.encoding["chunks"]
     del ds.time.encoding["preferred_chunks"]
-    ds.to_zarr(f"{output_name.split('.zarr')[0]}_coord.zarr", consolidated=True)
+    ds.to_zarr(f"{output_name.split('.zarr')[0]}_coord.zarr", consolidated=True, mode="w")
     # Remove current time ones
     shutil.rmtree(f"{output_name}/time/")
     # Add new time ones
