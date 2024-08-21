@@ -627,15 +627,14 @@ def run(args: argparse.Namespace) -> None:
     if len(scan_times) > cpu_count():
         log.debug(f"Concurrency: {cpu_count()}")
         pool = Pool(max(cpu_count(), 10))  # EUMDAC only allows for 10 concurrent requests
-        raw_paths = pool.starmap(
+        results: list[list[pathlib.Path]] = pool.starmap(
             download_scans,
             [(sat_config, folder, scan_time, token) for scan_time in scan_times],
         )
         pool.close()
         pool.join()
-        raw_paths = list(itertools.chain(raw_paths))
+        raw_paths.extend(list(itertools.chain(*results)))
     else:
-        raw_paths = []
         for scan_time in scan_times:
             result: list[pathlib.Path] = download_scans(sat_config, folder, scan_time, token)
             if len(result) > 0:
