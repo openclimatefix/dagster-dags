@@ -60,7 +60,7 @@ def make_definitions(
     @dg.asset(
         name="raw_archive",
         key_prefix=opts.key_prefix(),
-        auto_materialize_policy=dg.AutoMaterializePolicy.eager(),
+        auto_materialize_policy=dg.AutomationCondition.eager(),
         partitions_def=opts.partitions,
         check_specs=[
             dg.AssetCheckSpec(
@@ -168,7 +168,7 @@ def make_definitions(
         name="zarr_archive",
         key_prefix=opts.key_prefix(),
         partitions_def=opts.partitions,
-        auto_materialize_policy=dg.AutoMaterializePolicy.eager(),
+        auto_materialize_policy=dg.AutomationCondition.eager(),
         ins={"raw_paths": dg.AssetIn(key=_raw_archive.key)},
         io_manager_key="nwp_xr_zarr_io",
         compute_kind="process",
