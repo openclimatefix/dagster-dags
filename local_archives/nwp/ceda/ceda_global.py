@@ -4,12 +4,16 @@ from typing import Any
 import datetime as dt
 
 from dagster_docker import PipesDockerClient
+from constants import LOCATIONS_BY_ENVIRONMENT
+
+env = os.getenv("ENVIRONMENT", "local")
+ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
 
 @dg.asset(
         name="zarr_archive",
         key_prefix=["nwp", "ceda", "global"],
         metadata={
-            "archive_folder": dg.MetadataValue.text("/mnt/storage_b/nwp/ceda/global"),
+            "archive_folder": dg.MetadataValue.text(f"{ZARR_FOLDER}/nwp/ceda/global"),
             "area": dg.MetadataValue.text("global"),
             "source": dg.MetadataValue.text("ceda"),
         },
@@ -42,7 +46,7 @@ def ceda_global(
             "CEDA_FTP_PASSWORD": os.environ["CEDA_FTP_PASSWORD"],
         },
         container_kwargs={
-            "volumes": ["/mnt/storage_b/nwp/ceda/global:/work"],
+            "volumes": [f"{ZARR_FOLDER}/nwp/ceda/global:/work"],
         },
         context=context,
     ).get_results()
