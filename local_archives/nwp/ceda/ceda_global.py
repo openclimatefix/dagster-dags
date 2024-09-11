@@ -43,7 +43,7 @@ def ceda_global(
             "NWP_CONSUMER_MODEL_REPOSITORY": "ceda-metoffice-global",
             "NWP_CONSUMER_NOTIFICATION_REPOSITORY": "dagster-pipes",
             "CEDA_FTP_USER": os.environ["CEDA_FTP_USER"],
-            "CEDA_FTP_PASSWORD": os.environ["CEDA_FTP_PASSWORD"],
+            "CEDA_FTP_PASSWORD": os.environ["CEDA_FTP_PASS"],
         },
         container_kwargs={
             "volumes": [f"{ZARR_FOLDER}/nwp/ceda/global:/work"],
