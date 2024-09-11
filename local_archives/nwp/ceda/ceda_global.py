@@ -33,7 +33,7 @@ def ceda_global(
     return pipes_docker_client.run(
         image=image,
         command=[
-            "consume",
+            "archive",
             "-y",
             str(it.year),
             "-m",
