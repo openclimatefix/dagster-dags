@@ -11,14 +11,27 @@ ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
 
 @dg.asset(
         name="zarr_archive",
+        description="".join((
+            "Zarr archive of NWP data from the Met Office's Global model. ",
+            "Sourced via FTP from CEDA: ",
+            "https://catalogue.ceda.ac.uk/uuid/86df725b793b4b4cb0ca0646686bd783/\n",
+            "This asset is updated monthly, and surfaced as a Zarr Directory Store ",
+            "for each month. It is downloaded using the nwp-consumer: ",
+            "https://github.com/openclimatefix/nwp-consumer",
+        )),
         key_prefix=["nwp", "ceda", "global"],
         metadata={
             "archive_folder": dg.MetadataValue.text(f"{ZARR_FOLDER}/nwp/ceda/global"),
             "area": dg.MetadataValue.text("global"),
             "source": dg.MetadataValue.text("ceda"),
+            "expected_runtime": dg.MetadataValue.text("6 hours"),
         },
-        compute_kind="download",
-        op_tags={"dagster/max_runtime": int(60 * 100)},
+        compute_kind="docker",
+        automation_condition=dg.AutomationCondition.eager(),
+        tags={
+            "dagster/max_runtime": str(60 * 60 * 10), # Should take 6 ish hours
+            "dagster/priority": "1",
+        },
     partitions_def=dg.MonthlyPartitionsDefinition(
         start_date="2019-01-01",
         end_offset=-3,
