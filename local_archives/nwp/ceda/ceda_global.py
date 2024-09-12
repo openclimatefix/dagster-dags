@@ -31,6 +31,7 @@ ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
         tags={
             "dagster/max_runtime": str(60 * 60 * 10), # Should take 6 ish hours
             "dagster/priority": "1",
+            "dagster/concurrency_key": "ceda-ftp-consumer",
         },
     partitions_def=dg.MonthlyPartitionsDefinition(
         start_date="2019-01-01",
