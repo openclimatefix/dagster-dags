@@ -95,8 +95,8 @@ CONFIGS: dict[str, Config] = {
         cadence="15min",
         product_id="EO:EUM:DAT:MSG:HRSEVIRI-IODC",
         zarr_fmtstr={
-            "hrv": "%Y_hrv_iodc.zarr",
-            "nonhrv": "%Y_nonhrv_iodc.zarr",
+            "hrv": "%Y%m_hrv_iodc.zarr",
+            "nonhrv": "%Y%m_nonhrv_iodc.zarr",
         },
     ),
     "severi": Config(
@@ -104,8 +104,8 @@ CONFIGS: dict[str, Config] = {
         cadence="5min",
         product_id="EO:EUM:DAT:MSG:MSG15-RSS",
         zarr_fmtstr={
-            "hrv": "%Y_hrv.zarr",
-            "nonhrv": "%Y_nonhrv.zarr",
+            "hrv": "%Y%m_hrv.zarr",
+            "nonhrv": "%Y%m_nonhrv.zarr",
         },
     ),
     # Optional
@@ -114,8 +114,8 @@ CONFIGS: dict[str, Config] = {
         cadence="15min",
         product_id="EO:EUM:DAT:MSG:HRSEVIRI",
         zarr_fmtstr={
-            "hrv": "%Y_hrv_odegree.zarr",
-            "nonhrv": "%Y_nonhrv_odegree.zarr",
+            "hrv": "%Y%m_hrv_odegree.zarr",
+            "nonhrv": "%Y%m_nonhrv_odegree.zarr",
         },
     ),
 }
@@ -576,18 +576,11 @@ parser.add_argument(
     type=pathlib.Path,
 )
 parser.add_argument(
-    "--start_date", "-s",
-    help="Date to download from (YYYY-MM-DD)",
-    type=dt.date.fromisoformat,
-    required=False,
-    default=str(dt.datetime.now(tz=dt.UTC).date()),
-)
-parser.add_argument(
-    "--end_date", "-e",
-    help="Date to download to (YYYY-MM-DD)",
-    type=dt.date.fromisoformat,
-    required=False,
-    default=str(dt.datetime.now(tz=dt.UTC).date()),
+    "--month", "-m",
+    help="Month to download data for (YYYY-MM)",
+    type=str,
+    required=True,
+    default=str(dt.datetime.now(tz=dt.UTC).strftime("%Y-%m")),
 )
 parser.add_argument(
     "--delete_raw", "--rm",
@@ -597,6 +590,7 @@ parser.add_argument(
 )
 
 def run(args: argparse.Namespace) -> None:
+    """Run the download and processing pipeline."""
     prog_start = dt.datetime.now(tz=dt.UTC)
     log.info(f"{prog_start!s}: Running with args: {args}")
 
@@ -607,12 +601,16 @@ def run(args: argparse.Namespace) -> None:
     sat_config = CONFIGS[args.sat]
 
     # Get start and end times for run
-    start: dt.date = args.start_date
-    end: dt.date = args.end_date + dt.timedelta(days=1) if args.end_date == start else args.end_date
+    start: dt.datetime = dt.datetime.strptime(args.month, "%Y-%m")
+    end: dt.datetime = \
+        start.replace(month=start.month + 1) if start.month < 12 \
+        else start.replace(year=start.year + 1, month=1) \
+        - dt.timedelta(days=1)
     scan_times: list[pd.Timestamp] = pd.date_range(
         start=start,
         end=end,
         freq=sat_config.cadence,
+        inclusive="left",
     ).tolist()
 
     # Estimate average runtime
