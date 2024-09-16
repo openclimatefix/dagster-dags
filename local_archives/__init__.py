@@ -7,7 +7,7 @@ import managers
 import resources
 from constants import LOCATIONS_BY_ENVIRONMENT
 
-from . import nwp
+from . import nwp, sat
 
 resources_by_env = {
     "leo": {
@@ -36,14 +36,17 @@ resources_by_env = {
 
 all_assets: list[dg.AssetsDefinition] = [
     *nwp.all_assets,
+    *sat.all_assets,
 ]
 
 all_jobs: list[dg.JobDefinition] = [
     *nwp.all_jobs,
+    *sat.all_jobs,
 ]
 
 all_schedules: list[dg.ScheduleDefinition] = [
     *nwp.all_schedules,
+    *sat.all_schedules,
 ]
 
 defs = dg.Definitions(
