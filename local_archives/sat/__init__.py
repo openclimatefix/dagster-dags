@@ -1,11 +1,14 @@
-from dagster import Definitions, load_assets_from_modules
+"""Definitions for the sat dagster code location."""
 
-from sat import assets, jobs
+import dagster as dg
 
+from . import eumetsat
 
-all_assets = load_assets_from_modules([assets])
+all_assets: list[dg.AssetsDefinition] = [
+    *eumetsat.all_assets,
+]
 
-defs = Definitions(
-    assets=all_assets,
-    schedules=jobs.schedules,
-)
+all_jobs: list[dg.JobDefinition] = []
+
+all_schedules: list[dg.ScheduleDefinition] = []
+

@@ -1,9 +1,10 @@
-import dagster as dg
+import datetime as dt
 import os
 from typing import Any
-import datetime as dt
 
+import dagster as dg
 from dagster_docker import PipesDockerClient
+
 from constants import LOCATIONS_BY_ENVIRONMENT
 
 env = os.getenv("ENVIRONMENT", "local")
