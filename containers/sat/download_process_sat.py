@@ -60,7 +60,7 @@ logging.basicConfig(
 for logger in [
     "cfgrib",
     "charset_normalizer",
-    "eumdac",
+    "eumdac", # If you want to know about throttling, set this to WARNING
     "native_msg",
     "pyorbital",
     "pyresample",
@@ -68,7 +68,7 @@ for logger in [
     "satpy",
     "urllib3",
 ]:
-    logging.getLogger(logger).setLevel(logging.WARNING)
+    logging.getLogger(logger).setLevel(logging.ERROR)
 
 log = logging.getLogger("sat-etl")
 
@@ -197,13 +197,15 @@ def download_scans(
         log.error(f"Error finding products: {e}")
         return []
 
-    log.debug(f"Found {len(products)} products for {scan_time}")
+    if len(products) == 0:
+        log.warning(f"No products found for {scan_time}.")
 
     for product in products:
         for entry in list(filter(lambda p: p.endswith(".nat"), product.entries)):
             filepath: pathlib.Path = folder / entry
             # Prevent downloading existing files
             if filepath.exists():
+                log.debug("Skipping existing file: {filepath}")
                 files.append(filepath)
                 continue
             # Try download a few times
