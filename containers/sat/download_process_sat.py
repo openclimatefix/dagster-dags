@@ -266,9 +266,14 @@ def process_scans(
     f: pathlib.Path
     for i, f in enumerate(native_files):
         try:
+            # TODO: This method of passing the zarr times to the open function leaves a lot to be desired
+            # Firstly, if the times are not passed in sorted order then the created 12-dataset chunks
+            # may have missed times in them. Secondly, determining the time still requires opening and
+            # converting the file which is probably slow. Better to skip search for files whose times
+            # are already in the Zarr store in the first place and bypass the entire pipeline.
             dataset: xr.Dataset | None = _open_and_scale_data(zarr_times, f.as_posix(), dstype)
         except Exception as e:
-            log.error(f"Exception: {e}")
+            log.error(f"Error opening/scaling data for file {f}: {e}")
             continue
         if dataset is not None:
             dataset = _preprocess_function(dataset)
@@ -444,8 +449,11 @@ def _open_and_scale_data(
     """
     # The reader is the same for each satellite as the sensor is the same
     # * Hence "seviri" in all cases
-    scene = Scene(filenames={"seviri_l1b_native": [f]})
-    scene.load([c.variable for c in CHANNELS[dstype]])
+    try:
+        scene = Scene(filenames={"seviri_l1b_native": [f]})
+        scene.load([c.variable for c in CHANNELS[dstype]])
+    except Exception as e:
+        raise OSError(f"Error loading scene from file {f}: {e}") from e
 
     try:
         da: xr.DataArray = _convert_scene_to_dataarray(
@@ -655,7 +663,7 @@ def run(args: argparse.Namespace) -> None:
     # Process the HRV and non-HRV data concurrently if possible
     completed_types: list[str] = []
     for t in ["hrv", "nonhrv"]:
-        log.info("Processing {t} data.")
+        log.info(f"Processing {t} data.")
         completed_type = process_scans(sat_config, folder, start, end, t)
         completed_types.append(completed_type)
     for completed_type in completed_types:
