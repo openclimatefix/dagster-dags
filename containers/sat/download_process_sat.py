@@ -34,20 +34,29 @@ from ocf_blosc2 import Blosc2
 
 from satpy import Scene
 
-handler = logging.StreamHandler(sys.stdout)
+if sys.stdout.isatty():
+    # Simple logging for terminals
+    _formatstr="%(levelname)s | %(message)s"
+else:
+    # JSON logging for containers
+    _formatstr="".join((
+        "{",
+        '"message": "%(message)s", ',
+        '"severity": "%(levelname)s", "timestamp": "%(asctime)s.%(msecs)03dZ", ',
+        '"logging.googleapis.com/labels": {"python_logger": "%(name)s"}, ',
+        '"logging.googleapis.com/sourceLocation": ',
+        '{"file": "%(filename)s", "line": %(lineno)d, "function": "%(funcName)s"}',
+        "}",
+    ))
+
+_loglevel: int | str = logging.getLevelName(os.getenv("LOGLEVEL", "INFO").upper())
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO if isinstance(_loglevel, str) else _loglevel,
     stream=sys.stdout,
-    format="{"
-    + '"message": "%(message)s", '
-    + '"severity": "%(levelname)s", "timestamp": "%(asctime)s.%(msecs)03dZ", '
-    + '"logging.googleapis.com/labels": {"python_logger": "%(name)s"}, '
-    + '"logging.googleapis.com/sourceLocation": '
-    + ' {"file": "%(filename)s", "line": %(lineno)d, "function": "%(funcName)s"}'
-    + "}",
+    format=_formatstr,
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
 for logger in [
     "cfgrib",
     "charset_normalizer",
@@ -188,7 +197,7 @@ def download_scans(
         log.error(f"Error finding products: {e}")
         return []
 
-    log.info(f"Found {len(products)} products for {scan_time}")
+    log.debug(f"Found {len(products)} products for {scan_time}")
 
     for product in products:
         for entry in list(filter(lambda p: p.endswith(".nat"), product.entries)):
@@ -234,7 +243,7 @@ def process_scans(
         end: End date for the processing.
         dstype: Type of data to process (hrv or nonhrv).
     """
-    # Check zarr file exists for the year
+    # Check zarr file exists for the month
     zarr_path: pathlib.Path = folder.parent / start.strftime(sat_config.zarr_fmtstr[dstype])
     zarr_times: list[dt.datetime] = []
     if zarr_path.exists():
@@ -249,7 +258,7 @@ def process_scans(
     native_files.sort()
 
     # Convert native files to xarray datasets
-    # * Append to the yearly zarr in hourly chunks
+    # * Append to the monthly zarr in hourly chunks
     datasets: list[xr.Dataset] = []
     i: int
     f: pathlib.Path
