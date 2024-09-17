@@ -14,11 +14,11 @@ ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].SAT_ZARR_FOLDER
         name="zarr_archive",
         description="".join((
             "Zarr archive of satellite data from EUMETSAT's IODC satellite.",
-            "Sourced via EUMDAC from EUMETSAT: ",
-            "https://navigator.eumetsat.int/product/EO:EUM:DAT:MSG:OCA-IODC\n",
+            "Sourced via EUMDAC from EUMETSAT ",
+            "(https://navigator.eumetsat.int/product/EO:EUM:DAT:MSG:OCA-IODC). ",
             "This asset is updated monthly, and surfaced as a Zarr Directory Store ",
-            "for each month. It is downloaded using the sat container: ",
-            "https://github.com/openclimatefix/dagster-dags",
+            "for each month. It is downloaded using the sat container ",
+            "(https://github.com/openclimatefix/dagster-dags/pkgs/container/sat-etl).",
         )),
         key_prefix=["sat", "eumetsat", "iodc"],
         metadata={
@@ -51,6 +51,8 @@ def iodc_monthly(
             "iodc",
             "-m",
             it.strftime("%Y-%m"),
+            "--path",
+            f"{ZARR_FOLDER}/sat/eumetsat/india",
             "--rm",
         ],
         env={
@@ -58,7 +60,7 @@ def iodc_monthly(
             "EUMETSAT_CONSUMER_SECRET": os.environ["EUMETSAT_CONSUMER_SECRET"],
         },
         container_kwargs={
-            "volumes": [f"{ZARR_FOLDER}/sat/eumetsat/india:/mnt/disks/sat"],
+            "volumes": [f"{ZARR_FOLDER}/sat/eumetsat/india:{ZARR_FOLDER}/sat/eumetsat/india"],
         },
         context=context,
     ).get_results()
