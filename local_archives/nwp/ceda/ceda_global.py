@@ -15,7 +15,7 @@ ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
         description="".join((
             "Zarr archive of NWP data from the Met Office's Global model. ",
             "Sourced via FTP from CEDA ",
-            "(https://catalogue.ceda.ac.uk/uuid/86df725b793b4b4cb0ca0646686bd783)",
+            "(https://catalogue.ceda.ac.uk/uuid/86df725b793b4b4cb0ca0646686bd783). ",
             "This asset is updated monthly, and surfaced as a Zarr Directory Store ",
             "for each month. It is downloaded using the nwp-consumer ",
             "docker image, currently from the 'major-refactor' branch ",

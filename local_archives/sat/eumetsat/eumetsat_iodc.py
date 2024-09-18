@@ -52,7 +52,7 @@ def iodc_monthly(
             "-m",
             it.strftime("%Y-%m"),
             "--path",
-            f"{ZARR_FOLDER}/sat/eumetsat/india",
+            f"/store_a_0/sat/eumetsat/india",
             "--rm",
         ],
         env={
@@ -60,7 +60,7 @@ def iodc_monthly(
             "EUMETSAT_CONSUMER_SECRET": os.environ["EUMETSAT_CONSUMER_SECRET"],
         },
         container_kwargs={
-            "volumes": [f"{ZARR_FOLDER}/sat/eumetsat/india:{ZARR_FOLDER}/sat/eumetsat/india"],
+            "volumes": [f"/store_a_0/sat/eumetsat/india:/store_a_0/sat/eumetsat/india"],
         },
         context=context,
     ).get_results()
