@@ -3,7 +3,6 @@ import os
 from typing import Any
 
 import dagster as dg
-from dagster_docker import PipesDockerClient
 
 from constants import LOCATIONS_BY_ENVIRONMENT
 
@@ -27,7 +26,7 @@ ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].SAT_ZARR_FOLDER
             "source": dg.MetadataValue.text("eumetsat"),
             "expected_runtime": dg.MetadataValue.text("TBD"),
         },
-        compute_kind="docker",
+        compute_kind="subprocess",
         automation_condition=dg.AutomationCondition.eager(),
         tags={
             # "dagster/max_runtime": str(60 * 60 * 10), # Should take 6 ish hours
@@ -41,27 +40,20 @@ ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].SAT_ZARR_FOLDER
 )
 def iodc_monthly(
     context: dg.AssetExecutionContext,
-    pipes_docker_client: PipesDockerClient,
+    pipes_subprocess_client: dg.PipesSubprocessClient,
 ) -> Any:
     image: str = "ghcr.io/openclimatefix/sat-etl:main"
     it: dt.datetime = context.partition_time_window.start
-    return pipes_docker_client.run(
-        image=image,
+    return pipes_subprocess_client.run(
         command=[
-            "iodc",
-            "-m",
+            "/home/dagster/mambaforge/envs/sat-etl/bin/python",
+            "/home/dagster/dags/containers/sat/download_process_sat.py",
+            "--month",
             it.strftime("%Y-%m"),
             "--path",
-            f"/store_a_0/sat/eumetsat/india",
+            f"/mnt/storage_a/sat/eumetsat/india",
             "--rm",
         ],
-        env={
-            "EUMETSAT_CONSUMER_KEY": os.environ["EUMETSAT_CONSUMER_KEY"],
-            "EUMETSAT_CONSUMER_SECRET": os.environ["EUMETSAT_CONSUMER_SECRET"],
-        },
-        container_kwargs={
-            "volumes": [f"/store_a_0/sat/eumetsat/india:/store_a_0/sat/eumetsat/india"],
-        },
         context=context,
-    ).get_results()
+    ).get_materialize_result()
 
