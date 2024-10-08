@@ -104,17 +104,17 @@ CONFIGS: dict[str, Config] = {
         cadence="15min",
         product_id="EO:EUM:DAT:MSG:HRSEVIRI-IODC",
         zarr_fmtstr={
-            "hrv": "%Y%m_hrv_iodc.zarr",
-            "nonhrv": "%Y%m_nonhrv_iodc.zarr",
+            "hrv": "%Y-%m_hrv_iodc.zarr",
+            "nonhrv": "%Y-%m_nonhrv_iodc.zarr",
         },
     ),
-    "severi": Config(
+    "seviri": Config(
         region="europe",
         cadence="5min",
         product_id="EO:EUM:DAT:MSG:MSG15-RSS",
         zarr_fmtstr={
-            "hrv": "%Y%m_hrv.zarr",
-            "nonhrv": "%Y%m_nonhrv.zarr",
+            "hrv": "%Y-%m_hrv.zarr",
+            "nonhrv": "%Y-%m_nonhrv.zarr",
         },
     ),
     # Optional
@@ -123,8 +123,8 @@ CONFIGS: dict[str, Config] = {
         cadence="15min",
         product_id="EO:EUM:DAT:MSG:HRSEVIRI",
         zarr_fmtstr={
-            "hrv": "%Y%m_hrv_odegree.zarr",
-            "nonhrv": "%Y%m_nonhrv_odegree.zarr",
+            "hrv": "%Y-%m_hrv_odegree.zarr",
+            "nonhrv": "%Y-%m_nonhrv_odegree.zarr",
         },
     ),
 }
@@ -265,7 +265,7 @@ def process_scans(
     # Get native files in order
     native_files: list[pathlib.Path] = list(folder.glob("*.nat"))
     native_files.sort()
-    wanted_files = [f for f in native_files if start <= _fname_to_scantime(f.name).date() < end]
+    wanted_files = [f for f in native_files if start <= _fname_to_scantime(f.name) < end]
     log.info(f"Found {len(wanted_files)} native files within date range at {folder.as_posix()}")
 
     # Convert native files to xarray datasets
@@ -603,12 +603,18 @@ parser.add_argument(
     default="/mnt/disks/sat",
     type=pathlib.Path,
 )
-parser.add_argument(
+range_group = parser.add_mutually_exclusive_group(
+    required=True,
+)
+range_group.add_argument(
     "--month", "-m",
     help="Month to download data for (YYYY-MM)",
     type=str,
-    required=True,
-    default=str(dt.datetime.now(tz=dt.UTC).strftime("%Y-%m")),
+)
+range_group.add_argument(
+    "--day", "-d",
+    help="Day to download data for (YYYY-MM-DD)",
+    type=str,
 )
 parser.add_argument(
     "--delete_raw", "--rm",
@@ -629,11 +635,19 @@ def run(args: argparse.Namespace) -> None:
     sat_config = CONFIGS[args.sat]
 
     # Get start and end times for run
-    start: dt.datetime = dt.datetime.strptime(args.month, "%Y-%m")
-    end: dt.datetime = \
-        start.replace(month=start.month + 1) if start.month < 12 \
-        else start.replace(year=start.year + 1, month=1) \
-        - dt.timedelta(days=1)
+    if args.month:
+        start: dt.datetime = dt.datetime.strptime(args.month, "%Y-%m")
+        end: dt.datetime = \
+            start.replace(month=start.month + 1) if start.month < 12 \
+            else start.replace(year=start.year + 1, month=1) \
+            - dt.timedelta(days=1)
+    elif args.day:
+        start = dt.datetime.strptime(args.day, "%Y-%m-%d")
+        end = start + dt.timedelta(days=1)
+    else:
+        log.error("Invalid args.")
+        return
+
     scan_times: list[pd.Timestamp] = pd.date_range(
         start=start,
         end=end,
