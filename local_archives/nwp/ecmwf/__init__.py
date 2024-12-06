@@ -31,7 +31,7 @@ india_assets = dg.load_assets_from_modules(
 
 india_stat_assets = dg.load_assets_from_modules(
     modules=[ecmwf_ens_stat_india],
-    group_name="ecmwf-ens_india-stat",
+    group_name="ecmwf_ens_india_stat",
 )
 
 all_assets: list[dg.AssetsDefinition] = [
