@@ -1,6 +1,12 @@
 import dagster as dg
 
-from . import ecmwf_malta, ecmwf_nw_india, ecmwf_uk, ecmwf_india
+from . import (
+    ecmwf_malta,
+    ecmwf_nw_india,
+    ecmwf_uk,
+    ecmwf_india,
+    ecmwf_ens_stat_india,
+)
 
 uk_assets = dg.load_assets_from_modules(
     modules=[ecmwf_uk],
@@ -23,9 +29,15 @@ india_assets = dg.load_assets_from_modules(
     group_name="ecmwf_india",
 )
 
+india_stat_assets = dg.load_assets_from_modules(
+    modules=[ecmwf_ens_stat_india],
+    group_name="ecmwf_ens_india_stat",
+)
+
 all_assets: list[dg.AssetsDefinition] = [
     *uk_assets,
     *nw_india_assets,
     *malta_assets,
     *india_assets,
+    *india_stat_assets,
 ]
