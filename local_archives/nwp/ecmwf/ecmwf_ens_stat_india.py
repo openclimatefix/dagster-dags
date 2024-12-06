@@ -49,7 +49,7 @@ def ecmwf_eps_india_stat(
     context: dg.AssetExecutionContext,
     pipes_docker_client: PipesDockerClient,
 ) -> Any:
-    image: str = "ghcr.io/openclimatefix/nwp-consumer:1.0.3"
+    image: str = "ghcr.io/openclimatefix/nwp-consumer:1.0.4"
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
         image=image,
@@ -61,7 +61,7 @@ def ecmwf_eps_india_stat(
             str(it.month),
         ],
         env={
-            "MODEL_REPOSITORY": "ceda-metoffice-global",
+            "MODEL_REPOSITORY": "ecmwf-mars",
             "NOTIFICATION_REPOSITORY": "dagster-pipes",
             "ECMWF_API_KEY": os.environ["ECMWF_API_KEY"],
             "ECMWF_API_EMAIL": os.environ["ECMWF_API_EMAIL"],
