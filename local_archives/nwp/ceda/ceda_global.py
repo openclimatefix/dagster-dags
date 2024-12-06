@@ -1,3 +1,14 @@
+"""Zarr archive of NWP data from the Met Office's Global model.
+
+The MetOffice runs it's Unified Model (UM) in two configurations: Global, and UK.
+This asset contains data from the global configuration covering the whole globe.
+
+Sourced via FTP from CEDA (https://catalogue.ceda.ac.uk/uuid/86df725b793b4b4cb0ca0646686bd783).
+This asset is updated monthly, and surfaced as a Zarr Directory Store for each month.
+It is downloaded using the nwp-consumer docker image
+(https://github.com/openclimatefix/nwp-consumer)
+"""
+
 import datetime as dt
 import os
 from typing import Any
@@ -12,15 +23,7 @@ ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
 
 @dg.asset(
         name="zarr_archive",
-        description="".join((
-            "Zarr archive of NWP data from the Met Office's Global model. ",
-            "Sourced via FTP from CEDA ",
-            "(https://catalogue.ceda.ac.uk/uuid/86df725b793b4b4cb0ca0646686bd783). ",
-            "This asset is updated monthly, and surfaced as a Zarr Directory Store ",
-            "for each month. It is downloaded using the nwp-consumer ",
-            "docker image, currently from the 'major-refactor' branch ",
-            "(https://github.com/openclimatefix/nwp-consumer). ",
-        )),
+        description=__doc__,
         key_prefix=["nwp", "ceda", "global"],
         metadata={
             "archive_folder": dg.MetadataValue.text(f"{ZARR_FOLDER}/nwp/ceda/global"),
