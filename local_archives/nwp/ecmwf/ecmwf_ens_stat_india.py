@@ -1,3 +1,15 @@
+"""Zarr archive of Summary NWP data from ECMWF's EPS.
+
+EPS is the ECMWF Ensemble Prediction System, 
+which provides 50 perturbed forecasts of upcoming atmospheric conditions.
+This asset contains summary statistics of this data (mean, standard deviation) for India.
+
+Sourced via MARS API from ECMWF (https://apps.ecmwf.int/mars-catalogue).
+This asset is updated monthly, and surfaced as a Zarr Directory Store for each month.
+It is downloaded using the nwp-consumer docker image
+(https://github.com/openclimatefix/nwp-consumer).
+"""
+
 import datetime as dt
 import os
 from typing import Any
@@ -13,14 +25,7 @@ ARCHIVE_FOLDER = f"{ZARR_FOLDER}/nwp/ecmwf-eps/india-stat"
 
 @dg.asset(
         name="zarr_archive",
-        description="".join((
-            "Zarr archive of Summary NWP data from ECMWF's EPS. ",
-            "Sourced via MARS API from ECMWF ",
-            "(https://apps.ecmwf.int/mars-catalogue/). ",
-            "This asset is updated monthly, and surfaced as a Zarr Directory Store ",
-            "for each month. It is downloaded using the nwp-consumer ",
-            "docker image (https://github.com/openclimatefix/nwp-consumer). ",
-        )),
+        description=__doc__,
         key_prefix=["nwp", "ecmwf-eps", "india-stat"],
         metadata={
             "archive_folder": dg.MetadataValue.text(ARCHIVE_FOLDER),
