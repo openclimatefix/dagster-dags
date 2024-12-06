@@ -603,18 +603,12 @@ parser.add_argument(
     default="/mnt/disks/sat",
     type=pathlib.Path,
 )
-range_group = parser.add_mutually_exclusive_group(
-    required=True,
-)
-range_group.add_argument(
+parser.add_argument(
     "--month", "-m",
     help="Month to download data for (YYYY-MM)",
     type=str,
-)
-range_group.add_argument(
-    "--day", "-d",
-    help="Day to download data for (YYYY-MM-DD)",
-    type=str,
+    required=True,
+    default=str(dt.datetime.now(tz=dt.UTC).strftime("%Y-%m")),
 )
 parser.add_argument(
     "--delete_raw", "--rm",
@@ -635,19 +629,11 @@ def run(args: argparse.Namespace) -> None:
     sat_config = CONFIGS[args.sat]
 
     # Get start and end times for run
-    if args.month:
-        start: dt.datetime = dt.datetime.strptime(args.month, "%Y-%m")
-        end: dt.datetime = \
-            start.replace(month=start.month + 1) if start.month < 12 \
-            else start.replace(year=start.year + 1, month=1) \
-            - dt.timedelta(days=1)
-    elif args.day:
-        start = dt.datetime.strptime(args.day, "%Y-%m-%d")
-        end = start + dt.timedelta(days=1)
-    else:
-        log.error("Invalid args.")
-        return
-
+    start: dt.datetime = dt.datetime.strptime(args.month, "%Y-%m")
+    end: dt.datetime = \
+        start.replace(month=start.month + 1) if start.month < 12 \
+        else start.replace(year=start.year + 1, month=1) \
+        - dt.timedelta(days=1)
     scan_times: list[pd.Timestamp] = pd.date_range(
         start=start,
         end=end,

@@ -19,4 +19,5 @@ COPY --from=install-reqs /venv /venv
 COPY . /app
 WORKDIR /app
 ENTRYPOINT ["/venv/bin/python3", "download_process_sat.py"]
+VOLUME /mnt/disks/sat
 

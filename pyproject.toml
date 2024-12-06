@@ -45,6 +45,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "mypy == 1.7.1",
+    "types-PyYAML",
+    "types-pytz",
+    "types-requests",
     "ruff == 0.1.7",
     "unittest-xml-reporting == 3.2.0",
     "pytest >= 7.4.1",
