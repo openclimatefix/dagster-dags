@@ -54,7 +54,7 @@ def ecmwf_eps_india_stat(
     return pipes_docker_client.run(
         image=image,
         command=[
-            "archive"
+            "archive",
             "-y",
             str(it.year),
             "-m",
