@@ -61,6 +61,7 @@ def ecmwf_eps_india_stat(
             "ECMWF_API_KEY": os.environ["ECMWF_API_KEY"],
             "ECMWF_API_EMAIL": os.environ["ECMWF_API_EMAIL"],
             "ECMWF_API_URL": os.environ["ECMWF_API_URL"],
+            "ECMWF_MARS_AREA": "35/67/6/97",
         },
         container_kwargs={
             "volumes": [f"{ARCHIVE_FOLDER}:/work"],
