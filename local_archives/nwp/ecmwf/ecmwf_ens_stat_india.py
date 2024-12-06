@@ -49,7 +49,7 @@ def ecmwf_eps_india_stat(
     context: dg.AssetExecutionContext,
     pipes_docker_client: PipesDockerClient,
 ) -> Any:
-    image: str = "ghcr.io/openclimatefix/nwp-consumer:1.0.4"
+    image: str = "ghcr.io/openclimatefix/nwp-consumer:1.0.5"
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
         image=image,
