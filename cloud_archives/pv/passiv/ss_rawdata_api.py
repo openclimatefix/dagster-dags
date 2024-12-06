@@ -26,7 +26,7 @@ class ProxyDict(TypedDict):
 
 class SSRawDataAPI:
     def __init__(self, user_id: Union[int, str], api_key: str, proxies: Optional[ProxyDict] = None):
-        self.base_url = "https://api.solar.sheffield.ac.uk/rawdata/api/v4"
+        self.base_url = "https://api.pvlive.uk/rawdata/api/v4"
         # self.base_url = "https://staging.solar.shef.ac.uk/rawdata/api/v4"
         self.max_range = datetime.timedelta(days=1)
         self.proxies = proxies
