@@ -62,6 +62,8 @@ for logger in [
     "requests",
     "satpy",
     "urllib3",
+    "dask",
+    "dask.core",
 ]:
     logging.getLogger(logger).setLevel(logging.ERROR)
 
@@ -828,7 +830,7 @@ def run(args: argparse.Namespace) -> None:
         token=_gen_token(),
     )
 
-    for product in tqdm(product_iter, total=total):
+    for product in tqdm(product_iter, total=total, miniters=50):
         nat_filepath = download_nat(
             product=product,
             folder=folder / args.sat,
