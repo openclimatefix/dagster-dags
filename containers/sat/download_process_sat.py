@@ -628,17 +628,21 @@ parser.add_argument(
 )
 
 
-def _calc_null_percentage(data: np.ndarray):
-    nulls = np.isnan(data)
-    return nulls.sum() / len(nulls)
 
 def check_data_quality(ds: xr.Dataset) -> None:
+    """Check the quality of the data in the given dataset."""
+
+    def _calc_null_percentage(data: np.ndarray):
+        nulls = np.isnan(data)
+        return nulls.sum() / len(nulls)
+
     result = xr.apply_ufunc(
-        calc_null_percentage,
+        _calc_null_percentage,
         ds.data_vars["data"],
         input_core_dims=[["x_geostationary", "y_geostationary"]],
         vectorize=True,
     )
+
     num_images_failing_nulls_threshold = (result > 0.05).sum().item()
     num_images = result.size
     log.info(
