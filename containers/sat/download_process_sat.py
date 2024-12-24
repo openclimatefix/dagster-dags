@@ -318,6 +318,8 @@ def process_scans(
     if pathlib.Path(zarr_path).exists():
         _rewrite_zarr_times(zarr_path.as_posix())
 
+    check_data_quality(xr.open_zarr(zarr_path, consolidated=True))
+
     return dstype
 
 
@@ -618,6 +620,32 @@ parser.add_argument(
     action="store_true",
     default=False,
 )
+parser.add_argument(
+    "--validate",
+    help="Check the quality of the data",
+    action="store_true",
+    default=False,
+)
+
+
+def _calc_null_percentage(data: np.ndarray):
+    nulls = np.isnan(data)
+    return nulls.sum() / len(nulls)
+
+def check_data_quality(ds: xr.Dataset) -> None:
+    result = xr.apply_ufunc(
+        calc_null_percentage,
+        ds.data_vars["data"],
+        input_core_dims=[["x_geostationary", "y_geostationary"]],
+        vectorize=True,
+    )
+    num_images_failing_nulls_threshold = (result > 0.05).sum().item()
+    num_images = result.size
+    log.info(
+        f"{num_images_failing_nulls_threshold}/{num_images} "
+        f"({num_images_failing_nulls_threshold/num_images:.2%}) "
+        "of images have greater than 5% null values",
+    )
 
 def run(args: argparse.Namespace) -> None:
     """Run the download and processing pipeline."""
@@ -689,6 +717,12 @@ def run(args: argparse.Namespace) -> None:
         (secs_per_scan + (runtime.total_seconds() / len(scan_times))) / 2,
     )
     log.info(f"Completed archive for args: {args}. ({new_average_secs_per_scan} seconds per scan).")
+
+    if args.validate:
+        for t in completed_types:
+            zarr_path: pathlib.Path = folder.parent / start.strftime(sat_config.zarr_fmtstr[t])
+            ds = xr.open_zarr(zarr_path, consolidated=True)
+            check_data_quality(ds)
 
     # Delete raw files, if desired
     if args.delete_raw:
