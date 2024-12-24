@@ -189,7 +189,7 @@ def download_scans(
     try:
         datastore = eumdac.DataStore(token)
         collection = datastore.get_collection(sat_config.product_id)
-        products = collection.search(
+        search_results = collection.search(
             dtstart=window_start.to_pydatetime(),
             dtend=window_end.to_pydatetime(),
         )
@@ -197,10 +197,8 @@ def download_scans(
         log.error(f"Error finding products: {e}")
         return []
 
-    if len(products) == 0:
-        log.warning(f"No products found for {scan_time}.")
-
-    for product in products:
+    products_count: int = 0
+    for product in search_results:
         for entry in list(filter(lambda p: p.endswith(".nat"), product.entries)):
             filepath: pathlib.Path = folder / entry
             # Prevent downloading existing files
@@ -225,6 +223,10 @@ def download_scans(
                         f"Error downloading product '{product}' (attempt {attempts}): '{e}'",
                     )
                     attempts += 1
+        products_count += 1
+
+    if products_count == 0:
+        log.warning(f"No products found for {scan_time}")
 
     return files
 
