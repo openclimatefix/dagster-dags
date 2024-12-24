@@ -893,10 +893,9 @@ def run(args: argparse.Namespace) -> None:
     #log.info(f"Completed archive for args: {args}. ({new_average_secs_per_scan} seconds per scan).")
 
     if args.validate:
-        for t in completed_types:
-            zarr_path: pathlib.Path = folder.parent / start.strftime(sat_config.zarr_fmtstr[t])
-            ds = xr.open_zarr(zarr_path, consolidated=True)
-            check_data_quality(ds)
+        zarr_path: pathlib.Path = folder.parent / start.strftime(sat_config.zarr_fmtstr[dstype])
+        ds = xr.open_zarr(zarr_path, consolidated=True)
+        check_data_quality(ds)
 
     # Delete raw files, if desired
     if args.delete_raw:
