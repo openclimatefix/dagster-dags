@@ -221,15 +221,16 @@ def download_nat(
             "Expected 1. Skipping download.",
         )
         return None
+    nat_filename: str = nat_files[0]
 
-    filepath: pathlib.Path = folder / nat_files[0]
+    filepath: pathlib.Path = folder / nat_filename
     if filepath.exists():
         log.debug(f"Skipping existing file: {filepath}")
         return filepath
 
     for i in range(retries):
         try:
-            with (product.open(entry) as fsrc, filepath.open("wb") as fdst):
+            with (product.open(nat_filename) as fsrc, filepath.open("wb") as fdst):
                 shutil.copyfileobj(fsrc, fdst, length=16 * 1024)
             return filepath
         except Exception as e:
