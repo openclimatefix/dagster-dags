@@ -162,7 +162,7 @@ def get_products_iterator(
     start: dt.datetime,
     end: dt.datetime,
     token: eumdac.AccessToken,
-) -> Iterator[eumdac.product.Product], int:
+) -> tuple[Iterator[eumdac.product.Product], int]:
     """Get an iterator over the products for a given satellite in a given time range.
 
     Checks that the number of products returned matches the expected number of products.
