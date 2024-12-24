@@ -16,6 +16,15 @@ import pandas as pd
 import xarray as xr
 from satpy import Scene
 
+class TestGetProductsIterator(unittest.TestCase):
+    def test_get_products_iterator(self):
+        sat_config = CONFIGS["seviri"]
+        start = dt.datetime(2024, 1, 1, 0, 0, tzinfo=dt.UTC)
+        end = dt.datetime(2024, 1, 1, 1, 0, tzinfo=dt.UTC)
+        token = _gen_token()
+        products = list(get_products_iterator(sat_config, start, end, token))
+        self.assertEqual(len(products), 12)
+
 
 class TestDownloadProcessSat(unittest.TestCase):
     paths: list[pathlib.Path]
