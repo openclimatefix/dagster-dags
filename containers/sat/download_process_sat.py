@@ -293,7 +293,7 @@ def write_to_zarr(
         },
     }
     try:
-        with numpy.errstate(divide="ignore"):
+        with np.errstate(divide="ignore"):
             write_job = da.chunk({
                 "time": 1,
                 "x_geostationary": -1,
