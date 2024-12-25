@@ -62,8 +62,6 @@ for logger in [
     "requests",
     "satpy",
     "urllib3",
-    "dask",
-    "dask.core",
 ]:
     logging.getLogger(logger).setLevel(logging.ERROR)
 
@@ -295,21 +293,22 @@ def write_to_zarr(
         },
     }
     try:
-        write_job = da.chunk({
-            "time": 1,
-            "x_geostationary": -1,
-            "y_geostationary": -1,
-            "variable": 1,
-        }).to_dataset(
-            name="data",
-            promote_attrs=True,
-        ).to_zarr(
-            store=zarr_path,
-            compute=True,
-            consolidated=True,
-            mode=mode,
-            **extra_kwargs,
-        )
+        with numpy.errstate(divide="ignore"):
+            write_job = da.chunk({
+                "time": 1,
+                "x_geostationary": -1,
+                "y_geostationary": -1,
+                "variable": 1,
+            }).to_dataset(
+                name="data",
+                promote_attrs=True,
+            ).to_zarr(
+                store=zarr_path,
+                compute=True,
+                consolidated=True,
+                mode=mode,
+                **extra_kwargs,
+            )
     except Exception as e:
         log.error(f"Error writing dataset to zarr store {zarr_path} with mode {mode}: {e}")
         traceback.print_tb(e.__traceback__)
@@ -830,7 +829,26 @@ def run(args: argparse.Namespace) -> None:
         token=_gen_token(),
     )
 
+    # Use existing zarr store if it exists
+    ds: xr.Dataset | None
+    zarr_path = folder / start.strftime(sat_config.zarr_fmtstr[dstype])
+    if zarr_path.exists():
+        log.info(f"Using existing zarr store at '{zarr_path}'")
+        ds = xr.open_zarr(zarr_path, consolidated=True)
+        
+    # Iterate through all products in search
     for product in tqdm(product_iter, total=total, miniters=50):
+
+        # Skip products already present in store
+        if ds is not None:
+            product_time: dt.datetime = product.sensing_start.replace(second=0, microsecond=0)
+            if np.datetime64(product_time, "ns") in ds.coords["time"].values:
+                log.debug(
+                    f"Skipping entry '{product!s}' as '{product_time}' already in store"
+                )
+                continue
+
+        # For non-existing products, download and process
         nat_filepath = download_nat(
             product=product,
             folder=folder / args.sat,
