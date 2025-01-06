@@ -25,17 +25,6 @@ class TestDownloadProcessSat(unittest.TestCase):
     def setUpClass(cls) -> None:
         TIMESTAMP = pd.Timestamp("2024-01-01T00:00:00Z")
 
-        token = dps._gen_token()
-
-        for t in [TIMESTAMP + pd.Timedelta(t) for t in ["0m", "15m", "30m", "45m"]]:
-            paths = dps.download_scans(
-                sat_config=dps.CONFIGS["iodc"],
-                folder=pathlib.Path("/tmp/test_sat_data"),
-                scan_time=t,
-                token=token,
-            )
-            cls.paths = paths
-
         attrs: dict = {
             "end_time": TIMESTAMP + pd.Timedelta("15m"),
             "modifiers": (),
@@ -76,8 +65,19 @@ class TestDownloadProcessSat(unittest.TestCase):
             ),
         }
 
-    def test_download_scans(self) -> None:
-        self.assertGreater(len(self.paths), 0)
+    def test_get_products_iterator(self) -> None:
+        """Test that the iterator returns the correct number of products."""
+        token = dps._gen_token()
+        for config in dps.CONFIGS:
+            with self.subTest as t:
+                products_iter, total = dps._get_products_iterator(
+                    sat_config=config,
+                    start=pd.Timestamp("2024-01-01").to_pydatetime(),
+                    end=(pd.Timestamp("2024-01-01") + pd.Timedelta(sat_config["cadence"])).to_pydatetime(),
+                    token=token,
+                )
+                t.assertEqual(total, 1)
+
 
     def test_convert_scene_to_dataarray(self) -> None:
         scene = Scene(filenames={"seviri_l1b_native": [self.paths[0].as_posix()]})
