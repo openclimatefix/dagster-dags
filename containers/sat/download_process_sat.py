@@ -265,7 +265,7 @@ def process_nat(
     except Exception as e:
         raise ValueError(f"Error converting '{path!s}' to DataArray: {e}") from e
 
-    # Rescale the data, save as dataset
+    # Rescale the data, save as dataarray
     # TODO: Left over from Jacob, probbaly don't want this
     try:
         da = _rescale(da, CHANNELS[dstype])
@@ -285,6 +285,8 @@ def write_to_zarr(
     """Write the given data array to the given zarr store.
 
     If a Zarr store already exists at the given path, the DataArray will be appended to it.
+
+	Any attributes on the dataarray object are serialized to json-compatible strings.
     """
     mode = "a" if zarr_path.exists() else "w"
     extra_kwargs = {
@@ -295,6 +297,23 @@ def write_to_zarr(
             "time": {"units": "nanoseconds since 1970-01-01"},
         },
     }
+	# Convert attributes to be json	serializable
+	for key, value in da.attrs.items():
+        if isinstance(value, dict):
+            # Convert np.float32 to Python floats (otherwise yaml.dump complains)
+            for inner_key in value:
+                inner_value = value[inner_key]
+                if isinstance(inner_value, np.floating):
+                    value[inner_key] = float(inner_value)
+            da.attrs[key] = yaml.dump(value)
+        if isinstance(value, bool | np.bool_):
+            da.attrs[key] = str(value)
+        if isinstance(value, pyresample.geometry.AreaDefinition):
+            da.attrs[key] = value.dump()
+        # Convert datetimes
+        if isinstance(value, dt.datetime):
+            da.attrs[key] = value.isoformat()
+
     try:
         write_job = da.chunk({
             "time": 1,
@@ -485,6 +504,27 @@ def _gen_token() -> eumdac.AccessToken:
 
     return token
 
+def _get_attrs_from_scene(scene: Scene) -> dict[str, str]:
+    """Get the attributes from a Scene object."""
+	for key, value in attrs.items():
+        # Convert Dicts
+        if isinstance(value, dict):
+            # Convert np.float32 to Python floats (otherwise yaml.dump complains)
+            for inner_key in value:
+                inner_value = value[inner_key]
+                if isinstance(inner_value, np.floating):
+                    value[inner_key] = float(inner_value)
+            attrs[key] = yaml.dump(value)
+        # Convert Numpy bools
+        if isinstance(value, bool | np.bool_):
+            attrs[key] = str(value)
+        # Convert area
+        if isinstance(value, pyresample.geometry.AreaDefinition):
+            attrs[key] = value.dump()
+        # Convert datetimes
+        if isinstance(value, dt.datetime):
+            attrs[key] = value.isoformat()
+
 
 def _convert_scene_to_dataarray(
     scene: Scene,
@@ -556,7 +596,7 @@ def _convert_scene_to_dataarray(
     log.debug("Calculated OSGB")
     # Round to the nearest 5 minutes
     data_attrs["end_time"] = pd.Timestamp(da.attrs["end_time"]).round("5 min").__str__()
-    da.attrs = data_attrs
+    da.attrs.update(data_attrs)
 
     # Rename x and y to make clear the coordinate system they are in
     da = da.rename({"x": "x_geostationary", "y": "y_geostationary"})
