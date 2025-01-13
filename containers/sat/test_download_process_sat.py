@@ -114,6 +114,16 @@ class TestDownloadProcessSat(unittest.TestCase):
         self.assertDictEqual(dict(ds.sizes), dict(ds2.sizes))
         self.assertNotEqual(dict(ds.attrs), {})
 
+    def test_process_nat(self) -> None:
+        out: str = dps.process_nat(
+            dps.CONFIGS["iodc"],
+            pathlib.Path("/tmp/test_sat_data"),
+            pd.Timestamp("2024-01-01"),
+            pd.Timestamp("2024-01-02"), "nonhrv",
+        )
+
+        self.assertTrue(False)
+
     def test_process_scans(self) -> None:
 
         out: str = dps.process_scans(
@@ -125,3 +135,5 @@ class TestDownloadProcessSat(unittest.TestCase):
 
         self.assertTrue(False)
 
+if __name__ == "__main__":
+    unittest.main()

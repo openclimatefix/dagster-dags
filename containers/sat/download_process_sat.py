@@ -790,7 +790,10 @@ parser.add_argument(
 
 
 def check_data_quality(ds: xr.Dataset) -> None:
-    """Check the quality of the data in the given dataset."""
+    """Check the quality of the data in the given dataset.
+
+    Looks for the number of NaNs in the data over important regions.
+    """
 
     def _calc_null_percentage(data: np.ndarray):
         nulls = np.isnan(data)
@@ -798,7 +801,10 @@ def check_data_quality(ds: xr.Dataset) -> None:
 
     result = xr.apply_ufunc(
         _calc_null_percentage,
-        ds.data_vars["data"],
+        ds.data_vars["data"].sel(
+            x_geostationary=slice(-480_064.6, -996_133.85),
+            y_geostationary=slice(4_512_606.3, 5_058_679.8),
+        ),
         input_core_dims=[["x_geostationary", "y_geostationary"]],
         vectorize=True,
         dask="parallelized",
