@@ -1,4 +1,4 @@
-"""Zarr archive of NWP data from the Met Office's Global model.
+"""Zarr archive of NWP data from the Met Office's Unified Model in the global configuration.
 
 The MetOffice runs it's Unified Model (UM) in two configurations: Global, and UK.
 This asset contains data from the global configuration covering the whole globe.
@@ -6,7 +6,7 @@ This asset contains data from the global configuration covering the whole globe.
 Sourced via FTP from CEDA (https://catalogue.ceda.ac.uk/uuid/86df725b793b4b4cb0ca0646686bd783).
 This asset is updated monthly, and surfaced as a Zarr Directory Store for each month.
 It is downloaded using the nwp-consumer docker image
-(https://github.com/openclimatefix/nwp-consumer)
+(https://github.com/openclimatefix/nwp-consumer).
 """
 
 import datetime as dt
@@ -16,56 +16,55 @@ from typing import Any
 import dagster as dg
 from dagster_docker import PipesDockerClient
 
-from constants import LOCATIONS_BY_ENVIRONMENT
+ARCHIVE_FOLDER = "/var/dagster-storage/nwp/ceda-mo-um-global"
+if os.getenv("ENVIRONMENT", "local") == "leo":
+    ARCHIVE_FOLDER = "/mnt/storage_b/nwp/ceda-mo-um-global"
 
-env = os.getenv("ENVIRONMENT", "local")
-ZARR_FOLDER = LOCATIONS_BY_ENVIRONMENT[env].NWP_ZARR_FOLDER
+partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefinition(
+    start_date="2019-01-01",
+    end_offset=-3,
+)
 
 @dg.asset(
-        name="zarr_archive",
+        name="ceda-mo-um-global",
         description=__doc__,
-        key_prefix=["nwp", "ceda", "global"],
         metadata={
-            "archive_folder": dg.MetadataValue.text(f"{ZARR_FOLDER}/nwp/ceda/global"),
+            "archive_folder": dg.MetadataValue.text(ARCHIVE_FOLDER),
             "area": dg.MetadataValue.text("global"),
             "source": dg.MetadataValue.text("ceda"),
+            "model": dg.MetadataValue.text("mo-um"),
             "expected_runtime": dg.MetadataValue.text("6 hours"),
         },
         compute_kind="docker",
-        automation_condition=dg.AutomationCondition.eager(),
+        automation_condition=dg.AutomationCondition.on_cron(
+            cron_schedule=partitions_def.get_cron_schedule(
+                hour_of_day=5,
+            ),
+        ),
         tags={
             "dagster/max_runtime": str(60 * 60 * 10), # Should take 6 ish hours
             "dagster/priority": "1",
-            "dagster/concurrency_key": "ceda-ftp-consumer",
+            "dagster/concurrency_key": "nwp-consumer",
         },
-    partitions_def=dg.MonthlyPartitionsDefinition(
-        start_date="2019-01-01",
-        end_offset=-3,
-    ),
 )
-def ceda_global(
+def ceda_mo_um_global_asset(
     context: dg.AssetExecutionContext,
     pipes_docker_client: PipesDockerClient,
 ) -> Any:
-    image: str = "ghcr.io/openclimatefix/nwp-consumer:devsjc-major-refactor"
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
-        image=image,
-        command=[
-            "archive",
-            "-y",
-            str(it.year),
-            "-m",
-            str(it.month),
-        ],
+        image="ghcr.io/openclimatefix/nwp-consumer:1.0.12",
+        command=["archive", "-y", str(it.year), "-m", str(it.month)],
         env={
             "NWP_CONSUMER_MODEL_REPOSITORY": "ceda-metoffice-global",
             "NWP_CONSUMER_NOTIFICATION_REPOSITORY": "dagster-pipes",
             "CEDA_FTP_USER": os.environ["CEDA_FTP_USER"],
             "CEDA_FTP_PASS": os.environ["CEDA_FTP_PASS"],
+            "CONCURRENCY": "false",
         },
         container_kwargs={
-            "volumes": [f"{ZARR_FOLDER}/nwp/ceda/global:/work"],
+            "volumes": [f"{ARCHIVE_FOLDER}:/work"],
         },
         context=context,
     ).get_results()
+

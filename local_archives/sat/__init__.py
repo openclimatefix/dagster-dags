@@ -2,13 +2,8 @@
 
 import dagster as dg
 
-from . import eumetsat
-
-all_assets: list[dg.AssetsDefinition] = [
-    *eumetsat.all_assets,
-]
-
-all_jobs: list[dg.JobDefinition] = []
-
-all_schedules: list[dg.ScheduleDefinition] = []
+sat_assets: list[dg.AssetsDefinition] = dg.load_assets_from_current_module(
+    group_name="sat",
+    key_prefix=["sat"],
+)
 

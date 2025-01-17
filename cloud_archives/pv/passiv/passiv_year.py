@@ -102,6 +102,3 @@ def pv_passiv_yearly_30min(context: dg.AssetExecutionContext):
 
     get_yearly_passiv_data(start_date, period=30)
 
-
-
-
