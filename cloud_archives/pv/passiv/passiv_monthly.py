@@ -1,20 +1,26 @@
-""" Get passiv daily data and save to Hugging Face"""
+"""Get passiv daily data and save to Hugging Face."""
 
-import datetime
-import os, pytz
-import logging
-import pandas as pd
-from huggingface_hub.hf_api import HfApi
 import dagster as dg
+import datetime as dt
+from huggingface_hub import HfFileSystem
+from huggingface_hub.hf_api import HfApi
+import logging
+import os
+import pandas as pd
+import pytz
 
 from .ss_rawdata_api import SSRawDataAPI
 from .filenames import get_monthly_hf_file_name
-from huggingface_hub import HfFileSystem
 
 logger = logging.getLogger(__name__)
 
 
-def get_monthly_passiv_data(start_date: datetime, upload_to_hf: bool = True, overwrite: bool = False, period:int=5):
+def get_monthly_passiv_data(
+    start_date: dt.datetime,
+    upload_to_hf: bool = True,
+    overwrite: bool = False,
+    period:int=5,
+) -> None:
     """ Get monthly passiv data and save to Hugging Face"""
 
     logger.info(f"Getting data for {start_date}")
@@ -29,7 +35,7 @@ def get_monthly_passiv_data(start_date: datetime, upload_to_hf: bool = True, ove
             return
 
     # set end date
-    end_date = (start_date + datetime.timedelta(days=31)).replace(day=1)
+    end_date = (start_date + dt.timedelta(days=31)).replace(day=1)
 
     # setup class
     ss_rawdata_api = SSRawDataAPI(
@@ -94,7 +100,7 @@ def pv_passiv_monthly_30min(context: dg.AssetExecutionContext):
     """PV Passiv archive monthlyasset."""
 
     partition_date_str = context.partition_key
-    start_date = datetime.datetime.strptime(partition_date_str, "%Y-%m")
+    start_date = dt.datetime.strptime(partition_date_str, "%Y-%m")
     start_date = pytz.utc.localize(start_date)
 
     get_monthly_passiv_data(start_date, period=30)
@@ -115,7 +121,7 @@ def pv_passiv_monthly_5min(context: dg.AssetExecutionContext):
     """PV Passiv archive monthlyasset."""
 
     partition_date_str = context.partition_key
-    start_date = datetime.datetime.strptime(partition_date_str, "%Y-%m")
+    start_date = dt.datetime.strptime(partition_date_str, "%Y-%m")
     start_date = pytz.utc.localize(start_date)
 
     get_monthly_passiv_data(start_date, period=5)
