@@ -3,6 +3,7 @@
 import datetime as dt
 import logging
 import os
+from typing import Literal
 
 import dagster as dg
 import pandas as pd
@@ -20,9 +21,9 @@ def get_monthly_passiv_data(
     start_date: dt.datetime,
     upload_to_hf: bool = True,
     overwrite: bool = False,
-    period:int=5,
+    period: Literal[5, 30] = 5,
 ) -> None:
-    """Get monthly passiv data and save to Hugging Face"""
+    """Get monthly passiv data and save to Hugging Face."""
     logger.info(f"Getting data for {start_date}")
 
     # check if we have data for that day already
@@ -31,7 +32,7 @@ def get_monthly_passiv_data(
         token = os.getenv("HUGGINGFACE_TOKEN")
         fs = HfFileSystem(token=token)
         if fs.exists(f"datasets/openclimatefix/uk_pv/{huggingface_file}"):
-            print(f"Data already exists for {start_date.date()}")
+            logger.info(f"Data already exists for {start_date.date()}")
             return
 
     # set end date
@@ -39,8 +40,8 @@ def get_monthly_passiv_data(
 
     # setup class
     ss_rawdata_api = SSRawDataAPI(
-        user_id=os.getenv("SS_USER_ID"),
-        api_key=os.getenv("SS_API_KEY"),
+        user_id=os.getenv("SS_USER_ID", "unset"),
+        api_key=os.getenv("SS_API_KEY", "unset"),
     )
 
     # only get passiv systems
@@ -64,7 +65,9 @@ def get_monthly_passiv_data(
         generation_data["datetime_GMT"] = generation_data["datetime_GMT"].dt.tz_localize("UTC")
 
     # dont include the last end date
-    generation_data = generation_data[generation_data.datetime_GMT < end_date.replace(tzinfo=pytz.utc)]
+    generation_data = generation_data[
+        generation_data.datetime_GMT < end_date.replace(tzinfo=pytz.utc)
+    ]
 
     # save to parquet file
     file = f"passiv_5min_{start_date.date()}.parquet"
@@ -96,10 +99,10 @@ def get_monthly_passiv_data(
         cron_schedule="0 12 1 * *",  # 1st day of the month, at 12 oclock
     ),
 )
-def pv_passiv_monthly_30min(context: dg.AssetExecutionContext):
+def pv_passiv_monthly_30min(context: dg.AssetExecutionContext) -> None:
     """PV Passiv archive monthlyasset."""
     partition_date_str = context.partition_key
-    start_date = dt.datetime.strptime(partition_date_str, "%Y-%m")
+    start_date = dt.datetime.strptime(partition_date_str, "%Y-%m").replace(tzinfo=dt.UTC)
     start_date = pytz.utc.localize(start_date)
 
     get_monthly_passiv_data(start_date, period=30)
@@ -116,10 +119,10 @@ def pv_passiv_monthly_30min(context: dg.AssetExecutionContext):
         cron_schedule="0 12 1 * *",  # 1st day of the month, at 12 oclock
     ),
 )
-def pv_passiv_monthly_5min(context: dg.AssetExecutionContext):
+def pv_passiv_monthly_5min(context: dg.AssetExecutionContext) -> None:
     """PV Passiv archive monthlyasset."""
     partition_date_str = context.partition_key
-    start_date = dt.datetime.strptime(partition_date_str, "%Y-%m")
+    start_date = dt.datetime.strptime(partition_date_str, "%Y-%m").replace(tzinfo=dt.UTC)
     start_date = pytz.utc.localize(start_date)
 
     get_monthly_passiv_data(start_date, period=5)
