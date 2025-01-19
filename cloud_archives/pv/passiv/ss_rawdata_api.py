@@ -1,5 +1,4 @@
-"""
-Download PV generation data via Sheffield Solar's 'rawdata' API.
+"""Download PV generation data via Sheffield Solar's 'rawdata' API.
 
 Copied from
 https://github.com/SheffieldSolar/SS-RawData-API/blob/main/ss_rawdata_api/ss_rawdata_api.py
@@ -13,7 +12,7 @@ from io import StringIO
 from itertools import starmap
 from multiprocessing import Pool
 from time import sleep
-from typing import TypedDict, Literal, Union, Optional
+from typing import Literal, TypedDict
 
 import pandas as pd
 import requests
@@ -25,7 +24,7 @@ class ProxyDict(TypedDict):
 
 
 class SSRawDataAPI:
-    def __init__(self, user_id: Union[int, str], api_key: str, proxies: Optional[ProxyDict] = None):
+    def __init__(self, user_id: int | str, api_key: str, proxies: ProxyDict | None = None):
         self.base_url = "https://api.pvlive.uk/rawdata/api/v4"
         # self.base_url = "https://staging.solar.shef.ac.uk/rawdata/api/v4"
         self.max_range = datetime.timedelta(days=1)
@@ -37,7 +36,7 @@ class SSRawDataAPI:
         """Get system metadata."""
         endpoint = "owner_system_params_rounded"
         metadata = _query_api(
-            base_url=self.base_url, endpoint=endpoint, params=self.params, proxies=self.proxies
+            base_url=self.base_url, endpoint=endpoint, params=self.params, proxies=self.proxies,
         )
         return metadata
 
@@ -47,14 +46,14 @@ class SSRawDataAPI:
         start: datetime.datetime,
         end: datetime.datetime,
         period: Literal[5, 30],
-        n_processes: Optional[int] = 10,
+        n_processes: int | None = 10,
     ) -> pd.DataFrame:
         """Loop through a list of parameters and query the API."""
         request_start = start
         inputs = []
         while request_start <= end:
             request_end = min(
-                end, request_start + self.max_range - datetime.timedelta(minutes=period)
+                end, request_start + self.max_range - datetime.timedelta(minutes=period),
             )
             params = _compile_params(request_start, request_end, self.params)
             inputs.append([self.base_url, endpoint, params, self.proxies])
@@ -67,7 +66,7 @@ class SSRawDataAPI:
         return pd.concat(chunks)
 
     def __download_5min(
-        self, start: datetime.datetime, end: datetime.datetime, n_processes: Optional[int] = 10
+        self, start: datetime.datetime, end: datetime.datetime, n_processes: int | None = 10,
     ) -> pd.DataFrame:
         """Download 5 minutely data."""
         endpoint = "reading_integrated_5mins"
@@ -76,13 +75,13 @@ class SSRawDataAPI:
         return data
 
     def __download_30min(
-        self, start: datetime.datetime, end: datetime.datetime, n_processes: Optional[int] = 10
+        self, start: datetime.datetime, end: datetime.datetime, n_processes: int | None = 10,
     ) -> pd.DataFrame:
         """Download 30 minutely data."""
         endpoint = "reading_integrated"
         start_date = datetime.datetime.combine(start.date(), datetime.time(0))
         end_date = datetime.datetime.combine(
-            (end - datetime.timedelta(minutes=30)).date(), datetime.time(0)
+            (end - datetime.timedelta(minutes=30)).date(), datetime.time(0),
         )
         data = self.__download_loop(endpoint, start_date, end_date, 30, n_processes)
         data["date"] = pd.to_datetime(data.date, utc=True)
@@ -100,10 +99,9 @@ class SSRawDataAPI:
         start: datetime.datetime,
         end: datetime.datetime,
         period: Literal[5, 30],
-        n_processes: Optional[int] = 10,
+        n_processes: int | None = 10,
     ) -> pd.DataFrame:
-        """
-        Download PV data from the SS rawdata API.
+        """Download PV data from the SS rawdata API.
 
         Parameters
         ----------
@@ -162,7 +160,7 @@ def _nearest_interval(dt, period=30):
     dt_ = copy(dt)
     if not (dt.minute % period == 0 and dt.second == 0 and dt.microsecond == 0):
         offset = datetime.timedelta(
-            minutes=dt.minute % period, seconds=dt.second, microseconds=dt.microsecond
+            minutes=dt.minute % period, seconds=dt.second, microseconds=dt.microsecond,
         )
         dt_ = dt - offset + datetime.timedelta(minutes=period)
         logging.debug("Timestamp %s corrected to nearest %s mins: %s", dt, period, dt_)
@@ -200,7 +198,7 @@ def _query_api(base_url, endpoint, params, proxies):
 def _build_url(base_url, endpoint, params):
     """Construct the appropriate URL for a given set of parameters."""
     url = f"{base_url}/{endpoint}"
-    url += "?" + "&".join(["{}={}".format(k, params[k]) for k in params])
+    url += "?" + "&".join([f"{k}={params[k]}" for k in params])
     return url
 
 
@@ -225,14 +223,14 @@ def _fetch_url(url, proxies):
                 raise Exception(
                     "The user_id and api_key does not give access to the data "
                     "you've requested, contact Sheffield Solar "
-                    "<solar@sheffield.ac.uk>."
+                    "<solar@sheffield.ac.uk>.",
                 )
             if page.status_code == 200 and "Missing user_id" in page.text:
                 logging.debug(page.text)
                 raise Exception(
                     "The user_id and api_key does not give access to the data "
                     "you've requested, contact Sheffield Solar "
-                    "<solar@sheffield.ac.uk>."
+                    "<solar@sheffield.ac.uk>.",
                 )
             success = True
         except requests.exceptions.HTTPError:

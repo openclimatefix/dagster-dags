@@ -1,6 +1,6 @@
-import sys
 
 from local_archives import all_assets
+
 
 def test_nwp_asset_key_prefixes() -> None:
     """Test asset keys for all nwp assets have the correct key structure."""

@@ -602,7 +602,7 @@ if __name__ == "__main__":
             "The script is set to remove downloaded files. "
             "If all your files are in the same 'run' folder, "
             "you will lose data before it has a chance to be processed. "
-            "Consider running the script without the --rm flag."
+            "Consider running the script without the --rm flag.",
         )
 
     path: str = f"{args.path}/{args.area}"

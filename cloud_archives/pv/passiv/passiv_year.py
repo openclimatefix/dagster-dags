@@ -1,24 +1,26 @@
-""" Get passiv daily data and save to Hugging Face"""
+"""Get passiv daily data and save to Hugging Face"""
 
 import datetime
-import io, os, pytz
-import pandas as pd
-from huggingface_hub.hf_api import HfApi
+import io
+import os
+
 import dagster as dg
+import pandas as pd
+import pytz
 from huggingface_hub import HfFileSystem
+from huggingface_hub.hf_api import HfApi
 
 from .filenames import get_monthly_hf_file_name, get_yearly_hf_file_name
 
 
 def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, overwrite: bool = False, period:int=5):
-    """ Get yearly passiv data and save to Hugging Face"""
-
+    """Get yearly passiv data and save to Hugging Face"""
     # set up HF and check if we have data for that day already
     huggingface_file = get_yearly_hf_file_name(date=start_date, period=period)
     token = os.getenv("HUGGINGFACE_TOKEN")
     fs = HfFileSystem(token=token)
     if not overwrite:
-        if fs.exists(f'datasets/openclimatefix/uk_pv/{huggingface_file}'):
+        if fs.exists(f"datasets/openclimatefix/uk_pv/{huggingface_file}"):
             print(f"Data already exists for {start_date.date()}")
             return
 
@@ -35,7 +37,7 @@ def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, over
 
         # load data
         print(f"Loading data from {huggingface_load_file}")
-        with fs.open(f'datasets/openclimatefix/uk_pv/{huggingface_load_file}') as f:
+        with fs.open(f"datasets/openclimatefix/uk_pv/{huggingface_load_file}") as f:
             data = f.read()
         pq_file = io.BytesIO(data)
         generation_data = pd.read_parquet(pq_file)
@@ -76,7 +78,6 @@ def get_yearly_passiv_data(start_date: datetime, upload_to_hf: bool = True, over
 )
 def pv_passiv_yearly_5min(context: dg.AssetExecutionContext):
     """PV Passiv archive yearly data."""
-
     partition_date_str = context.partition_key
     start_date = datetime.datetime.strptime(partition_date_str, "%Y")
     start_date = pytz.utc.localize(start_date)
@@ -95,7 +96,6 @@ def pv_passiv_yearly_5min(context: dg.AssetExecutionContext):
 )
 def pv_passiv_yearly_30min(context: dg.AssetExecutionContext):
     """PV Passiv archive yearly data."""
-
     partition_date_str = context.partition_key
     start_date = datetime.datetime.strptime(partition_date_str, "%Y")
     start_date = pytz.utc.localize(start_date)

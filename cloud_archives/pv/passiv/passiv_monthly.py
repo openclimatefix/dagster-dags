@@ -1,16 +1,17 @@
 """Get passiv daily data and save to Hugging Face."""
 
-import dagster as dg
 import datetime as dt
-from huggingface_hub import HfFileSystem
-from huggingface_hub.hf_api import HfApi
 import logging
 import os
+
+import dagster as dg
 import pandas as pd
 import pytz
+from huggingface_hub import HfFileSystem
+from huggingface_hub.hf_api import HfApi
 
-from .ss_rawdata_api import SSRawDataAPI
 from .filenames import get_monthly_hf_file_name
+from .ss_rawdata_api import SSRawDataAPI
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,7 @@ def get_monthly_passiv_data(
     overwrite: bool = False,
     period:int=5,
 ) -> None:
-    """ Get monthly passiv data and save to Hugging Face"""
-
+    """Get monthly passiv data and save to Hugging Face"""
     logger.info(f"Getting data for {start_date}")
 
     # check if we have data for that day already
@@ -30,7 +30,7 @@ def get_monthly_passiv_data(
     if not overwrite:
         token = os.getenv("HUGGINGFACE_TOKEN")
         fs = HfFileSystem(token=token)
-        if fs.exists(f'datasets/openclimatefix/uk_pv/{huggingface_file}'):
+        if fs.exists(f"datasets/openclimatefix/uk_pv/{huggingface_file}"):
             print(f"Data already exists for {start_date.date()}")
             return
 
@@ -40,7 +40,7 @@ def get_monthly_passiv_data(
     # setup class
     ss_rawdata_api = SSRawDataAPI(
         user_id=os.getenv("SS_USER_ID"),
-        api_key=os.getenv("SS_API_KEY")
+        api_key=os.getenv("SS_API_KEY"),
     )
 
     # only get passiv systems
@@ -98,7 +98,6 @@ def get_monthly_passiv_data(
 )
 def pv_passiv_monthly_30min(context: dg.AssetExecutionContext):
     """PV Passiv archive monthlyasset."""
-
     partition_date_str = context.partition_key
     start_date = dt.datetime.strptime(partition_date_str, "%Y-%m")
     start_date = pytz.utc.localize(start_date)
@@ -119,7 +118,6 @@ def pv_passiv_monthly_30min(context: dg.AssetExecutionContext):
 )
 def pv_passiv_monthly_5min(context: dg.AssetExecutionContext):
     """PV Passiv archive monthlyasset."""
-
     partition_date_str = context.partition_key
     start_date = dt.datetime.strptime(partition_date_str, "%Y-%m")
     start_date = pytz.utc.localize(start_date)

@@ -1,7 +1,6 @@
 import argparse
 import dataclasses
 import datetime as dt
-import functools
 import logging
 import os
 import pathlib
