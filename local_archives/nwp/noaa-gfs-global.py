@@ -11,8 +11,7 @@ It is downloaded using the nwp-consumer docker image
 """
 
 import os
-from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from dagster_docker import PipesDockerClient
@@ -55,7 +54,7 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefiniti
 def ncep_gfs_global_asset(
     context: dg.AssetExecutionContext,
     pipes_docker_client: PipesDockerClient,
-) -> Sequence[dg.PipesExecutionResult]:
+) -> Any:  # noqa: ANN401
     """Dagster asset for NCEP GFS global forecast model data."""
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(

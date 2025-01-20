@@ -1,2 +1,2 @@
-from passiv import *
+from .passiv import *
 

@@ -11,8 +11,7 @@ It is downloaded using the nwp-consumer docker image
 """
 
 import os
-from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from dagster_docker import PipesDockerClient
@@ -56,7 +55,7 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefiniti
 def ecmwf_ens_stat_india_asset(
     context: dg.AssetExecutionContext,
     pipes_docker_client: PipesDockerClient,
-) -> Sequence[dg.PipesExecutionResult]:
+) -> Any:  # noqa: ANN401
     """Dagster asset downloading ECMWF ENS data for India."""
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
