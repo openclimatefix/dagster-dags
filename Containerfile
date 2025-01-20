@@ -25,9 +25,10 @@ COPY cloud_archives	/opt/dagster/app
 # Run dagster gRPC server on port 4000
 EXPOSE 4000
 
-ENV CODE_LOCATION
+# Set the code location module to be loaded by the gRPC server
+ENV MODULE_NAME=local_archives
 
 # Using CMD rather than ENTRYPOINT allows the command to be overridden in
 # run launchers or executors to run other commands using this image
-CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", ${CODE_LOCATION}]
+CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", ${MODULE_NAME:-local_archives}]
 
