@@ -1,10 +1,12 @@
+import unittest
 
-from local_archives import all_assets
+from local_archives import nwp_assets, sat_assets
 
 
-def test_nwp_asset_key_prefixes() -> None:
-    """Test asset keys for all nwp assets have the correct key structure."""
-    for asset in all_assets:
-        # Ensure that the prefix is one of the expected flavours
-        assert asset.key.path[0] in ["nwp", "sat", "air"]
+class TestAssetKeyPrefixes(unittest.TestCase):
+    def test_nwp_asset_key_prefixes(self) -> None:
+        """Test asset keys for all nwp assets have the correct key structure."""
+        for asset in [*nwp_assets, *sat_assets]:
+            # Ensure that the prefix is one of the expected flavours
+            self.assertIn( asset.key.path[0], ["nwp", "sat", "air"])
 
