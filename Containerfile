@@ -1,34 +1,24 @@
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+ENV DAGSTER_HOME=/opt/dagster/home
+
+# Add repository code
+WORKDIR /opt/dagster/app
+COPY src /opt/dagster/app
+COPY pyproject.toml /opt/dagster/app
 
 # Checkout and install dagster libraries needed to run the gRPC server by exposing
 # your code location to dagster-webserver and dagster-daemon, and loading the
 # DagsterInstance.
-
-RUN pip install \
-    dagster \
-    dagster-postgres \
-    dagster-docker
-
-# Set $DAGSTER_HOME and copy dagster instance there
-ENV DAGSTER_HOME=/opt/dagster/dagster_home
-
-RUN mkdir -p $DAGSTER_HOME
-COPY dagster.yaml $DAGSTER_HOME
-
-
-# Add repository code
-WORKDIR /opt/dagster/app
-COPY workspace.yaml /opt/dagster/app
-COPY local_archives /opt/dagster/app
-COPY cloud_archives	/opt/dagster/app
-
-# Run dagster gRPC server on port 4000
-EXPOSE 4000
+RUN uv sync
 
 # Set the code location module to be loaded by the gRPC server
 ENV MODULE_NAME=local_archives
 
-# Using CMD rather than ENTRYPOINT allows the command to be overridden in
-# run launchers or executors to run other commands using this image
-CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", ${MODULE_NAME:-local_archives}]
+# Using CMD rather than RUN allows the command to be overridden in
+# run launchers or executors to run other commands using this image.
+# This is important as runs are executed inside this container.
+ENTRYPOINT ["uv", "run"]
+CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", "local_archives"]
 

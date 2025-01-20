@@ -1,7 +1,0 @@
-load_from:
-  - python_module:
-      working_directory: /opt/dagster/app
-      module_name: local_archives
-  - python_module:
-      working_directory: /opt/dagster/app
-      module_name: cloud_archives
