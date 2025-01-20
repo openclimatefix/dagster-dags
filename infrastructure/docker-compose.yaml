@@ -4,7 +4,6 @@ x-postgres-variables: &postgres-variables
   POSTGRES_USER: ${POSTGRES_USER:-dagster_user}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dagster_password}
   POSTGRES_DB: ${POSTGRES_DB:-dagster_db}
-  POSTGRES_PORT: ${POSTGRES_PORT:-5438}
   POSTGRES_HOST: "dagster-postgres"
 
 x-dagster-configs: &dagster-configs
@@ -27,7 +26,7 @@ services:
     volumes:
       - dagster-pgdata-vol:/var/lib/postgresql/data
     expose:
-      - ${POSTGRES_PORT:-5438} # Publishes on network but not to host
+      - "5432" # Publishes on network but not to host
     networks: ["dagster-network"]
     healthcheck:
       test: pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
@@ -80,7 +79,7 @@ services:
   dagster-daemon:
     container_name: dagster-daemon
     image: dagster/dagster-k8s:latest
-    command: ["dagster-daemon", "run"]
+    command: ["dagster-daemon", "run", "-w", "/opt/dagster/home/workspace.yaml"]
     restart: on-failure
     environment:
       <<: *postgres-variables
@@ -129,8 +128,7 @@ configs:
               env: POSTGRES_HOST
             db_name:
               env: POSTGRES_DB
-            port:
-              env: POSTGRES_PORT
+            port: 5432
       local_artifact_storage:
         module: dagster.core.storage.root
         class: LocalArtifactStorage
