@@ -2,7 +2,7 @@ import unittest
 
 import dagster as dg
 
-from local_archives import nwp_assets, sat_assets
+from src.local_archives import nwp_assets, sat_assets
 
 
 class TestAssetKeyPrefixes(unittest.TestCase):
