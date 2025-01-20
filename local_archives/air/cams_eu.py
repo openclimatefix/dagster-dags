@@ -10,9 +10,12 @@ per variable. It is downloaded using the cdsapi Python package
 """
 
 import datetime as dt
+import os
+import pathlib
+from typing import Any
 
-import dagster as dg
 import cdsapi
+import dagster as dg
 
 ARCHIVE_FOLDER = "/var/dagster-storage/air/cams-europe"
 if os.getenv("ENVIRONMENT", "local") == "leo":
@@ -40,6 +43,7 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.WeeklyPartitionsDefinitio
             cron_schedule=partitions_def.get_cron_schedule(
                 hour_of_day=7,
             ),
+        ),
         tags={
             "dagster/max_runtime": str(60 * 60 * 24 * 4), # Should take about 2 days
             "dagster/priority": "1",
@@ -48,6 +52,7 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.WeeklyPartitionsDefinitio
     partitions_def=partitions_def,
 )
 def cams_eu_raw_asset(context: dg.AssetExecutionContext) -> dg.Output[list[pathlib.Path]]:
+    """Downloads CAMS Europe air quality forecast data from Copernicus ADS."""
     it_start: dt.datetime = context.partition_time_window.start
     it_end: dt.datetime = context.partition_time_window.end
     execution_start = dt.datetime.now(tz=dt.UTC)
@@ -75,17 +80,18 @@ def cams_eu_raw_asset(context: dg.AssetExecutionContext) -> dg.Output[list[pathl
     ]
 
     for var in variables:
-        dst: pathlib.Path = pathlib.Path(ARCHIVE_FOLDER) / "raw" / f"{it_start:%Y%m%d}-{it_end:%Y%m%d}_{var}.nc.zip"
+        dst: pathlib.Path = pathlib.Path(ARCHIVE_FOLDER) \
+            / "raw" / f"{it_start:%Y%m%d}-{it_end:%Y%m%d}_{var}.nc.zip"
         dst.parent.mkdir(parents=True, exist_ok=True)
 
         if dst.exists():
-            context.log.info(f"File already exists, skipping download", extra={
+            context.log.info("File already exists, skipping download", extra={
                 "file": dst.as_posix(),
             })
             stored_files.append(dst)
             continue
 
-        request: dict[str, Any]: {
+        request: dict[str, Any] = {
             "date": [f"{it_start:%Y-%m-%d}/{it_end:%Y-%m-%d}"],
             "type": ["forecast"],
             "time": ["00:00"],
@@ -96,20 +102,26 @@ def cams_eu_raw_asset(context: dg.AssetExecutionContext) -> dg.Output[list[pathl
             "variable":  [var],
         }
 
-        context.log.info(f"Reqesting file from Copernicus ADS via CDS API", extra={
-            "request": sl_var_request,
-            "target": dst.as_posix(),
-        })
+        context.log.info(
+            "Reqesting file from Copernicus ADS via CDS API",
+            extra={
+                "request": request,
+                "target": dst.as_posix(),
+            },
+        )
         client = cdsapi.Client()
         client.retrieve(
             name="cams-europe-air-quality-forecast",
             request=request,
             target=dst.as_posix(),
         )
-        context.log.info(f"Downloaded file {dst.as_posix()} from Copernicus ADS via CDS API", extra={
-            "file": dst.as_posix(),
-            "size": dst.stat().st_size,
-        })
+        context.log.info(
+            f"Downloaded file {dst.as_posix()} from Copernicus ADS via CDS API",
+            extra={
+                "file": dst.as_posix(),
+                "size": dst.stat().st_size,
+            },
+        )
         stored_files.append(dst)
 
     if len(stored_files) == 0:
@@ -123,7 +135,7 @@ def cams_eu_raw_asset(context: dg.AssetExecutionContext) -> dg.Output[list[pathl
         value=stored_files,
         metadata={
             "files": dg.MetadataValue.text(", ".join([f.as_posix() for f in stored_files])),
-            "partition_size": dg.MetadataValue.int(sum[f.stat().st_size for f in stored_files]),
+            "partition_size": dg.MetadataValue.int(sum([f.stat().st_size for f in stored_files])),
             "elapsed_time_hours": dg.MetadataValue.float(elapsed_time / dt.timedelta(hours=1)),
         },
     )
