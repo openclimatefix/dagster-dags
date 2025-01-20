@@ -9,7 +9,7 @@ x-postgres-variables: &postgres-variables
 
 x-dagster-configs: &dagster-configs
   - source: dagster.yaml
-    target: /opt/dagster/dagster.yaml
+    target: /opt/dagster/home/dagster.yaml
   - source: workspace.yaml
     target: /opt/dagster/home/workspace.yaml
 
