@@ -1,7 +1,7 @@
 import dagster as dg
 from dagster_docker import PipesDockerClient
 
-from . import nwp, pv, sat
+from .assets import nwp, pv, sat
 
 
 class BaseStorageResource(dg.ConfigurableResource):
