@@ -1,19 +1,9 @@
+"""All dagster definitions to be surfaced in this code location."""
+
 import dagster as dg
 from dagster_docker import PipesDockerClient
 
 from .assets import nwp, pv, sat
-
-
-class BaseStorageResource(dg.ConfigurableResource):
-    """A resource defining where to store external data.
-
-    Consists of a location on disk accessible to the Dagster instance.
-    Where possible all data not handled by Dagster's IO managers (e.g.
-    data downloaded via dagster pipes docker instances) will use this
-    path as a base location.
-    """
-
-    location: str
 
 nwp_assets = dg.load_assets_from_package_module(
     package_module=nwp,
@@ -38,9 +28,6 @@ defs = dg.Definitions(
     resources={
         "pipes_subprocess_client": dg.PipesSubprocessClient(),
         "pipes_docker_client": PipesDockerClient(),
-        "base_storage_resource": BaseStorageResource(
-            location=dg.EnvVar("BASE_STORAGE_PATH"),
-        ),
     },
     jobs=[],
     schedules=[],
