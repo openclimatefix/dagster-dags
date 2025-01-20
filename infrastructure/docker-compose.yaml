@@ -30,7 +30,7 @@ services:
       - ${POSTGRES_PORT:-5438} # Publishes on network but not to host
     networks: ["dagster-network"]
     healthcheck:
-      test: pg_isready -U $$POSTGRES_USER -d $$POSTGRES_PASSWORD
+      test: pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
       interval: 10s
       timeout: 8s
       retries: 5
