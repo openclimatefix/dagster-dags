@@ -258,4 +258,4 @@ def _fetch_url(url: str, proxies: ProxyDict | None = None) -> pd.DataFrame:
     try:
         return pd.read_csv(StringIO(page.text), parse_dates=True)
     except Exception as e:
-        raise Exception("Error communicating with the Sheffield Solar API") from e
+        raise Exception(f"Error communicating with the Sheffield Solar API: {e}") from e
