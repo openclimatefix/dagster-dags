@@ -10,12 +10,15 @@ It is downloaded using the nwp-consumer docker image
 (https://github.com/openclimatefix/nwp-consumer).
 """
 
-import datetime as dt
 import os
-from typing import Any
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import dagster as dg
 from dagster_docker import PipesDockerClient
+
+if TYPE_CHECKING:
+    import datetime as dt
 
 ARCHIVE_FOLDER = "/var/dagster-storage/nwp/ncep-gfs-global"
 if os.getenv("ENVIRONMENT", "local") == "leo":
@@ -52,7 +55,8 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefiniti
 def ncep_gfs_global_asset(
     context: dg.AssetExecutionContext,
     pipes_docker_client: PipesDockerClient,
-) -> Any:
+) -> Sequence[dg.PipesExecutionResult]:
+    """Dagster asset for NCEP GFS global forecast model data."""
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
         image="ghcr.io/openclimatefix/nwp-consumer:1.0.12",

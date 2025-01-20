@@ -1,6 +1,6 @@
 """Zarr archive of Summary NWP data from ECMWF's ENS, covering India.
 
-ENS (sometimes EPS) is the ECMWF Ensemble Prediction System, 
+ENS (sometimes EPS) is the ECMWF Ensemble Prediction System,
 which provides 50 perturbed forecasts of upcoming atmospheric conditions.
 This asset contains summary statistics of this data (mean, standard deviation) for India.
 
@@ -10,12 +10,15 @@ It is downloaded using the nwp-consumer docker image
 (https://github.com/openclimatefix/nwp-consumer).
 """
 
-import datetime as dt
 import os
-from typing import Any
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import dagster as dg
 from dagster_docker import PipesDockerClient
+
+if TYPE_CHECKING:
+    import datetime as dt
 
 ARCHIVE_FOLDER = "/var/dagster-storage/nwp/ecmwf-ens-stat-india"
 if os.getenv("ENVIRONMENT", "local") == "leo":
@@ -53,7 +56,8 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefiniti
 def ecmwf_ens_stat_india_asset(
     context: dg.AssetExecutionContext,
     pipes_docker_client: PipesDockerClient,
-) -> Any:
+) -> Sequence[dg.PipesExecutionResult]:
+    """Dagster asset downloading ECMWF ENS data for India."""
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
         image="ghcr.io/openclimatefix/nwp-consumer:1.0.12",
