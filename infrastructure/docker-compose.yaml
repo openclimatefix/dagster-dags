@@ -25,8 +25,6 @@ services:
       PGDATA: "/var/lib/postgresql/data"
     volumes:
       - dagster-pgdata-vol:/var/lib/postgresql/data
-    expose:
-      - "5432" # Publishes on network but not to host
     networks: ["dagster-network"]
     healthcheck:
       test: pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
@@ -37,16 +35,14 @@ services:
   # This service runs the gRPC server that loads user code, used by both dagster-webserver
   # and dagster-daemon. By setting DAGSTER_CURRENT_IMAGE to its own image, we tell the
   # run launcher to use this same image when launching runs in a new container as well.
-  dagster-codeserver_local-archives:
-    container_name: dagster-codeserver_local-archives
+  dagster-codeserver:
+    container_name: dagster-codeserver
     image: ghcr.io/openclimatefix/dagster-dags:devsjc-code-container
     restart: always
     environment:
       <<: *postgres-variables
       DAGSTER_CURRENT_IMAGE: "ghcr.io/openclimatefix/dagster-dags"
       DAGSTER_HOME: "/opt/dagster/home"
-    expose:
-      - "4000"
     configs: *dagster-configs
     networks: ["dagster-network"]
 
@@ -111,9 +107,9 @@ configs:
     content: |
       load_from:
         - grpc_server:
-            host: "dagster-codeserver_local-archives"
+            host: "dagster-codeserver"
             port: 4000
-            location_name: "local_archives"
+            location_name: "dagster_dags"
 
   dagster.yaml:
     content: |
