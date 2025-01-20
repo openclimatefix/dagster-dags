@@ -57,7 +57,7 @@ services:
   dagster-webserver:
     container_name: dagster-webserver
     image: dagster/dagster-k8s:latest
-    command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3008", "-w", "${DAGSTER_HOME}/workspace.yaml"]
+    command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3008", "-w", "/opt/dagster/home/workspace.yaml"]
     ports:
       - "3008:3008"
     environment:
@@ -120,16 +120,17 @@ configs:
     content: |
       storage:
         postgres:
-          username:
-            env: POSTGRES_USER
-          password:
-            env: POSTGRES_PASSWORD
-          hostname:
-            env: POSTGRES_HOST
-          db_name:
-            env: POSTGRES_DB
-          port:
-            env: POSTGRES_PORT
+          postgres_db:
+            username:
+              env: POSTGRES_USER
+            password:
+              env: POSTGRES_PASSWORD
+            hostname:
+              env: POSTGRES_HOST
+            db_name:
+              env: POSTGRES_DB
+            port:
+              env: POSTGRES_PORT
       local_artifact_storage:
         module: dagster.core.storage.root
         class: LocalArtifactStorage
