@@ -10,12 +10,15 @@ This asset is updated monthly, and surfaced as a Zarr Directory Store for each m
 It is downloaded using the sat container.
 """
 
-import datetime as dt
 import os
-from typing import Any
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import dagster as dg
 from dagster_docker import PipesDockerClient
+
+if TYPE_CHECKING:
+    import datetime as dt
 
 ARCHIVE_FOLDER = "/var/dagster-storage/sat/eumetsat-iodc-lrv"
 if os.getenv("ENVIRONMENT", "local") == "leo":
@@ -43,10 +46,11 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefiniti
         },
     partitions_def=partitions_def,
 )
-def eumetsat_seviri_asset(
+def eumetsat_seviri_lrv_asset(
     context: dg.AssetExecutionContext,
     pipes_docker_client: PipesDockerClient,
-) -> Any:
+) -> Sequence[dg.PipesExecutionResult]:
+    """Dagster asset for EUMETSAT's RSS service, low resolution."""
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
         image="ghcr.io/openclimatefix/sat-etl:main",
