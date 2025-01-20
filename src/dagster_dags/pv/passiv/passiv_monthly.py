@@ -7,7 +7,6 @@ from typing import Literal
 
 import dagster as dg
 import pandas as pd
-import pytz
 from huggingface_hub import HfFileSystem
 from huggingface_hub.hf_api import HfApi
 
@@ -66,7 +65,7 @@ def get_monthly_passiv_data(
 
     # dont include the last end date
     generation_data = generation_data[
-        generation_data.datetime_GMT < end_date.replace(tzinfo=pytz.utc)
+        generation_data.datetime_GMT < end_date.replace(tzinfo=dt.UTC)
     ]
 
     # save to parquet file
@@ -91,40 +90,30 @@ def get_monthly_passiv_data(
 
 
 @dg.asset(
-    key=["pv", "passiv", "monthly_30min"],
+    name="passiv_monthly_30min",
     automation_condition=dg.AutomationCondition.eager(),
-    partitions_def=dg.TimeWindowPartitionsDefinition(
-        fmt="%Y-%m",
-        start="2010-01",
-        cron_schedule="0 12 1 * *",  # 1st day of the month, at 12 oclock
+    partitions_def=dg.MonthlyPartitionsDefinition(
+        start_date="2010-01-01",
+        hour_offset=12,
     ),
 )
 def pv_passiv_monthly_30min(context: dg.AssetExecutionContext) -> None:
-    """PV Passiv archive monthlyasset."""
-    partition_date_str = context.partition_key
-    start_date = dt.datetime.strptime(partition_date_str, "%Y-%m").replace(tzinfo=dt.UTC)
-    start_date = pytz.utc.localize(start_date)
-
+    """PV Passiv archive monthly asset."""
+    start_date: dt.datetime = context.partition_time_window.start
     get_monthly_passiv_data(start_date, period=30)
 
 
-
-
 @dg.asset(
-    key=["pv", "passiv", "monthly_5min"],
+    name="passiv_monthly_5min",
     automation_condition=dg.AutomationCondition.eager(),
-    partitions_def=dg.TimeWindowPartitionsDefinition(
-        fmt="%Y-%m",
-        start="2018-01",
-        cron_schedule="0 12 1 * *",  # 1st day of the month, at 12 oclock
+    partitions_def=dg.MonthlyPartitionsDefinition(
+        start_date="2018-01-01",
+        hour_offset=12,
     ),
 )
 def pv_passiv_monthly_5min(context: dg.AssetExecutionContext) -> None:
-    """PV Passiv archive monthlyasset."""
-    partition_date_str = context.partition_key
-    start_date = dt.datetime.strptime(partition_date_str, "%Y-%m").replace(tzinfo=dt.UTC)
-    start_date = pytz.utc.localize(start_date)
-
+    """PV Passiv archive monthly asset."""
+    start_date: dt.datetime = context.partition_time_window.start
     get_monthly_passiv_data(start_date, period=5)
 
 

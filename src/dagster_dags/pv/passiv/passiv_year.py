@@ -8,7 +8,6 @@ from typing import Literal
 
 import dagster as dg
 import pandas as pd
-import pytz
 from huggingface_hub import HfFileSystem
 from huggingface_hub.hf_api import HfApi
 
@@ -75,7 +74,7 @@ def get_yearly_passiv_data(
 
 
 @dg.asset(
-    key=["pv", "passiv", "yearly_5min"],
+    name="passiv_yearly_5min",
     automation_condition=dg.AutomationCondition.eager(),
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y",
@@ -85,15 +84,12 @@ def get_yearly_passiv_data(
 )
 def pv_passiv_yearly_5min(context: dg.AssetExecutionContext) -> None:
     """PV Passiv archive yearly data."""
-    partition_date_str = context.partition_key
-    start_date = dt.datetime.strptime(partition_date_str, "%Y").replace(tzinfo=dt.UTC)
-    start_date = pytz.utc.localize(start_date)
-
+    start_date: dt.datetime = context.partition_time_window.start
     get_yearly_passiv_data(start_date, period=5)
 
 
 @dg.asset(
-    key=["pv", "passiv", "yearly_30min"],
+    name="passiv_yearly_30min",
     automation_condition=dg.AutomationCondition.eager(),
     partitions_def=dg.TimeWindowPartitionsDefinition(
         fmt="%Y",
@@ -103,9 +99,6 @@ def pv_passiv_yearly_5min(context: dg.AssetExecutionContext) -> None:
 )
 def pv_passiv_yearly_30min(context: dg.AssetExecutionContext) -> None:
     """PV Passiv archive yearly data."""
-    partition_date_str = context.partition_key
-    start_date = dt.datetime.strptime(partition_date_str, "%Y").replace(tzinfo=dt.UTC)
-    start_date = pytz.utc.localize(start_date)
-
+    start_date: dt.datetiome = context.partition_time_window.start
     get_yearly_passiv_data(start_date, period=30)
 
