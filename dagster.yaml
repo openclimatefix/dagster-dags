@@ -1,15 +1,7 @@
 storage:
   postgres:
-    postgres_db:
-      username:
-        env: DAGSTER_PG_USERNAME
-      password:
-        env: DAGSTER_PG_PASSWORD
-      hostname:
-        env: DAGSTER_PG_HOST
-      db_name:
-        env: DAGSTER_PG_DB
-      port: 5432
+    postgres_url:
+      env: DAGSTER_PG_CONN_STRING
 
 local_artifact_storage:
   module: dagster.core.storage.root
@@ -25,4 +17,15 @@ run_coordinator:
     tag_concurrency_limits:
       - key: "dagster/backfill"
         limit: 15
+      - key: "nwp-consumer"
+        limit: 1
+
+retention:
+  schedule:
+    purge_after_days: 90
+  sensor:
+    purge_after_days:
+      skipped: 7
+      failure: 30
+      success: -1
 
