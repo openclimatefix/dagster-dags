@@ -229,7 +229,7 @@ def _fetch_url(url: str, proxies: ProxyDict | None = None) -> pd.DataFrame:
     while not success and try_counter < retries + 1:
         try_counter += 1
         try:
-            page = requests.get(url=url, proxies=proxies.__dict__, timeout=60)
+            page = requests.get(url=url, proxies=proxies, timeout=60) # type: ignore
             page.raise_for_status()
             if page.status_code == 200 and "Your api key is not valid" in page.text:
                 logging.debug(page.text)
