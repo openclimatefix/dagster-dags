@@ -11,8 +11,7 @@ It is downloaded using the sat container.
 """
 
 import os
-from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import dagster as dg
 from dagster_docker import PipesDockerClient
@@ -49,7 +48,7 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefiniti
 def eumetsat_seviri_lrv_asset(
     context: dg.AssetExecutionContext,
     pipes_docker_client: PipesDockerClient,
-) -> Sequence[dg.PipesExecutionResult]:
+) -> Any: # noqa: ANN401
     """Dagster asset for EUMETSAT's RSS service, low resolution."""
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
