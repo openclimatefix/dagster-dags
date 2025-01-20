@@ -2,11 +2,16 @@ import os
 
 import dagster as dg
 
-from .nwp import icon
-from .pv import passiv
+from . import pv
+
+pv_assets = dg.load_assets_from_package_module(
+    package_module=pv,
+    group_name="pv",
+    key_prefix="pv",
+)
 
 defs = dg.Definitions(
-    assets=[*icon.all_assets, *passiv.all_assets],
-    jobs=[*icon.all_jobs],
-    schedules=[dg.build_schedule_from_partitioned_job(job) for job in icon.all_jobs],
+    assets=[*pv_assets],
+    jobs=[],
+    schedules=[],
 )

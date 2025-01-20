@@ -1,13 +1,12 @@
 import dagster as dg
 
-from . import passiv_monthly, passiv_year
+from passiv_year import pv_passiv_yearly_30min, pv_passiv_yearly_5min
+from passiv_monthly import pv_passiv_monthly_30min, pv_passiv_monthly_5min
 
-global_assets = dg.load_assets_from_modules(
-    modules=[passiv_monthly, passiv_year],
-    group_name="pv_passiv",
-)
-
-all_assets: list[dg.AssetsDefinition] = [*global_assets]
-
-# TODO do we need to define jobs for these assets?
+__all__ = [
+    "pv_passiv_yearly_30min",
+    "pv_passiv_yearly_5min",
+    "pv_passiv_monthly_30min",
+    "pv_passiv_monthly_5min",
+]
 
