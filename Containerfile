@@ -13,11 +13,11 @@ COPY pyproject.toml /opt/dagster/app
 # DagsterInstance.
 RUN uv sync
 
-EXPOSE 4000
+EXPOSE 4266
 
 # Using CMD rather than RUN allows the command to be overridden in
 # run launchers or executors to run other commands using this image.
 # This is important as runs are executed inside this container.
 ENTRYPOINT ["uv", "run"]
-CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", "dagster_dags"]
+CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4266", "-m", "dagster_dags"]
 

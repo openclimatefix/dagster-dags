@@ -108,7 +108,7 @@ configs:
       load_from:
         - grpc_server:
             host: "dagster-codeserver"
-            port: 4000
+            port: 4266
             location_name: "dagster_dags"
 
   dagster.yaml:

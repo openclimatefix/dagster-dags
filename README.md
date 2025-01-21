@@ -30,7 +30,7 @@ $ docker pull ghcr.io/openclimatefix/dagster-dags
 
 ```bash
 $ docker run -d \
-    -p 4000:4000 \
+    -p 4266:4266 \
     -e DAGSTER_CURRENT_IMAGE=ghcr.io/openclimatefix/dagster-dags \
     ghcr.io/openclimatefix/dagster-dags
 ```
@@ -41,7 +41,7 @@ $ docker run -d \
 load_from:
   - grpc_server:
       host: localhost
-      port: 4000
+      port: 4266
       location_name: "dagster-dags" # Name of the module
 ```
 
