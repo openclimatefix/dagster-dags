@@ -1,90 +1,141 @@
-<h2 align="center">
-Dagster Dags
-<br>
-<br>
-Dagster defintions for OCF's archival datasets
-</h2>
+# Dagster Dags
 
-<div align="center">
+**Orchestrate data pipelines for ML dataset creation**
 
-<a href="https://github.com/openclimatefix/dagster-dags/graphs/contributors" alt="Contributors">
-    <img src="https://img.shields.io/github/contributors/openclimatefix/dagster-dags?style=for-the-badge&color=FFFFFF" /></a>
-<a href="https://github.com/openclimatefix/dagster-dags/actions/workflows/ci.yml" alt="Workflows">
-    <img alt="GitHub Workflow Status (with branch)" src="https://img.shields.io/github/actions/workflow/status/openclimatefix/dagster-dags/ci.yml?branch=main&style=for-the-badge&color=FFD053"></a>
-<a href="https://github.com/openclimatefix/dagster-dags/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc" alt="Issues">
-    <img src="https://img.shields.io/github/issues/openclimatefix/dagster-dags?style=for-the-badge&color=FFAC5F"></a>
-</div>
+[![tags badge](https://img.shields.io/github/v/tag/openclimatefix/dagster-dags?include_prereleases&sort=semver&color=7BCDF3)](https://github.com/openclimatefix/dagster-dags/tags)
+[![contributors badge](https://img.shields.io/github/contributors/openclimatefix/dagster-dags?color=FFFFFF)](https://github.com/openclimatefix/dagster-dags/graphs/contributors)
+[![workflows badge](https://img.shields.io/github/actions/workflow/status/openclimatefix/dagster-dags/branch_ci.yml?branch=main&color=FFD053)](https://github.com/openclimatefix/dagster-dags/actions/workflows/branch_ci.yml)
+[![ease of contribution: easy](https://img.shields.io/badge/ease%20of%20contribution:%20easy-32bd50)](https://github.com/openclimatefix/ocf-meta-repo?tab=readme-ov-file#overview-of-ocfs-nowcasting-repositories)
 
-<br>
+In order to train and evaluate an ML model, datasets must be created consistently and reproducibly.
 
+Forecasting renewable energy generation depends on large-timescale weather data:
+Numerical Weather Prediction (NWP) data; satellite imagery;
+atmospheric quality data. Dagster helps to these datasets organised and up to date.
 
-## Ubiquitous language
+This repository contains the Dagster definitions that orchestrate the creation of these datasets.
 
-The following terms are used throughout the codebase and documentation. They are defined here to avoid ambiguity.
+## Installation
 
- - *InitTime* - The time at which a forecast is initialized. For example, a forecast initialized at 12:00 on 1st January.
- - *TargetTime* - The time at which a predicted value is valid. For example, a forecast with InitTime 12:00 on 1st January predicts that the temperature at TargetTime 12:00 on 2nd January at position x will be 10 degrees.
-
-
-## Repository structure
-
-Produced by `eza`:
-```sh
-eza --tree --git-ignore -F -I "*init*|test*.*|build"
-```
-
-```sh
-./
-├── cloud_archives/ # Dagster definitions for cloud-stored archival datasets
-│  └── nwp/ # Specifications for Numerical Weather Predication data sources
-│     └── icon/ 
-├── constants.py # Values used across the project
-├── dags_tests/ # Tests for the project
-├── local_archives/ # Dagster defintions for locally-stored archival datasets
-│  ├── nwp/ # Specifications for Numerical Weather Prediction data source
-│  │  ├── cams/
-│  │  └── ecmwf/
-│  └── sat/ # Specifications for Satellite image data sources
-├── managers/ # IO Managers for use across the project
-├── pyproject.toml # The build configuration for the service
-└── README.md
-```
-
-## Conventions
-
-The storage of data is handled automatically into locations defined by features of the data in question. The only configurable
-part of the storage is the *Base Path* - the root point from which dagster will then handle the subpaths. The full storage paths
-then take into account the following features:
- - The *flavor* of the data (NWP, Satellite etc)
- - The *Provider* of the data (CEDA, ECMWF etc)
- - The *Region* the data covers (UK, EU etc)
- - The *InitTime* the data refers to
-
-Paths are then generated via`base/flavor/provider/region/inittime`. See managers for an example implementation.
-For this to work, each asset must have an asset key prefix conforming to this structure `[flavor, provider, region]`.
-The *Base Paths* are defined in `constants.py`.
-
-
-## Local Development
-
-First, install your Dagster code location as a Python package. By using the --editable flag, pip will install your Python package in ["editable mode"](https://pip.pypa.io/en/latest/topics/local-project-installs/#editable-installs) so that as you develop, local code changes will automatically apply.
+The repository is packaged as a Docker image that can be used as a Dagster
+[code server](https://docs.dagster.io/concepts/code-locations/workspace-files#running-your-own-grpc-server)
 
 ```bash
-pip install -e ".[dev]"
+$ docker pull ghcr.io/openclimatefix/dagster-dags
 ```
 
-Then, start the Dagster UI web server:
+## Example Usage
+
+**To add as a code location in an existing Dagster setup:**
 
 ```bash
-dagster dev --module-name=local_archives
+$ docker run -d \
+    -p 4000:4000 \
+    -e DAGSTER_CURRENT_IMAGE=ghcr.io/openclimatefix/dagster-dags \
+    ghcr.io/openclimatefix/dagster-dags
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the project.
+```yaml
+# $DAGSTER_HOME/workspace.yaml
 
-Add your assets to the relevant code location. See [Repository Structure](#repository-structure) for details.
+load_from:
+  - grpc_server:
+      host: localhost
+      port: 4000
+      location_name: "dagster-dags" # Name of the module
+```
+
+> [!Note]
+> Setting `DAGSTER_CURRENT_IMAGE` environment variable is necessary to tell Dagster
+> to spawn jobs using the set container image. Since the Containerfile has all the
+> required dependencies for the user code, it makes sense to set it to itself.
+
+**To deploy the entire Dagster multi-container stack:**
+
+```bash
+$ docker compose up -f infrastructure/docker-compose.yml
+```
+
+> [!Note]
+> This will start a full Dagster setup with a web UI, a Postgres database,
+> and a QueuedRunCoordinator. This might be overkill for some setups.
+
+## Documentation
+
+The repository is split into folders covering the basic concepts of Dagster:
+
+- Top-level [Definitions](https://docs.dagster.io/concepts/code-locations) defining the code location are defined in `src/dagster_dags/definitions.py`
+- [Assets](https://docs.dagster.io/concepts/assets/software-defined-assets) are in `src/dagster_dags/assets`
+- [Resources](https://docs.dagster.io/concepts/resources#resources) are in `src/dagster_dags/resources`
+
+They are then subdivided by module into data-type-specific folders.
+
+## Development
+
+To run a development Dagster server, install the required dependencies in a virtual environment,
+activate it, and run the server:
+
+```bash
+$ cd scr && dagster dev --module-name=dagster_dags
+```
+
+This should spawn a UI at `localhost:3000` where you can interact with the Dagster webserver.
+
+### Linting and static type checking
+
+This project uses [MyPy](https://mypy.readthedocs.io/en/stable/) for static type checking
+and [Ruff](https://docs.astral.sh/ruff/) for linting.
+Installing the development dependencies makes them available in your virtual environment.
+
+Use them via:
+
+```bash
+$ python -m mypy .
+$ python -m ruff check .
+```
+
+Be sure to do this periodically while developing to catch any errors early
+and prevent headaches with the CI pipeline. It may seem like a hassle at first,
+but it prevents accidental creation of a whole suite of bugs.
+
+### Running the test suite
+
+Run the unittests with:
+
+```bash
+$ python -m unittest discover -s tests
+```
+
+## Further Reading
+
+On running your own GRPC code server as a code location in Dagster:
+- Dagster guide on [running a GRPC server](https://docs.dagster.io/concepts/code-locations/workspace-files#running-your-own-grpc-server).
+- Creating a GRPC code server container as part of a [multi-container Dagster stack](https://docs.dagster.io/deployment/guides/docker#multi-container-docker-deployment).
 
 
-## Useful links
+---
 
-- [Detecting existing assets](https://github.com/dagster-io/dagster/discussions/17847)
+## Contributing and community
+
+[![issues badge](https://img.shields.io/github/issues/openclimatefix/dagster-dags?color=FFAC5F)](https://github.com/openclimatefixdagster-dags/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc)
+
+- PR's are welcome! See the [Organisation Profile](https://github.com/openclimatefix) for details on contributing
+- Find out about our other projects in the [OCF Meta Repo](https://github.com/openclimatefix/ocf-meta-repo)
+- Check out the [OCF blog](https://openclimatefix.org/blog) for updates
+- Follow OCF on [LinkedIn](https://uk.linkedin.com/company/open-climate-fix)
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+---
+
+*Part of the [Open Climate Fix](https://github.com/orgs/openclimatefix/people) community.*
+
+[![OCF Logo](https://cdn.prod.website-files.com/62d92550f6774db58d441cca/6324a2038936ecda71599a8b_OCF_Logo_black_trans.png)](https://openclimatefix.org)
 
