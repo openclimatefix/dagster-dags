@@ -1,7 +1,7 @@
 import unittest
 from datetime import UTC, datetime
 
-from src.dagster_dags.pv.passiv.passiv_monthly import get_monthly_passiv_data
+from src.dagster_dags.assets.pv.passiv.passiv_monthly import get_monthly_passiv_data
 
 
 @unittest.skip("rawdata endpoint not on new URL")
