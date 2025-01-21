@@ -39,6 +39,7 @@ services:
     container_name: dagster-codeserver
     image: ghcr.io/openclimatefix/dagster-dags:devsjc-code-container
     restart: always
+    pull_policy: always
     environment:
       <<: *postgres-variables
       DAGSTER_CURRENT_IMAGE: "ghcr.io/openclimatefix/dagster-dags"
@@ -67,7 +68,7 @@ services:
     depends_on:
       dagster-postgres:
         condition: service_healthy
-      dagster-codeserver_local-archives:
+      dagster-codeserver:
         condition: service_started
 
   # This service runs the dagster-daemon process, which is responsible for taking runs
@@ -89,7 +90,7 @@ services:
     depends_on:
       dagster-postgres:
         condition: service_healthy
-      dagster-codeserver_local-archives:
+      dagster-codeserver:
         condition: service_started
 
 networks:
