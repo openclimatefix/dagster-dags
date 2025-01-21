@@ -4,6 +4,7 @@ import dagster as dg
 from dagster_docker import PipesDockerClient
 
 from .assets import nwp, pv, sat
+from .resources import SheffieldSolarAPIResource
 
 nwp_assets = dg.load_assets_from_package_module(
     package_module=nwp,
@@ -28,6 +29,10 @@ defs = dg.Definitions(
     resources={
         "pipes_subprocess_client": dg.PipesSubprocessClient(),
         "pipes_docker_client": PipesDockerClient(),
+        "ss_api": SheffieldSolarAPIResource(
+            user_id=dg.EnvVar("SS_USER_ID"),
+            api_key=dg.EnvVar("SS_API_KEY"),
+        ),
     },
     jobs=[],
     schedules=[],
