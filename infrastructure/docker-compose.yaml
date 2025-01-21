@@ -116,20 +116,18 @@ configs:
       storage:
         postgres:
           postgres_db:
-            username:
-              env: POSTGRES_USER
-            password:
-              env: POSTGRES_PASSWORD
-            hostname:
-              env: POSTGRES_HOST
-            db_name:
-              env: POSTGRES_DB
+            username: {"env": "POSTGRES_USER"}
+            password: {"env": "POSTGRES_PASSWORD"}
+            hostname: {"env": "POSTGRES_HOST"}
+            db_name: {"env": "POSTGRES_DB"}
             port: 5432
+
       local_artifact_storage:
         module: dagster.core.storage.root
         class: LocalArtifactStorage
         config:
           base_dir: "/opt/dagster/local/"
+
       run_coordinator:
         module: dagster.core.run_coordinator
         class: QueuedRunCoordinator
@@ -140,6 +138,16 @@ configs:
               limit: 15
             - key: "nwp-consumer"
               limit: 1
+
+      run_launcher:
+        module: dagster_docker
+        class: DockerRunLauncher
+        config:
+        env_vars:
+          - POSTGRES_USER
+          - POSTGRES_PASSWORD
+          - POSTGRES_DB
+
       retention:
         schedule:
           purge_after_days: 90
