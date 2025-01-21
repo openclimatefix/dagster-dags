@@ -99,6 +99,6 @@ def pv_passiv_yearly_5min(context: dg.AssetExecutionContext) -> None:
 )
 def pv_passiv_yearly_30min(context: dg.AssetExecutionContext) -> None:
     """PV Passiv archive yearly data."""
-    start_date: dt.datetiome = context.partition_time_window.start
+    start_date: dt.datetime = context.partition_time_window.start
     get_yearly_passiv_data(start_date, period=30)
 
