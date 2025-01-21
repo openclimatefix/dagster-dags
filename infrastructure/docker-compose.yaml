@@ -1,5 +1,9 @@
 name: dagster
 
+# Postgres variables, used in both the postgres container for configuration,
+# and in the dagster services for connecting to the postgres container.
+# The variable names are the same in both thanks to the dagster.yaml
+# configuration file specifying such.
 x-postgres-variables: &postgres-variables
   POSTGRES_USER: ${POSTGRES_USER:-dagster_user}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dagster_password}
@@ -37,13 +41,16 @@ services:
   # run launcher to use this same image when launching runs in a new container as well.
   dagster-codeserver:
     container_name: dagster-codeserver
-    image: ghcr.io/openclimatefix/dagster-dags:devsjc-code-container
+    image: ghcr.io/openclimatefix/dagster-dags:latest
     restart: always
     pull_policy: always
     environment:
       <<: *postgres-variables
       DAGSTER_CURRENT_IMAGE: "ghcr.io/openclimatefix/dagster-dags"
       DAGSTER_HOME: "/opt/dagster/home"
+    volumes:
+      - /mnt/storage_a/dagster:/opt/dagster/local # LocalArtifactStorage base_dir
+      - /var/run/docker.sock:/var/run/docker.sock # To allow launching docker Pipes
     configs: *dagster-configs
     networks: ["dagster-network"]
 
@@ -54,6 +61,8 @@ services:
     container_name: dagster-webserver
     image: dagster/dagster-k8s:latest
     command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3008", "-w", "/opt/dagster/home/workspace.yaml"]
+    post_start:
+      - command: ["pip", "install", "dagster-docker"] # Required for using dagster_docker Pipes
     ports:
       - "3008:3008"
     environment:
@@ -77,6 +86,8 @@ services:
     container_name: dagster-daemon
     image: dagster/dagster-k8s:latest
     command: ["dagster-daemon", "run", "-w", "/opt/dagster/home/workspace.yaml"]
+    post_start:
+      - command: ["pip", "install", "dagster-docker"] # Required for using dagster_docker Pipes
     restart: on-failure
     environment:
       <<: *postgres-variables
@@ -144,10 +155,11 @@ configs:
         module: dagster_docker
         class: DockerRunLauncher
         config:
-        env_vars:
-          - POSTGRES_USER
-          - POSTGRES_PASSWORD
-          - POSTGRES_DB
+          env_vars:
+            - POSTGRES_USER
+            - POSTGRES_PASSWORD
+            - POSTGRES_DB
+            - POSTGRES_HOST
 
       retention:
         schedule:
