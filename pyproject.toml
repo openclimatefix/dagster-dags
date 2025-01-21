@@ -1,7 +1,7 @@
 # --- PROJECT CONFIGURATION --- #
 
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=69", "wheel", "setuptools-git-versioning>=2.0,<3"]
 build-backend = "setuptools.build_meta"
 
 # Metadata (see https://peps.python.org/pep-0621/)
@@ -13,49 +13,46 @@ readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.11.0"
 license = {text = "MIT License"}
 authors = [
-    { name = "Jacob Bieker", email = "jacob@openclimatefix.org"},
     { name = "Sol Cotton", email = "sol@openclimatefix.org"},
+    { name = "Jacob Bieker", email = "jacob@openclimatefix.org"},
 ]
 classifiers = ["Programming Language :: Python :: 3"]
 dependencies = [
     "cdsapi >= 0.6.1",
-    "ecmwf-api-client >= 1.6.3",
-    "dagit >= 1.8.5",
     "dagster >= 1.8.5",
-    "dagster-cloud >= 1.8.5",
-    "dagster-webserver >= 1.8.5",
-    "dagster-graphql >= 1.8.5",
     "dagster-postgres >= 0.24.5",
     "dagster-docker >= 0.24.5",
     "dagster-pipes >= 1.8.5",
     "huggingface-hub >= 0.19.4",
-    "kbatch >= 0.4.2",
-    "meteomatics == 2.11.1",
     "numpy >= 1.26.0",
-    "nwp-consumer >= 0.5.8",
-    "ocf-blosc2 >= 0.0.3",
-    "pathlib >= 1.0.1",
+    "pandas >= 2.2.3",
     "pyarrow >= 10.0.1",
     "requests >= 2.31.0",
     "requests-toolbelt >= 1.0.0",
-    "xarray >= 2022.3.0",
-    "zarr >= 2.13.3",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "mypy == 1.7.1",
-    "types-PyYAML",
+    # Testing
+    "pytest",
+    "unittest-xml-reporting",
+    "dagit",
+    # Linting
+    "ruff",
+    "types-pyyaml",
     "types-pytz",
     "types-requests",
-    "ruff == 0.1.7",
-    "unittest-xml-reporting == 3.2.0",
-    "pytest >= 7.4.1",
-    "python-lsp-server == 1.7.4"
+    # LSP support
+    "python-lsp-server",
+    "pylsp-mypy",
+    "python-lsp-ruff",
 ]
 
 [tool.setuptools.packages.find]
 exclude = ["*_tests"]
+
+[tool.setuptools-git-versioning]
+enabled = true
 
 # Ruff configuration
 # * See https://beta.ruff.rs/docs/
@@ -110,4 +107,5 @@ ignore_missing_imports = true
 plugins = [
     'numpy.typing.mypy_plugin'
 ]
+explicit_package_bases = true
 

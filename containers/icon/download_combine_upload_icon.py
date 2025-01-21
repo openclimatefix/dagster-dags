@@ -9,8 +9,10 @@ For usage see:
 
 For ease the script is also packaged as a docker container:
 
-    $ docker run -e HF_TOKEN=<SOME_TOKEN> -v /some/path:/tmp/nwp ghcr.io/openclimatefix/icon-etl:main --help
-
+    $ docker run \
+        -e HF_TOKEN=<SOME_TOKEN> \
+        -v /some/path:/tmp/nwp \
+        ghcr.io/openclimatefix/icon-etl:main --help
 
 Datasets
 ========
@@ -26,11 +28,14 @@ Example ICON-EU dataset (~20Gb):
          * step (step) timedelta64[ns] 00:00:00 ... 5 days 00:00:00 time datetime64[ns] ...
          valid_time (step) datetime64[ns] dask.array<chunksize=(93,), meta=np.ndarray>
 
-     Data variables: (3/60) 
-         alb_rad (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+     Data variables: (3/60)
+         alb_rad (step, latitude, longitude)
+            float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
          ... ...
-         v (step, isobaricInhPa, latitude, longitude) float32 dask.array<chunksize=(37, 20, 326, 350), meta=np.ndarray>
-         z0 (step, latitude, longitude) float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
+         v (step, isobaricInhPa, latitude, longitude)
+            float32 dask.array<chunksize=(37, 20, 326, 350), meta=np.ndarray>
+         z0 (step, latitude, longitude)
+            float32 dask.array<chunksize=(37, 326, 350), meta=np.ndarray>
 """
 
 import argparse
@@ -55,12 +60,15 @@ handler = logging.StreamHandler(sys.stdout)
 logging.basicConfig(
     level=logging.DEBUG,
     stream=sys.stdout,
-    format="{" +\
-        '"message": "%(message)s", ' +\
-        '"severity": "%(levelname)s", "timestamp": "%(asctime)s.%(msecs)03dZ", ' +\
-        '"logging.googleapis.com/labels": {"python_logger": "%(name)s"}, ' +\
-        '"logging.googleapis.com/sourceLocation": {"file": "%(filename)s", "line": %(lineno)d, "function": "%(funcName)s"}' +\
+    format="".join((
+        "{",
+        '"message": "%(message)s", ',
+        '"severity": "%(levelname)s", "timestamp": "%(asctime)s.%(msecs)03dZ", ',
+        '"logging.googleapis.com/labels": {"python_logger": "%(name)s"}, ',
+        '"logging.googleapis.com/sourceLocation": ',
+        '{"file": "%(filename)s", "line": %(lineno)d, "function": "%(funcName)s"}',
         "}",
+    )),
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
 logging.getLogger("requests").setLevel(logging.WARNING)
@@ -331,7 +339,8 @@ def find_file_name(
     to the download_extract_files function if the file does not
     exist it will simply not be downloaded.
     """
-    # New data comes in 3 ish hours after the run time, ensure the script is running with a decent buffer
+    # New data comes in 3 ish hours after the run time,
+    # ensure the script is running with a decent buffer
     date_string = date.strftime("%Y%m%d") + run_string
     if (len(config.vars_2d) == 0) and (len(config.vars_3d) == 0):
         raise ValueError("You need to specify at least one 2D or one 3D variable")
@@ -379,7 +388,7 @@ def download_extract_url(url: str, folder: str) -> str | None:
         return filename
     # If the file does not exist, attempt to download and extract it
     else:
-        r = requests.get(url, stream=True)
+        r = requests.get(url, stream=True, timeout=60*60)
         if r.status_code == requests.codes.ok:
             with r.raw as source, open(filename, "wb") as dest:
                 dest.write(bz2.decompress(source.read()))
@@ -582,8 +591,13 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("area", choices=["eu", "global"], help="Area to download data for")
-    parser.add_argument("--path", default="/tmp/nwp", help="Folder in which to save files")
-    parser.add_argument("--run", default="all", choices=["00", "06", "12", "18", "all"], help="Run time to download")
+    parser.add_argument("--path", default="/tmp/nwp", help="Folder in which to save files") # noqa: S108
+    parser.add_argument(
+        "--run",
+        default="all",
+        choices=["00", "06", "12", "18", "all"],
+        help="Run time to download",
+    )
     parser.add_argument("--rm", action="store_true", help="Remove files on completion")
     parser.add_argument(
         "--date",
@@ -602,14 +616,14 @@ if __name__ == "__main__":
             "The script is set to remove downloaded files. "
             "If all your files are in the same 'run' folder, "
             "you will lose data before it has a chance to be processed. "
-            "Consider running the script without the --rm flag."
+            "Consider running the script without the --rm flag.",
         )
 
     path: str = f"{args.path}/{args.area}"
     if args.run == "all":
         runs: list[str] = ["00", "06", "12", "18"]
     else:
-        runs: list[str] = [args.run]
+        runs = [args.run]
     # Cleanup any leftover files in path
     for hour in runs:
         if args.rm:

@@ -28,11 +28,16 @@ class TestDownloadProcessSat(unittest.TestCase):
         attrs: dict = {
             "end_time": TIMESTAMP + pd.Timedelta("15m"),
             "modifiers": (),
-            "orbital_parameters": {"projection_longitude": 45.5, "projection_latitude": 0.0,
-                                   "projection_altitude": 35785831.0, "satellite_nominal_longitude": 45.5,
-                                   "satellite_nominal_latitude": 0.0, "satellite_actual_longitude": 45.703605543834364,
-                                   "satellite_actual_latitude": 7.281469039541501,
-                                   "satellite_actual_altitude": 35788121.627292305},
+            "orbital_parameters": {
+                "projection_longitude": 45.5,
+                "projection_latitude": 0.0,
+                "projection_altitude": 35785831.0,
+                "satellite_nominal_longitude": 45.5,
+                "satellite_nominal_latitude": 0.0,
+                "satellite_actual_longitude": 45.703605543834364,
+                "satellite_actual_latitude": 7.281469039541501,
+                "satellite_actual_altitude": 35788121.627292305,
+            },
             "reader": "seviri_l1b_native",
             "sensor": "seviri",
             "resolution": 3000.403165817,
@@ -68,12 +73,14 @@ class TestDownloadProcessSat(unittest.TestCase):
     def test_get_products_iterator(self) -> None:
         """Test that the iterator returns the correct number of products."""
         token = dps._gen_token()
-        for config in dps.CONFIGS:
-            with self.subTest as t:
-                products_iter, total = dps._get_products_iterator(
+        for config in dps.CONFIGS.values():
+            with self.subTest as t:  # type: ignore
+                products_iter, total = dps.get_products_iterator(
                     sat_config=config,
                     start=pd.Timestamp("2024-01-01").to_pydatetime(),
-                    end=(pd.Timestamp("2024-01-01") + pd.Timedelta(sat_config["cadence"])).to_pydatetime(),
+                    end=(
+                        pd.Timestamp("2024-01-01") + pd.Timedelta(config.cadence)
+                    ).to_pydatetime(),
                     token=token,
                 )
                 t.assertEqual(total, 1)
@@ -97,43 +104,23 @@ class TestDownloadProcessSat(unittest.TestCase):
             self.assertIn("end_time", da.attrs)
 
     def test_rescale(self) -> None:
-        da: xr.DataArray = dps._rescale(self.test_dataarrays["nonhrv"], channels=dps.CHANNELS["nonhrv"])
+        da: xr.DataArray = dps._rescale(
+            da=self.test_dataarrays["nonhrv"],
+            channels=dps.CHANNELS["nonhrv"],
+        )
 
         self.assertGreater(da.values.max(), 0)
         self.assertLess(da.values.min(), 1)
         self.assertEqual(da.attrs, self.test_dataarrays["nonhrv"].attrs)
 
-    def test_open_and_scale_data(self) -> None:
-        ds: xr.Dataset | None = dps._open_and_scale_data([], self.paths[0].as_posix(), "nonhrv")
-
-        if ds is None:
-            self.fail("Dataset is None")
-
-        ds.to_zarr("/tmp/test_sat_data/test.zarr", mode="w", consolidated=True)
-        ds2 = xr.open_zarr("/tmp/test_sat_data/test.zarr")
-        self.assertDictEqual(dict(ds.sizes), dict(ds2.sizes))
-        self.assertNotEqual(dict(ds.attrs), {})
-
     def test_process_nat(self) -> None:
-        out: str = dps.process_nat(
-            dps.CONFIGS["iodc"],
-            pathlib.Path("/tmp/test_sat_data"),
-            pd.Timestamp("2024-01-01"),
-            pd.Timestamp("2024-01-02"), "nonhrv",
-        )
-
-        self.assertTrue(False)
-
-    def test_process_scans(self) -> None:
-
-        out: str = dps.process_scans(
-            dps.CONFIGS["iodc"],
-            pathlib.Path("/tmp/test_sat_data"),
-            pd.Timestamp("2024-01-01"),
-            pd.Timestamp("2024-01-02"), "nonhrv",
+        _ = dps.process_nat(
+                path=pathlib.Path("/tmp/test_sat_data"), # noqa: S108
+            dstype="nonhrv",
         )
 
         self.assertTrue(False)
 
 if __name__ == "__main__":
     unittest.main()
+

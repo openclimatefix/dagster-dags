@@ -1,7 +1,8 @@
+"""Download and combine GFS data for a given date and run."""
+
 import argparse
 import dataclasses
 import datetime as dt
-import functools
 import logging
 import os
 import pathlib
@@ -22,7 +23,12 @@ from ocf_blosc2 import Blosc2
 logging.basicConfig(
     level=logging.DEBUG,
     stream=sys.stdout,
-    format='{"time": "%(asctime)s", "name": "%(name)s", "level": "%(levelname)s", "message": "%(message)s"}',
+    format=" ".join((
+        '{"time": "%(asctime)s", ',
+        '"name": "%(name)s", ',
+        '"level": "%(levelname)s", ',
+        '"message": "%(message)s"}',
+    )),
 )
 for logger in ["requests", "urllib3", "cfgrib.dataset"]:
     logging.getLogger(logger).setLevel(logging.WARNING)
@@ -49,7 +55,7 @@ def download_url(url: str, folder: str) -> str | None:
         attempts: int = 1
         while attempts < 6:
             try:
-                r = requests.get(url.strip(), allow_redirects=True, stream=True)
+                r = requests.get(url.strip(), allow_redirects=True, stream=True, timeout=60*60)
                 if r.status_code == requests.codes.ok:
                     with open(filename, "wb") as dest:
                         for chunk in r.iter_content(chunk_size=1024):
@@ -62,6 +68,7 @@ def download_url(url: str, folder: str) -> str | None:
             except Exception as e:
                 log.error(f"Failed to download {url}: {e}")
                 return None
+    return None
 
 def find_file_names(it: dt.datetime, config: Config) -> list[str]:
     """Find file names for the given init time."""
@@ -108,7 +115,9 @@ def convert_file(file: str, outfolder: str) -> str | None:
     # Update name of each data variable based off the attribute GRIB_stepType
     for i, d in enumerate(surface):
         for variable in d.data_vars:
-            d = d.rename({variable: f"{variable}_surface_{d[f'{variable}'].attrs['GRIB_stepType']}"})
+            d = d.rename({
+                variable: f"{variable}_surface_{d[f'{variable}'].attrs['GRIB_stepType']}",
+            })
         surface[i] = d
     for i, d in enumerate(heightAboveGround):
         for variable in d.data_vars:
@@ -168,7 +177,7 @@ def run(path: str, config: Config, date: dt.date, run: str) -> str:
             if len(urls) > cpu_count():
                 pool = Pool(cpu_count())
                 results = pool.starmap(
-                    download_url,
+                    download_url,  # type: ignore
                     [(url, f"{path}/{date:%Y%m%d}/{run}/") for url in urls],
                 )
                 pool.close()
@@ -195,7 +204,7 @@ def run(path: str, config: Config, date: dt.date, run: str) -> str:
     if len(run_files) > cpu_count():
         pool = Pool(cpu_count())
         dataset_paths = pool.starmap(
-            convert_file,
+                convert_file,  # type: ignore
             [(file, path + "/.work") for file in run_files],
         )
         pool.close()
@@ -238,7 +247,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--path",
-        default="/tmp/gfs",
+        default="/tmp/gfs",  # noqa: S108
         help="Path to save the data",
     )
     parser.add_argument(

@@ -13,22 +13,20 @@ import shutil
 import sys
 import traceback
 from collections.abc import Iterator
-from typing import Literal
+from typing import Any, Literal
 
-import dask.delayed
-import dask.diagnostics
-import dask.distributed
 import eumdac
 import eumdac.cli
 import eumdac.product
 import numpy as np
 import pandas as pd
 import pyproj
+import pyresample
 import xarray as xr
+import yaml
 from ocf_blosc2 import Blosc2
 from satpy import Scene
 from tqdm import tqdm
-import zarr
 
 if sys.stdout.isatty():
     # Simple logging for terminals
@@ -66,7 +64,7 @@ for logger in [
     "urllib3",
 ]:
     logging.getLogger(logger).setLevel(logging.ERROR)
-np.seterr(divide="ignore") 
+np.seterr(divide="ignore")
 
 log = logging.getLogger("sat-etl")
 
@@ -237,7 +235,6 @@ def download_nat(
     return None
 
 def process_nat(
-    sat_config: Config,
     path: pathlib.Path,
     dstype: Literal["hrv", "nonhrv"],
 ) -> xr.DataArray | None:
@@ -286,10 +283,10 @@ def write_to_zarr(
 
     If a Zarr store already exists at the given path, the DataArray will be appended to it.
 
-	Any attributes on the dataarray object are serialized to json-compatible strings.
+    Any attributes on the dataarray object are serialized to json-compatible strings.
     """
     mode = "a" if zarr_path.exists() else "w"
-    extra_kwargs = {
+    extra_kwargs: dict[str, Any] = {
         "append_dim": "time",
     } if mode == "a" else {
         "encoding": {
@@ -297,8 +294,8 @@ def write_to_zarr(
             "time": {"units": "nanoseconds since 1970-01-01"},
         },
     }
-	# Convert attributes to be json	serializable
-	for key, value in da.attrs.items():
+    # Convert attributes to be json	serializable
+    for key, value in da.attrs.items():
         if isinstance(value, dict):
             # Convert np.float32 to Python floats (otherwise yaml.dump complains)
             for inner_key in value:
@@ -315,7 +312,7 @@ def write_to_zarr(
             da.attrs[key] = value.isoformat()
 
     try:
-        write_job = da.chunk({
+        _ = da.chunk({
             "time": 1,
             "x_geostationary": -1,
             "y_geostationary": -1,
@@ -410,7 +407,7 @@ def _fname_to_scantime(fname: str) -> dt.datetime:
     `MSGX-SEVI-MSG15-0100-NA-20230910221240.874000000Z-NA.nat`
     So determine the time from the first element split by '.'.
     """
-    return dt.datetime.strptime(fname.split(".")[0][-14:], "%Y%m%d%H%M%S")
+    return dt.datetime.strptime(fname.split(".")[0][-14:], "%Y%m%d%H%M%S").replace(tzinfo=dt.UTC)
 
 #def process_scans(
 #    sat_config: Config,
@@ -450,10 +447,14 @@ def _fname_to_scantime(fname: str) -> dt.datetime:
 #    f: pathlib.Path
 #    for i, f in enumerate(wanted_files):
 #        try:
-#            # TODO: This method of passing the zarr times to the open function leaves a lot to be desired
-#            # Firstly, if the times are not passed in sorted order then the created 12-dataset chunks
-#            # may have missed times in them. Secondly, determining the time still requires opening and
-#            # converting the file which is probably slow. Better to skip search for files whose times
+#            # TODO: This method of passing the zarr times to the open function
+#            # leaves a lot to be desired
+#            # Firstly, if the times are not passed in sorted order then the created
+#            # 12-dataset chunks
+#            # may have missed times in them.
+#            # Secondly, determining the time still requires opening and
+#            # converting the file which is probably slow. Better to skip search for
+#            # files whose times
 #            # are already in the Zarr store in the first place and bypass the entire pipeline.
 #            dataset: xr.Dataset | None = _open_and_scale_data(zarr_times, f.as_posix(), dstype)
 #        except Exception as e:
@@ -504,9 +505,9 @@ def _gen_token() -> eumdac.AccessToken:
 
     return token
 
-def _get_attrs_from_scene(scene: Scene) -> dict[str, str]:
+def _serialize_attrs(attrs: dict[str, Any]) -> dict[str, str]:
     """Get the attributes from a Scene object."""
-	for key, value in attrs.items():
+    for key, value in attrs.items():
         # Convert Dicts
         if isinstance(value, dict):
             # Convert np.float32 to Python floats (otherwise yaml.dump complains)
@@ -524,6 +525,7 @@ def _get_attrs_from_scene(scene: Scene) -> dict[str, str]:
         # Convert datetimes
         if isinstance(value, dt.datetime):
             attrs[key] = value.isoformat()
+    return attrs
 
 
 def _convert_scene_to_dataarray(
@@ -835,9 +837,9 @@ def check_data_quality(ds: xr.Dataset) -> None:
     Looks for the number of NaNs in the data over important regions.
     """
 
-    def _calc_null_percentage(data: np.ndarray):
+    def _calc_null_percentage(data: np.ndarray) -> float:
         nulls = np.isnan(data)
-        return nulls.sum() / len(nulls)
+        return float(nulls.sum() / len(nulls))
 
     result = xr.apply_ufunc(
         _calc_null_percentage,
@@ -866,9 +868,9 @@ def run(args: argparse.Namespace) -> None:
     # Get values from args
     folder: pathlib.Path = args.path
     sat_config = CONFIGS[args.sat]
-    start: dt.datetime = dt.datetime.strptime(args.month, "%Y-%m")
+    start: dt.datetime = dt.datetime.strptime(args.month, "%Y-%m").replace(tzinfo=dt.UTC)
     end: dt.datetime = (start + pd.DateOffset(months=1, minutes=-1)).to_pydatetime()
-    dstype: str = "hrv" if args.hrv else "nonhrv"
+    dstype: Literal["hrv", "nonhrv"] = "hrv" if args.hrv else "nonhrv"
 
     product_iter, total = get_products_iterator(
         sat_config=sat_config,
@@ -883,8 +885,9 @@ def run(args: argparse.Namespace) -> None:
     if zarr_path.exists():
         log.info(f"Using existing zarr store at '{zarr_path}'")
         ds = xr.open_zarr(zarr_path, consolidated=True)
-        
+
     # Iterate through all products in search
+    nat_filepaths: list[pathlib.Path] = []
     for product in tqdm(product_iter, total=total, miniters=50):
 
         # Skip products already present in store
@@ -892,7 +895,7 @@ def run(args: argparse.Namespace) -> None:
             product_time: dt.datetime = product.sensing_start.replace(second=0, microsecond=0)
             if np.datetime64(product_time, "ns") in ds.coords["time"].values:
                 log.debug(
-                    f"Skipping entry '{product!s}' as '{product_time}' already in store"
+                    f"Skipping entry '{product!s}' as '{product_time}' already in store",
                 )
                 continue
 
@@ -903,8 +906,9 @@ def run(args: argparse.Namespace) -> None:
         )
         if nat_filepath is None:
             raise OSError(f"Failed to download product '{product}'")
-        da = process_nat(sat_config, nat_filepath, dstype)
+        da = process_nat(nat_filepath, dstype)
         write_to_zarr(da=da, zarr_path=zarr_path)
+        nat_filepaths.append(nat_filepath)
 
     runtime = dt.datetime.now(tz=dt.UTC) - prog_start
     log.info(f"Completed archive for args: {args} in {runtime!s}.")
@@ -946,7 +950,9 @@ def run(args: argparse.Namespace) -> None:
     #new_average_secs_per_scan: int = int(
     #    (secs_per_scan + (runtime.total_seconds() / len(scan_times))) / 2,
     #)
-    #log.info(f"Completed archive for args: {args}. ({new_average_secs_per_scan} seconds per scan).")
+    #log.info(
+    #    f"Completed archive for args: {args}. ({new_average_secs_per_scan} seconds per scan)."
+    #)
 
     if args.validate:
         ds = xr.open_zarr(zarr_path, consolidated=True)
@@ -954,8 +960,8 @@ def run(args: argparse.Namespace) -> None:
 
     # Delete raw files, if desired
     if args.delete_raw:
-        log.info(f"Deleting {len(raw_paths)} raw files in {folder.as_posix()}.")
-        for f in raw_paths:
+        log.info(f"Deleting {len(nat_filepaths)} raw files in {folder.as_posix()}.")
+        for f in nat_filepaths:
             f.unlink()
 
 

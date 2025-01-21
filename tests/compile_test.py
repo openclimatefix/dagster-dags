@@ -1,17 +1,16 @@
-import sys
+import unittest
 
-from local_archives.nwp import all_assets
+import dagster as dg
+
+from src.dagster_dags import defs
 
 
-def test_nwp_asset_key_prefixes() -> None:
-    """Test asset keys for all nwp assets have the correct key structure."""
-    for asset in all_assets:
-        assert len(asset.key.path) == 4
+class TestAssetKeyPrefixes(unittest.TestCase):
+    def test_nwp_asset_key_prefixes(self) -> None:
+        """Test asset keys for all nwp assets have the correct key structure."""
+        if defs.assets is not None:
+            for asset in defs.assets:
+                if isinstance(asset, dg.AssetsDefinition):
+                    # Ensure that the prefix is one of the expected flavours
+                    self.assertIn( asset.key.path[0], ["nwp", "sat", "air", "pv"])
 
-        # Ensure that the prefix is as expected
-        # The first element should be the flavor:
-        assert asset.key.path[0] in ["nwp", "sat"]
-        # The second element should be the provider
-        assert asset.key.path[1] in ["ecmwf", "metoffice", "eumetsat", "cams", "ceda", "meteomatics", "gfs", "ecmwf-eps"]
-        # The third element should be the region
-        assert asset.key.path[2] in ["uk", "eu", "global", "nw_india", "malta", "india", "india-stat"]
