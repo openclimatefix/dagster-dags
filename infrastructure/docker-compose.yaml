@@ -47,9 +47,6 @@ services:
       <<: *postgres-variables
       DAGSTER_CURRENT_IMAGE: "ghcr.io/openclimatefix/dagster-dags"
       DAGSTER_HOME: "/opt/dagster/home"
-    volumes:
-      - /mnt/storage_a/dagster:/opt/dagster/local # LocalArtifactStorage base_dir
-      - /var/run/docker.sock:/var/run/docker.sock # To allow launching docker Pipes
     configs: *dagster-configs
     networks: ["dagster-network"]
 
