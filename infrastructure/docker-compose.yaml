@@ -7,7 +7,7 @@ name: dagster
 x-postgres-variables: &postgres-variables
   POSTGRES_USER: ${POSTGRES_USER:-dagster_user}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dagster_password}
-  POSTGRES_DB: ${POSTGRES_DB:-dagster_db}
+  POSTGRES_DB: dagster_db
   POSTGRES_HOST: "dagster-postgres"
 
 x-dagster-configs: &dagster-configs
@@ -19,8 +19,7 @@ x-dagster-configs: &dagster-configs
 
 services:
   # This service runs the postgres DB used by dagster for run storage, schedule storage,
-  # and event log storage. Depending on the hardware you run this Compose on, you may be able
-  # to reduce the interval and timeout in the healthcheck to speed up your `docker-compose up` times.
+  # and event log storage.
   dagster-postgres:
     image: postgres:16
     container_name: dagster-postgres
@@ -48,7 +47,6 @@ services:
       <<: *postgres-variables
       DAGSTER_CURRENT_IMAGE: "ghcr.io/openclimatefix/dagster-dags"
       DAGSTER_HOME: "/opt/dagster/home"
-    env_file: [".env"]
     volumes:
       - /mnt/storage_a/dagster:/opt/dagster/local # LocalArtifactStorage base_dir
       - /var/run/docker.sock:/var/run/docker.sock # To allow launching docker Pipes
@@ -131,36 +129,48 @@ configs:
           postgres_db:
             username: {"env": "POSTGRES_USER"}
             password: {"env": "POSTGRES_PASSWORD"}
-            hostname: {"env": "POSTGRES_HOST"}
-            db_name: {"env": "POSTGRES_DB"}
+            hostname: dagster-postgres
+            db_name: dagster_db
             port: 5432
 
       local_artifact_storage:
         module: dagster.core.storage.root
         class: LocalArtifactStorage
         config:
-          base_dir: "/opt/dagster/local/"
+          base_dir: "/opt/dagster/local"
 
       run_coordinator:
         module: dagster.core.run_coordinator
         class: QueuedRunCoordinator
         config:
-          max_concurrent_runs: 30
+          max_concurrent_runs: 15
           tag_concurrency_limits:
             - key: "dagster/backfill"
-              limit: 15
+              limit: 10
             - key: "nwp-consumer"
-              limit: 1
+              limit: 5
 
       run_launcher:
         module: dagster_docker
         class: DockerRunLauncher
         config:
+          network: dagster-network
           env_vars:
-            - POSTGRES_USER
-            - POSTGRES_PASSWORD
-            - POSTGRES_DB
-            - POSTGRES_HOST
+            - ENVIRONMENT=leo
+            - ECMWF_API_KEY=<YOUR_API_KEY>
+            - ECMWF_URL=<YOUR_URL>
+            - ECMWF_EMAIL=<YOUR_EMAIL>
+            - EUMETSAT_CONSUMER_KEY=<YOUR_CONSUMER_KEY>
+            - EUMETSAT_CONSUMER_SECRET=<YOUR_CONSUMER_SECRET>
+            - CEDA_FTP_USER=<YOUR_USERNAME>
+            - CEDA_FTP_PASS=<YOUR_PASSWORD>
+            - HUGGINGFACE_TOKEN=<YOUR_HF_TOKEN>
+            - SS_USER_ID=<YOUR_USERID>
+            - SS_API_KEY=<YOUR_API_KEY>
+          container_kwargs:
+            volumes:
+              - /var/run/docker.sock:/var/run/docker.sock # So jobs can launch docker pipes assets
+              - <YOUR_STORAGE_PATH>:/opt/dagster/local
 
       retention:
         schedule:
