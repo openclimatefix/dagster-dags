@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 ARCHIVE_FOLDER = "/var/dagster-storage/sat/eumetsat-iodc-lrv"
 if os.getenv("ENVIRONMENT", "local") == "leo":
-    ARCHIVE_FOLDER = "/mnt/storage_b/sat/eumetsat-iodc-lrv"
+    ARCHIVE_FOLDER = "/mnt/storage_ssd_4tb/sat/eumetsat-iodc-lrv"
 
 partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefinition(
     start_date="2019-01-01",

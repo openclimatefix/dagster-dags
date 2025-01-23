@@ -19,7 +19,7 @@ import dagster as dg
 
 ARCHIVE_FOLDER = "/var/dagster-storage/air/cams-europe"
 if os.getenv("ENVIRONMENT", "local") == "leo":
-    ARCHIVE_FOLDER = "/mnt/storage_b/air/cams-europe"
+    ARCHIVE_FOLDER = "/mnt/storage_ssd_4tb/air/cams-europe"
 
 partitions_def: dg.TimeWindowPartitionsDefinition = dg.WeeklyPartitionsDefinition(
     start_date="2020-02-08",

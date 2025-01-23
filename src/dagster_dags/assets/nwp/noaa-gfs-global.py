@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 ARCHIVE_FOLDER = "/var/dagster-storage/nwp/ncep-gfs-global"
 if os.getenv("ENVIRONMENT", "local") == "leo":
-    ARCHIVE_FOLDER = "/mnt/storage_b/nwp/ncep-gfs-global"
+    ARCHIVE_FOLDER = "/mnt/storage_ssd_4tb/nwp/ncep-gfs-global"
 
 partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefinition(
     start_date="2021-01-01",
