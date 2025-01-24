@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 ARCHIVE_FOLDER = "/var/dagster-storage/nwp/ecmwf-ens-stat-india"
 if os.getenv("ENVIRONMENT", "local") == "leo":
-    ARCHIVE_FOLDER = "/mnt/storage_b/nwp/ecmwf-ens-stat-india"
+    ARCHIVE_FOLDER = "/mnt/storage_ssd_4tb/nwp/ecmwf-ens-stat-india"
 
 partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefinition(
     start_date="2020-01-01",

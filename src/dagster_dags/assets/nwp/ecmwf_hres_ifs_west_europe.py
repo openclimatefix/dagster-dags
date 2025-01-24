@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 ARCHIVE_FOLDER = "/var/dagster-storage/nwp/ecmwf-hres-ifs-west-europe"
 if os.getenv("ENVIRONMENT", "local") == "leo":
-    ARCHIVE_FOLDER = "/mnt/storage_b/nwp/ecmwf-hres-ifs-west-europe"
+    ARCHIVE_FOLDER = "/mnt/storage_ssd_4tb/nwp/ecmwf-hres-ifs-west-europe"
 
 partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefinition(
     start_date="2017-01-01",
