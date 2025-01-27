@@ -64,10 +64,13 @@ def ceda_mo_um_global_asset(
             "NWP_CONSUMER_NOTIFICATION_REPOSITORY": "dagster-pipes",
             "CEDA_FTP_USER": os.environ["CEDA_FTP_USER"],
             "CEDA_FTP_PASS": os.environ["CEDA_FTP_PASS"],
-            "CONCURRENCY": "false",
+            "CONCURRENCY": "true",
         },
+        # See https://docker-py.readthedocs.io/en/stable/containers.html#docker.models.containers.ContainerCollection.run
         container_kwargs={
             "volumes": [f"{ARCHIVE_FOLDER}:/work"],
+            "mem_limit": "8g",
+            "nano_cpus": 4e9,
         },
         context=context,
     ).get_results()

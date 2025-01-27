@@ -63,10 +63,13 @@ def ncep_gfs_global_asset(
         env={
             "MODEL_REPOSITORY": "gfs",
             "NOTIFICATION_REPOSITORY": "dagster-pipes",
-            "CONCURRENCY": "false",
+            "CONCURRENCY": "true",
         },
+        # See https://docker-py.readthedocs.io/en/stable/containers.html#docker.models.containers.ContainerCollection.run
         container_kwargs={
             "volumes": [f"{ARCHIVE_FOLDER}:/work"],
+            "mem_limit": "8g",
+            "nano_cpus": 4e9,
         },
         context=context,
     ).get_results()
