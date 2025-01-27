@@ -73,7 +73,7 @@ def ecmwf_hres_ifs_india_asset(
         container_kwargs={
             "volumes": [f"{ARCHIVE_FOLDER}:/work"],
             "mem_limit": "8g",
-            "nano_cpus": 4e9,
+            "nano_cpus": int(4e9),
         },
         context=context,
     ).get_materialize_result()
