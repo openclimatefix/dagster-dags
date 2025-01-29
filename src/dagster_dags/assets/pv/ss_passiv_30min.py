@@ -45,7 +45,7 @@ monthly_partitions_def: dg.MonthlyPartitionsDefinition = dg.MonthlyPartitionsDef
 def pv_passiv_30min_monthly_asset(
     context: dg.AssetExecutionContext,
     ss_api_client: SheffieldSolarAPIResource,
-) -> pd.Dataframe:
+) -> pd.DataFrame:
     """Dagster asset downloading 30-minutely PV data from Passiv systems."""
     context.log.debug("Fetching metadata for Passiv systems")
     passiv_metadata_df: pd.DataFrame = (
@@ -70,7 +70,7 @@ def pv_passiv_30min_monthly_asset(
 yearly_partitions_def: dg.TimeWindowPartitionsDefinition = dg.TimeWindowPartitionsDefinition(
     fmt="%Y",
     start="2010",
-    cron_schedule="0 0 1 1 *",
+    cron_schedule="0 12 2 1 *",
 )
 
 @dg.asset(
@@ -83,10 +83,7 @@ yearly_partitions_def: dg.TimeWindowPartitionsDefinition = dg.TimeWindowPartitio
     },
     partitions_def=yearly_partitions_def,
     automation_condition=dg.AutomationCondition.on_cron(
-        cron_schedule=yearly_partitions_def.get_cron_schedule(
-            day_of_week=2,
-            hour_of_day=12,
-        ),
+        cron_schedule=yearly_partitions_def.get_cron_schedule(),
     ),
     ins={"passiv_5min_monthly": dg.AssetIn(partition_mapping=dg.TimeWindowPartitionMapping())},
     io_manager_key="parquet_io_manager",

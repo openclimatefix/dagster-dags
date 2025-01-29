@@ -100,8 +100,8 @@ class HuggingfacePartitionedParquetIOManager(PartitionedParquetIOManager):
     prefix: str | None
 
     @override
-    def setup_for_execution(self, _context: dg.ExecutionContext) -> None:
-        os.environ["HF_TOKEN"] = self._token
+    def setup_for_execution(self, _: dg.InitResourceContext) -> None:
+        os.environ["HF_TOKEN"] = self.token
 
     @property
     def _base_path(self) -> str:
