@@ -1,20 +1,38 @@
 """Dagster resource for accessing the Sheffield Solar API."""
 
+import abc
 import dataclasses
 import datetime as dt
 import functools
 import io
 import multiprocessing
 import time
+from typing import override
 
 import dagster as dg
 import pandas as pd
 import requests
 
 
+class SheffieldSolarRequest(abc.ABC):
+    """Abstract base class for Sheffield Solar API requests."""
+
+    @abc.abstractmethod
+    def endpoint(self) -> str:
+        """Return the API endpoint for the request."""
+
+    @abc.abstractmethod
+    def as_query_params(self, user_id: str, api_key: str) -> list[dict[str, str]]:
+        """Return the request as a set of query parameter dictionaries.
+
+        These dictionaries are suitable for passing to the Sheffield Solar API
+        as query parameters.
+        """
+
+
 @dataclasses.dataclass
-class SheffieldSolarRawdataRequest:
-    """Parameters for the Sheffield Solar API."""
+class SheffieldSolarRawdataRequest(SheffieldSolarRequest):
+    """Parameters for a rawdata request from Sheffield Solar."""
 
     start: dt.datetime
     end: dt.datetime
@@ -36,18 +54,20 @@ class SheffieldSolarRawdataRequest:
         self.start = self.start.astimezone(dt.UTC).replace(tzinfo=None)
         self.end = self.end.astimezone(dt.UTC).replace(tzinfo=None)
 
+    @override
     def endpoint(self) -> str:
-        """Return the API endpoint for the request."""
         if self.period_mins == 5:
             return "rawdata/api/v4/reading_integrated_5mins"
         else:
             return "rawdata/api/v4/reading_integrated"
 
-
-    def as_params(self, user_id: str, api_key: str) -> list[dict[str, str]]:
+    @override
+    def as_query_params(self, user_id: str, api_key: str) -> list[dict[str, str]]:
         """Return the request as a list of parameter dictionaries.
 
-        Each dictionary represents one period of the request.
+        A RawdataRequest object may cover multiple HTTP requests to Sheffield
+        Solar's API, depending on the period and the start and end times. This
+        returns a dictionary of HTTP request parameters for each request.
         """
         ticks: pd.DatetimeIndex = pd.date_range(
             start=pd.to_datetime(self.start).ceil(f"{self.period_mins}T"),
@@ -67,6 +87,23 @@ class SheffieldSolarRawdataRequest:
         ]
 
         return params_list
+
+
+@dataclasses.dataclass
+class SheffieldSolarMetadataRequest(SheffieldSolarRequest):
+    """Parameters for the Sheffield Solar API metadata request."""
+
+    def endpoint(self) -> str:
+        """Return the API endpoint for the request."""
+        return "rawdata/api/v4/owner_system_params_rounded"
+
+    def as_query_params(self, user_id: str, api_key: str) -> list[dict[str, str]]:
+        """Return the request as a dictionary of parameters."""
+        return [{
+            "user_id": user_id,
+            "api_key": api_key,
+        }]
+
 
 class SheffieldSolarAPIResource(dg.ConfigurableResource):
     """Dagster resource for accessing the Sheffield Solar API."""
@@ -127,16 +164,15 @@ class SheffieldSolarAPIResource(dg.ConfigurableResource):
 
             num_attempts += 1
 
-
     def request(
         self,
-        request: SheffieldSolarRawdataRequest,
+        request: SheffieldSolarRequest,
     ) -> pd.DataFrame:
         """Request data from the Sheffield Solar API."""
         pool = multiprocessing.Pool(processes=self.n_processes)
         df_chunks: pd.DataFrame = pool.map(
             functools.partial(self._query, endpoint=request.endpoint()),
-            request.as_params(self.user_id, self.api_key),
+            request.as_query_params(self.user_id, self.api_key),
         )
         return pd.concat(df_chunks)
 

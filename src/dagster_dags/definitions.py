@@ -4,7 +4,10 @@ import dagster as dg
 from dagster_docker import PipesDockerClient
 
 from .assets import nwp, pv, sat
-from .resources import SheffieldSolarAPIResource
+from .resources import (
+    HuggingfacePartitionedParquetIOManager,
+    SheffieldSolarAPIResource,
+)
 
 nwp_assets = dg.load_assets_from_package_module(
     package_module=nwp,
@@ -29,9 +32,15 @@ defs = dg.Definitions(
     resources={
         "pipes_subprocess_client": dg.PipesSubprocessClient(),
         "pipes_docker_client": PipesDockerClient(),
-        "ss_api": SheffieldSolarAPIResource(
+        "ss_api_client": SheffieldSolarAPIResource(
             user_id=dg.EnvVar("SS_USER_ID"),
             api_key=dg.EnvVar("SS_API_KEY"),
+        ),
+        "parquet_io_manager": HuggingfacePartitionedParquetIOManager(
+            hf_dataset="uk_pv",
+            hf_organisation="openclimatefix",
+            prefix="data",
+            token=dg.EnvVar("HF_TOKEN"),
         ),
     },
     jobs=[],
