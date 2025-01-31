@@ -49,6 +49,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
+where = ["src"]
 exclude = ["*_tests"]
 
 [tool.setuptools-git-versioning]
