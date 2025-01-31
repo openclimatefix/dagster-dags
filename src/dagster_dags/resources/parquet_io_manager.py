@@ -2,6 +2,7 @@
 
 import datetime as dt
 import os
+import re
 from typing import override
 
 import dagster as dg
@@ -25,35 +26,69 @@ class PartitionedParquetIOManager(dg.ConfigurableIOManager):
 
     @override
     def handle_output(self, context: dg.OutputContext, df: pd.DataFrame) -> None:
-        path: str = self._get_path(context)
+        path: str = self._get_path(
+            asset_key=context.asset_key,
+            partition_time_window=context.asset_partitions_time_window,
+        )
         if "://" not in self._base_path:
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
         row_count: int = len(df)
-        context.log.info(f"Row count: {row_count}")
-        df.to_parquet(path=path, index=False)
+        try:
+            df.to_parquet(path=path, index=False)
+            context.log.debug(f"Data saved to {path}")
+        except FileExistsError:
+            context.log.info(f"Not overwriting existing file at {path}")
         context.add_output_metadata({"row_count": row_count, "path": path})
 
     @override
     def load_input(self, context: dg.InputContext) -> pd.DataFrame:
-        path: str = self._get_path(context)
+        path: str = self._get_path(
+            asset_key=context.asset_key,
+            partition_time_window=context.asset_partitions_time_window,
+        )
+        context.log.debug(f"Loading data from {path}")
         return pd.read_parquet(path)
 
+    def manual_load(
+        self,
+        asset_key: dg.AssetKey,
+        partition_time_window: dg.TimeWindow,
+    ) -> pd.DataFrame:
+        """Load data for a given asset key and partition time window.
 
-    def _get_path(self, context: dg.InputContext | dg.OutputContext) -> str:
-        """Get the parquet file path for the given context.
+        Useful if you need to manually call data stored by this IOManager.
+        Not used automatically by dagster assets.
+        """
+        path: str = self._get_path(
+            asset_key=asset_key,
+            partition_time_window=partition_time_window,
+        )
+        dg.get_dagster_logger().debug(f"Loading data from {path}")
+        return pd.read_parquet(path)
+
+    def _get_path(
+        self,
+        asset_key: dg.AssetKey,
+        partition_time_window: dg.TimeWindow | None = None,
+    ) -> str:
+        """Get the parquet file path for the given asset key and time window.
 
         The path is based on the asset key and partitions, if any.
         If it is partitioned data, the path will include the partition window
         as part of the filename, and the partitions will be stored in
         subfolders matching the cadence of the partitions.
         """
-        key = context.asset_key.path[-1]
+        key = asset_key.path[-1]
 
-        if context.has_asset_partitions:
-            start, end = context.asset_partitions_time_window
+        if partition_time_window is None:
+            return os.path.join(self._base_path, f"{key}.pq")
+        else:
+            # For different partition cadences, name the files accordingly
+            start, end = partition_time_window
             partition_str: str = f"{start:%Y%m%dT%H%M%s}_{end:%Y%m%dT%H%M%s}"
             partition_folder: str = f"{start:%Y/%m/%d}"
+
             if dt.timedelta(days=27) < end - start < dt.timedelta(days=33):
                 # Probably a monthly partition
                 partition_str = f"{start:%Y%m}"
@@ -62,10 +97,15 @@ class PartitionedParquetIOManager(dg.ConfigurableIOManager):
                 # Probably a yearly partition
                 partition_str = f"{start:%Y}"
                 partition_folder = f"{start:%Y}"
-            return os.path.join(self._base_path, partition_folder, f"{key}_{partition_str}.pq")
+            else:
+                filename: str = f"{partition_str}_{key}.pq"
 
-        else:
-            return os.path.join(self._base_path, f"{key}.pq")
+            # To match legacy filenaming of passiv, put a special case in
+            match: re.Match | None = re.match(r"^passiv_(\d+min)_\w+$", key)
+            if match:
+                filename = f"{partition_str}_{match.group(1)}.parquet"
+
+            return os.path.join(self._base_path, partition_folder, filename)
 
 
 class LocalPartitionedParquetIOManager(PartitionedParquetIOManager):

@@ -47,13 +47,23 @@ def pv_passiv_5min_monthly_asset(
     ss_api_client: SheffieldSolarAPIResource,
 ) -> pd.DataFrame:
     """Dagster asset downloading 5-minutely PV data from Passiv systems."""
-    context.log.debug("Fetching metadata for Passiv systems")
+    # Don't redownload existing data
+    try:
+        existing_df: pd.DataFrame = context.resources.original_resource_dict["parquet_io_manager"]\
+            .manual_load(
+                asset_key=context.asset_key,
+                partition_time_window=context.partition_time_window,
+            )
+        return existing_df
+    except Exception as e:
+        context.log.debug(f"No existing data found: {e}.")
+
     passiv_metadata_df: pd.DataFrame = (
         ss_api_client.request(SheffieldSolarMetadataRequest())
-        .loc(lambda df: df["owner_name"] == "Passiv")
+        .loc[lambda df: df["owner_name"] == "Passiv"]
     )
 
-    context.log.info("Fetching data for {context.partition_time_window:%s}")
+    context.log.info(f"Fetching data for {context.partition_time_window.start:%Y-%m}")
     request: SheffieldSolarRawdataRequest = SheffieldSolarRawdataRequest(
         start=context.partition_time_window.start,
         end=context.partition_time_window.end,
@@ -61,8 +71,8 @@ def pv_passiv_5min_monthly_asset(
     )
     passive_df: pd.DataFrame = (
         ss_api_client.request(request=request)
-        .loc(lambda df: df["ss_id"].isin(passiv_metadata_df["ss_id"]))
-        .assign(datetime_GMT=lambda df: pd.to_datetime(df["datetime_GMT"].dt.tz_localize("UTC")))
+        .loc[lambda df: df["ss_id"].isin(passiv_metadata_df["ss_id"])]
+        .assign(datetime_GMT=lambda df: pd.to_datetime(df["date"]).dt.tz_localize("UTC"))
     )
     return passive_df
 
@@ -88,11 +98,11 @@ yearly_partitions_def: dg.TimeWindowPartitionsDefinition = dg.TimeWindowPartitio
     ins={"passiv_5min_monthly": dg.AssetIn(partition_mapping=dg.TimeWindowPartitionMapping())},
     io_manager_key="parquet_io_manager",
 )
-def pv_passiv_30min_yearly_asset(
+def pv_passiv_5min_yearly_asset(
     context: dg.AssetExecutionContext,
     passiv_5min_monthly: dict[str, pd.DataFrame],
 ) -> pd.DataFrame:
     """Dagster asset summarising yearly 5-minutely PV data from Passiv systems."""
-    context.log.info("Summarizing monthly data for {context.partition_time_window:%s}")
+    context.log.info("Summarizing monthly data for {context.partition_time_windoiw.start:%Y}")
     return pd.concat(passiv_5min_monthly.values())
 

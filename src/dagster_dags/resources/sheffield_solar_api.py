@@ -8,10 +8,12 @@ import io
 import multiprocessing
 import time
 from typing import override
+import logging
 
 import dagster as dg
 import pandas as pd
 import requests
+from requests.adapters import HTTPAdapter, Retry
 
 
 class SheffieldSolarRequest(abc.ABC):
@@ -81,7 +83,7 @@ class SheffieldSolarRawdataRequest(SheffieldSolarRequest):
                 "start_at": tick.isoformat(),
                 "end_at": (tick + pd.Timedelta(minutes=self.period_mins)).isoformat(),
                 "user_id": user_id,
-                "api_key": api_key,
+                "key": api_key,
             }
             for tick in ticks
         ]
@@ -101,7 +103,7 @@ class SheffieldSolarMetadataRequest(SheffieldSolarRequest):
         """Return the request as a dictionary of parameters."""
         return [{
             "user_id": user_id,
-            "api_key": api_key,
+            "key": api_key,
         }]
 
 
@@ -111,58 +113,65 @@ class SheffieldSolarAPIResource(dg.ConfigurableResource):
     user_id: str
     api_key: str
     base_url: str = "https://api.pvlive.uk"
-    delay_multiplier: int = 2
-    retries: int = 5
     n_processes: int = 10
 
-    def setup_for_execution(self, context: dg.InitResourceContext) -> None:
+    def setup_for_execution(self, _: dg.InitResourceContext) -> None:
         """Set up the Sheffield Solar API resource for execution."""
-        self._log = context.log
+        self._log = dg.get_dagster_logger()
 
+    @staticmethod
     def _query(
-        self,
-        endpoint: str,
+        url: str,
         params: dict[str, str],
     ) -> pd.DataFrame:
         """Query the Sheffield Solar API.
 
         Args:
-            endpoint: The API endpoint to query.
+            url: The URL to query.
             params: The query parameters.
+            retries: The number of times to retry the query.
+            backoff_factor: Multiplier to increase delay by on each retry.
         """
-        url: str = f"{self.base_url}/{endpoint}"
-        url += "?" + "&".join([f"{k}={v}" for k, v in params.items()])
-        num_attempts: int = 1
+        full_url: str = url + "?" + "&".join([f"{k}={v}" for k, v in params.items()])
+        base_err: str = "Error querying Sheffield Solar API"
+        session: requests.Session = requests.Session()
+        session.mount(
+            prefix="https://",
+            adapter=HTTPAdapter(max_retries=Retry(
+                total=10,
+                backoff_factor=0.1,
+                backoff_jitter=0.1,
+                status_forcelist=[500, 502, 503, 504],
+            )),
+        )
 
-        while num_attempts <= self.retries:
-            try:
-                response = requests.get(url, timeout=60*10)
-            except requests.exceptions.HTTPError as e:
-                time.sleep(0.5 * num_attempts * self.delay_multiplier)
-                if num_attempts == self.retries:
-                    raise e
-                continue
+        try:
+            response = session.get(url=full_url, timeout=60*60)
+        except requests.exceptions.HTTPError as e:
+            raise ValueError(f"{base_err}: {e}") from e
 
-            if response.status_code != 200:
-                raise ValueError(f"HTTP error: {response.status_code}")
+        if response.status_code != 200:
+            raise ValueError(f"HTTP error: {response.status_code}")
+        else:
+            if "Your api key is not valid" in response.text:
+                raise ValueError(f"{base_err}: invalid API key/User ID combination")
+            elif "Your account does not give access" in response.text:
+                raise ValueError(
+                    f"{base_err}: API key/User ID does not give access to requested data",
+                )
+            elif "Missing user id" in response.text:
+                raise ValueError(f"{base_err}: missing user_id")
+            elif "Missing api key" in response.text:
+                raise ValueError(f"{base_err}: missing api_key")
             else:
-                if "Your api key is not valid" in response.text:
-                    raise ValueError("Invalid API key/User ID combination")
-                elif "Your account does not give access" in response.text:
-                    raise ValueError("API key/User ID does not give access to requested data")
-                elif "Missing user_id" in response.text:
-                    raise ValueError("Missing user_id")
-                else:
-                    try:
-                        df: pd.DataFrame = pd.read_csv(
-                            io.StringIO(response.text),
-                            parse_dates=True,
-                        )
-                        return df
-                    except Exception as e:
-                        raise ValueError(f"Error parsing API query result: {e}") from e
-
-            num_attempts += 1
+                try:
+                    df: pd.DataFrame = pd.read_csv(
+                        io.StringIO(response.text),
+                        parse_dates=True,
+                    )
+                    return df
+                except Exception as e:
+                    raise ValueError(f"{base_err}: error parsing API query result: {e}") from e
 
     def request(
         self,
@@ -170,9 +179,14 @@ class SheffieldSolarAPIResource(dg.ConfigurableResource):
     ) -> pd.DataFrame:
         """Request data from the Sheffield Solar API."""
         pool = multiprocessing.Pool(processes=self.n_processes)
+        url: str = f"{self.base_url}/{request.endpoint()}"
+        self._log.debug(f"Querying Sheffield Solar API at '{url}'")
+
         df_chunks: pd.DataFrame = pool.map(
-            functools.partial(self._query, endpoint=request.endpoint()),
+            functools.partial(self._query, url=url),
             request.as_query_params(self.user_id, self.api_key),
         )
-        return pd.concat(df_chunks)
+        out_df: pd.DataFrame = pd.concat(df_chunks)
+        self._log.debug(f"Pulled {len(out_df)} rows from Sheffield Solar API")
+        return out_df
 
