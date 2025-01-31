@@ -2,7 +2,7 @@ import unittest
 
 import dagster as dg
 
-from src.dagster_dags import defs
+from dagster_dags import defs
 
 
 class TestAssetKeyPrefixes(unittest.TestCase):

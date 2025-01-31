@@ -5,7 +5,7 @@ ENV DAGSTER_HOME=/opt/dagster/home
 
 # Add repository code
 WORKDIR /opt/dagster/app
-COPY src /opt/dagster/app
+COPY src /opt/dagster/app/src
 COPY pyproject.toml /opt/dagster/app
 
 # Checkout and install dagster libraries needed to run the gRPC server by exposing
