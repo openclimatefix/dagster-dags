@@ -59,7 +59,7 @@ def ecmwf_ens_uk_asset(
     """Dagster asset downloading ECMWF ENS data for the UK."""
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
-        image="ghcr.io/openclimatefix/nwp-consumer:1.0.17",
+        image="ghcr.io/openclimatefix/nwp-consumer:1.0.19",
         command=["archive", "-y", str(it.year), "-m", str(it.month)],
         env={
             "MODEL_REPOSITORY": "ecmwf-mars",
