@@ -550,7 +550,7 @@ def run(path: str, config: Config, run: str, date: dt.date) -> None:
     log.debug(f"Created final dataset for run {run}: {ds}")
     encoding = {var: {"compressor": Blosc2("zstd", clevel=9)} for var in ds.data_vars}
     encoding["time"] = {"units": "nanoseconds since 1970-01-01"}
-    with zarr.ZipStore(
+    with zarr.storage.ZipStore(
         f"{path}/{run}.zarr.zip",
         mode="w",
     ) as store:
