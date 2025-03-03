@@ -5,7 +5,7 @@ FROM quay.io/condaforge/miniforge3:latest AS build-venv
 RUN apt -qq update && apt -qq install -y build-essential
 RUN conda create -p /venv python=3.12
 RUN /venv/bin/pip install --upgrade -q pip wheel setuptools
-RUN conda install -p /venv -q -y eccodes zarr
+RUN conda install -p /venv -q -y eccodes zarr<=3.0.0
 
 # Build the virtualenv
 # * We don't want the bufr eccodes definitions so save space by deleting them
