@@ -52,6 +52,7 @@ from multiprocessing import Pool, cpu_count
 import requests
 import xarray as xr
 import zarr
+from zarr.codecs import BloscCodec
 from huggingface_hub import HfApi
 
 # Set up logging
@@ -547,7 +548,8 @@ def run(path: str, config: Config, run: str, date: dt.date) -> None:
     if config == GLOBAL_CONFIG:
         ds = ds.assign_coords({"latitude": lats, "longitude": lons})
     log.debug(f"Created final dataset for run {run}: {ds}")
-    encoding = {"time": {"units": "nanoseconds since 1970-01-01"}}
+    encoding = {var: {"compressor": BloscCodec(cname="zstd", clevel=9)} for var in ds.data_vars}
+    encoding["time"] = {"units": "nanoseconds since 1970-01-01"}}
     with zarr.storage.ZipStore(
         f"{path}/{run}.zarr.zip",
         mode="w",
