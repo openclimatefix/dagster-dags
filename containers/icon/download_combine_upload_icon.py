@@ -52,7 +52,6 @@ from multiprocessing import Pool, cpu_count
 import requests
 import xarray as xr
 import zarr
-from zarr.codecs import BloscCodec
 from huggingface_hub import HfApi
 from ocf_blosc2 import Blosc2
 
