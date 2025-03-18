@@ -494,7 +494,7 @@ def run(path: str, config: Config, run: str, date: dt.date) -> None:
         except Exception as e:
             log.error(e)
             continue
-        ds = ds.rename({v: var_3d for v in ds.data_vars})
+        ds = ds.rename({v: var_3d for v in ds.data_vars}) # noqa: C420
         coords_to_remove = []
         for coord in ds.coords:
             if coord not in ds.dims and coord != "time":
@@ -531,7 +531,7 @@ def run(path: str, config: Config, run: str, date: dt.date) -> None:
             log.error(e)
             continue
         # Rename data variable to name in list, so no conflicts
-        ds = ds.rename({v: var_2d for v in ds.data_vars})
+        ds = ds.rename({v: var_2d for v in ds.data_vars}) # noqa: C420
         # Remove extra coordinates that are not dimensions or time
         coords_to_remove = []
         for coord in ds.coords:
