@@ -11,7 +11,7 @@ RUN conda install -p /venv -q -y eccodes 'zarr=2.18.2'
 # * We don't want the bufr eccodes definitions so save space by deleting them
 FROM build-venv as install-reqs
 RUN /venv/bin/python -m pip install -q \
-    xarray==2024.7.0 ocf_blosc2 huggingface_hub \
+    xarray==2024.9.1 ocf_blosc2 huggingface_hub \
     requests cfgrib dask google-cloud-logging
 RUN rm -r /venv/share/eccodes/definitions/bufr
 

@@ -556,7 +556,7 @@ def run(path: str, config: Config, run: str, date: dt.date) -> None:
     ) as store:
         log.debug(f"Compressing and storing dataset for run {run}")
         ds.chunk(config.chunking).to_zarr(
-            store, encoding=encoding, compute=True,
+            store, encoding=encoding, compute=True, zarr_version=2, zarr_format=2,
         )
 
     # Upload to huggingface
