@@ -53,7 +53,10 @@ import requests
 import xarray as xr
 import zarr
 from huggingface_hub import HfApi
+from numcodecs.zarr3 import _make_bytes_bytes_codec
 from ocf_blosc2 import Blosc2
+
+Blosc2Codec = _make_bytes_bytes_codec("blosc2", "Blosc2")
 
 # Set up logging
 handler = logging.StreamHandler(sys.stdout)
@@ -494,7 +497,7 @@ def run(path: str, config: Config, run: str, date: dt.date) -> None:
         except Exception as e:
             log.error(e)
             continue
-        ds = ds.rename({v: var_3d for v in ds.data_vars}) # noqa: C420
+        ds = ds.rename({v: var_3d for v in ds.data_vars})
         coords_to_remove = []
         for coord in ds.coords:
             if coord not in ds.dims and coord != "time":
@@ -531,7 +534,7 @@ def run(path: str, config: Config, run: str, date: dt.date) -> None:
             log.error(e)
             continue
         # Rename data variable to name in list, so no conflicts
-        ds = ds.rename({v: var_2d for v in ds.data_vars}) # noqa: C420
+        ds = ds.rename({v: var_2d for v in ds.data_vars})
         # Remove extra coordinates that are not dimensions or time
         coords_to_remove = []
         for coord in ds.coords:
@@ -548,7 +551,7 @@ def run(path: str, config: Config, run: str, date: dt.date) -> None:
     if config == GLOBAL_CONFIG:
         ds = ds.assign_coords({"latitude": lats, "longitude": lons})
     log.debug(f"Created final dataset for run {run}: {ds}")
-    encoding = {var: {"compressor": Blosc2("zstd", clevel=9)} for var in ds.data_vars}
+    encoding = {var: {"compressor": Blosc2Codec("zstd", clevel=9)} for var in ds.data_vars}
     encoding["time"] = {"units": "nanoseconds since 1970-01-01"}
     with zarr.storage.ZipStore(
         f"{path}/{run}.zarr.zip",

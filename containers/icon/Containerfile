@@ -12,7 +12,8 @@ RUN conda install -p /venv -q -y eccodes 'zarr=2.18.2'
 FROM build-venv as install-reqs
 RUN /venv/bin/python -m pip install -q \
     xarray==2024.9.0 ocf_blosc2 huggingface_hub \
-    requests cfgrib dask google-cloud-logging
+    requests cfgrib dask google-cloud-logging \
+    zarr==2.18.2
 RUN rm -r /venv/share/eccodes/definitions/bufr
 
 # Copy the virtualenv into a distroless image
