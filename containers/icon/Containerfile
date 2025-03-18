@@ -5,13 +5,13 @@ FROM quay.io/condaforge/miniforge3:latest AS build-venv
 RUN apt -qq update && apt -qq install -y build-essential
 RUN conda create -p /venv python=3.12
 RUN /venv/bin/pip install --upgrade -q pip wheel setuptools
-RUN conda install -p /venv -q -y eccodes 'zarr>2.18,<3'
+RUN conda install -p /venv -q -y eccodes 'zarr=2.18.2'
 
 # Build the virtualenv
 # * We don't want the bufr eccodes definitions so save space by deleting them
 FROM build-venv as install-reqs
 RUN /venv/bin/python -m pip install -q \
-    xarray ocf_blosc2 huggingface_hub \
+    xarray==2024.7.0 ocf_blosc2 huggingface_hub \
     requests cfgrib dask google-cloud-logging
 RUN rm -r /venv/share/eccodes/definitions/bufr
 
