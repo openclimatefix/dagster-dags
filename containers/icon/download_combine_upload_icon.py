@@ -627,12 +627,14 @@ if __name__ == "__main__":
         runs = [args.run]
     # Cleanup any leftover files in path
     for hour in runs:
+        log.info(f"Cleaning up leftover files in {path}/{hour}")
         if args.rm:
-            shutil.rmtree(path, ignore_errors=True)
+            shutil.rmtree(f"{path}/{hour}", ignore_errors=True)
         if args.area == "eu":
             run(path=path, config=EUROPE_CONFIG, run=hour, date=args.date)
         elif args.area == "global":
             run(path=path, config=GLOBAL_CONFIG, run=hour, date=args.date)
         # Remove files
         if args.rm:
-            shutil.rmtree(path, ignore_errors=True)
+            log.info(f"Removing downloaded files in {path}/{hour}")
+            shutil.rmtree(f"{path}/{hour}", ignore_errors=True)
