@@ -3,11 +3,12 @@
 import datetime as dt
 import os
 import re
+import sys
+import tempfile
 from typing import override
 
 import dagster as dg
 import pandas as pd
-from dagster._seven.temp_dir import get_system_temp_directory
 
 
 class PartitionedParquetIOManager(dg.ConfigurableIOManager):
@@ -111,7 +112,7 @@ class PartitionedParquetIOManager(dg.ConfigurableIOManager):
 class LocalPartitionedParquetIOManager(PartitionedParquetIOManager):
     """IOManager for storing Pandas DataFrames in parquet locally."""
 
-    base_path: str = get_system_temp_directory()
+    base_path: str = tempfile.gettempdir() if sys.platform == "win32" else "/tmp" # noqa
 
     @property
     def _base_path(self) -> str:
