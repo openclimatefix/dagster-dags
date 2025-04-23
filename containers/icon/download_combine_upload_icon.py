@@ -55,7 +55,6 @@ import zarr
 from huggingface_hub import HfApi
 from ocf_blosc2 import Blosc2
 
-
 # Set up logging
 handler = logging.StreamHandler(sys.stdout)
 logging.basicConfig(

@@ -70,9 +70,9 @@ class SheffieldSolarRawdataRequest(SheffieldSolarRequest):
         returns a dictionary of HTTP request parameters for each request.
         """
         ticks: pd.DatetimeIndex = pd.date_range(
-            start=pd.to_datetime(self.start).ceil(f"{self.period_mins}T"),
-            end=pd.to_datetime(self.end).ceil(f"{self.period_mins}T"),
-            freq=f"{self.period_mins}T",
+            start=pd.to_datetime(self.start).ceil(f"{self.period_mins}min"),
+            end=pd.to_datetime(self.end).ceil(f"{self.period_mins}min"),
+            freq=f"{self.period_mins}min",
             inclusive="left", # Don't include the end time
         )
 
@@ -111,7 +111,7 @@ class SheffieldSolarAPIResource(dg.ConfigurableResource):
     user_id: str
     api_key: str
     base_url: str = "https://api.pvlive.uk"
-    n_processes: int = 10
+    n_processes: int = 1
 
     def setup_for_execution(self, _: dg.InitResourceContext) -> None:
         """Set up the Sheffield Solar API resource for execution."""
@@ -181,7 +181,7 @@ class SheffieldSolarAPIResource(dg.ConfigurableResource):
         self._log.debug(f"Querying Sheffield Solar API at '{url}'")
 
         df_chunks: pd.DataFrame = pool.map(
-            functools.partial(self._query, url=url),
+            functools.partial(self._query, url),
             request.as_query_params(self.user_id, self.api_key),
         )
         out_df: pd.DataFrame = pd.concat(df_chunks)
