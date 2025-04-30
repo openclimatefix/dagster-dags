@@ -1,4 +1,4 @@
-"""Zarr archive of satellite image data from EUMETSAT's IODC service, low resolution.
+"""Zarr archive of satellite image data from EUMETSAT's RSS service, low resolution.
 
 EUMETSAT have a seviri satellite that provides images of the earth's surface.
 The Rapid Scan Service (RSS) provides images at 5 minute intervals,
@@ -20,20 +20,20 @@ from dagster_docker import PipesDockerClient
 if TYPE_CHECKING:
     import datetime as dt
 
-ARCHIVE_FOLDER = "/var/dagster-storage/sat/eumetsat-iodc-lrv"
+ARCHIVE_FOLDER = "/var/dagster-storage/sat/eumetsat-rss-lrv"
 if os.getenv("ENVIRONMENT", "local") == "leo":
-    ARCHIVE_FOLDER = "/mnt/storage_b/archives/sat/eumetsat-iodc-lrv"
+    ARCHIVE_FOLDER = "/mnt/storage_b/archives/sat/eumetsat-rss-lrv"
 
 partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefinition(
     start_date="2025-01-01",
 )
 
 @dg.asset(
-        name="eumetsat-iodc-lrv",
+        name="eumetsat-rss-lrv",
         description=__doc__,
         metadata={
             "archive_folder": dg.MetadataValue.text(ARCHIVE_FOLDER),
-            "area": dg.MetadataValue.text("india"),
+            "area": dg.MetadataValue.text("europe"),
             "source": dg.MetadataValue.text("eumetsat"),
             "expected_runtime": dg.MetadataValue.text("6 hours"),
         },
@@ -41,7 +41,7 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefiniti
         automation_condition=dg.AutomationCondition.on_cron(
             cron_schedule=partitions_def.get_cron_schedule(
                 hour_of_day=0,
-                day_of_week=4,
+                day_of_week=5,
             ),
         ),
         tags={
@@ -51,22 +51,22 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefiniti
         },
     partitions_def=partitions_def,
 )
-def eumetsat_iodc_lrv_asset(
+def eumetsat_rss_lrv_asset(
     context: dg.AssetExecutionContext,
     pipes_docker_client: PipesDockerClient,
 ) -> dg.MaterializeResult:
-    """Dagster asset for EUMETSAT's IODC service, low resolution."""
+    """Dagster asset for EUMETSAT's RSS service, low resolution."""
     it: dt.datetime = context.partition_time_window.start
 
     return pipes_docker_client.run(
-            image="ghcr.io/openclimatefix/satellite-consumer:0.2.0",
+        image="ghcr.io/openclimatefix/satellite-consumer:0.2.0",
         command=[],
         env={
             "EUMETSAT_CONSUMER_KEY": os.getenv("EUMETSAT_CONSUMER_KEY"),
             "EUMETSAT_CONSUMER_SECRET": os.getenv("EUMETSAT_CONSUMER_SECRET"),
             "SATCONS_COMMAND": "consume",
             "SATCONS_WINDOW_MONTHS": "1",
-            "SATCONS_SATELLITE": "iodc",
+            "SATCONS_SATELLITE": "rss",
             "SATCONS_VALIDATE": "true",
             "SATCONS_RESCALE": "true",
             "SATCONS_TIME": it.strftime("%Y%m%dT%H%M"),
