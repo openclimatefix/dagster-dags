@@ -62,8 +62,8 @@ def eumetsat_odegree_lrv_asset(
         image="ghcr.io/openclimatefix/satellite-consumer:0.2.0",
         command=[],
         env={
-            "EUMETSAT_CONSUMER_KEY": os.getenv("EUMETSAT_CONSUMER_KEY"),
-            "EUMETSAT_CONSUMER_SECRET": os.getenv("EUMETSAT_CONSUMER_SECRET"),
+            "EUMETSAT_CONSUMER_KEY": os.environ["EUMETSAT_CONSUMER_KEY"],
+            "EUMETSAT_CONSUMER_SECRET": os.environ["EUMETSAT_CONSUMER_SECRET"],
             "SATCONS_COMMAND": "consume",
             "SATCONS_WINDOW_MONTHS": "1",
             "SATCONS_SATELLITE": "odegree",

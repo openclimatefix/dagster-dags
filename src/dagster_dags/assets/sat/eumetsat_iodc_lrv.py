@@ -59,11 +59,11 @@ def eumetsat_iodc_lrv_asset(
     it: dt.datetime = context.partition_time_window.start
 
     return pipes_docker_client.run(
-            image="ghcr.io/openclimatefix/satellite-consumer:0.2.0",
+        image="ghcr.io/openclimatefix/satellite-consumer:0.2.0",
         command=[],
         env={
-            "EUMETSAT_CONSUMER_KEY": os.getenv("EUMETSAT_CONSUMER_KEY"),
-            "EUMETSAT_CONSUMER_SECRET": os.getenv("EUMETSAT_CONSUMER_SECRET"),
+            "EUMETSAT_CONSUMER_KEY": os.environ["EUMETSAT_CONSUMER_KEY"],
+            "EUMETSAT_CONSUMER_SECRET": os.environ["EUMETSAT_CONSUMER_SECRET"],
             "SATCONS_COMMAND": "consume",
             "SATCONS_WINDOW_MONTHS": "1",
             "SATCONS_SATELLITE": "iodc",
