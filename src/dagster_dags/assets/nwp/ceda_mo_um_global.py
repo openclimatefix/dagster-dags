@@ -44,6 +44,7 @@ partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefiniti
                 hour_of_day=5,
             ),
         ),
+        partitions_def=partitions_def,
         tags={
             "dagster/max_runtime": str(60 * 60 * 10), # Should take 6 ish hours
             "dagster/priority": "1",
