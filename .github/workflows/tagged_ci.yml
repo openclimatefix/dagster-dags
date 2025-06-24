@@ -8,5 +8,7 @@ on:
 jobs:
   tagged-ci:
     uses: openclimatefix/.github/.github/workflows/tagged_ci.yml@main
+    with:
+      containerfile: 'Containerfile'
     secrets: inherit
 
