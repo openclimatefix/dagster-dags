@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 ARCHIVE_FOLDER = "/var/dagster-storage/nwp/ecmwf-ens-uk"
 if os.getenv("ENVIRONMENT", "local") == "leo":
-    ARCHIVE_FOLDER = "/mnt/storage_ssd_4tb/nwp/ecmwf-ens-uk"
+    ARCHIVE_FOLDER = "/mnt/storage_b/nwp/ecmwf-ens-uk"
 
 partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefinition(
     start_date="2022-01-01",
@@ -59,7 +59,7 @@ def ecmwf_ens_uk_asset(
     """Dagster asset downloading ECMWF ENS data for the UK."""
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
-        image="ghcr.io/openclimatefix/nwp-consumer:1.0.19",
+        image="ghcr.io/openclimatefix/nwp-consumer:1.1.28",
         command=["archive", "-y", str(it.year), "-m", str(it.month)],
         env={
             "MODEL_REPOSITORY": "ecmwf-mars",

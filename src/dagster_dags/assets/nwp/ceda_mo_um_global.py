@@ -58,13 +58,13 @@ def ceda_mo_um_global_asset(
     """Dagster asset for MO Unified Model global NWP data from CEDA."""
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
-        image="ghcr.io/openclimatefix/nwp-consumer:1.0.12",
+        image="ghcr.io/openclimatefix/nwp-consumer:1.1.25",
         command=["archive", "-y", str(it.year), "-m", str(it.month)],
         env={
             "NWP_CONSUMER_MODEL_REPOSITORY": "ceda-metoffice-global",
             "NWP_CONSUMER_NOTIFICATION_REPOSITORY": "dagster-pipes",
-            "CEDA_FTP_USER": os.environ["CEDA_FTP_USER"],
-            "CEDA_FTP_PASS": os.environ["CEDA_FTP_PASS"],
+            "CEDA_USER": os.environ["CEDA_USER"],
+            "CEDA_PASS": os.environ["CEDA_PASS"],
             "CONCURRENCY": "true",
         },
         # See https://docker-py.readthedocs.io/en/stable/containers.html#docker.models.containers.ContainerCollection.run
