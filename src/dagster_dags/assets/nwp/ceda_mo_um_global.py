@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 ARCHIVE_FOLDER = "/var/dagster-storage/nwp/ceda-mo-um-global"
 if os.getenv("ENVIRONMENT", "local") == "leo":
-    ARCHIVE_FOLDER = "/mnt/storage_ssd_4tb/nwp/ceda-mo-um-global"
+    ARCHIVE_FOLDER = "/mnt/storage_b/nwp/ceda-mo-um-global"
 
 partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefinition(
     start_date="2019-01-01",
@@ -58,11 +58,11 @@ def ceda_mo_um_global_asset(
     """Dagster asset for MO Unified Model global NWP data from CEDA."""
     it: dt.datetime = context.partition_time_window.start
     return pipes_docker_client.run(
-        image="ghcr.io/openclimatefix/nwp-consumer:1.1.25",
+        image="ghcr.io/openclimatefix/nwp-consumer:1.1.28",
         command=["archive", "-y", str(it.year), "-m", str(it.month)],
         env={
-            "NWP_CONSUMER_MODEL_REPOSITORY": "ceda-metoffice-global",
-            "NWP_CONSUMER_NOTIFICATION_REPOSITORY": "dagster-pipes",
+            "MODEL_REPOSITORY": "ceda",
+            "NOTIFICATION_REPOSITORY": "dagster-pipes",
             "CEDA_USER": os.environ["CEDA_USER"],
             "CEDA_PASS": os.environ["CEDA_PASS"],
             "CONCURRENCY": "true",
