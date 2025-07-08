@@ -61,8 +61,8 @@ def ceda_mo_um_global_asset(
         image="ghcr.io/openclimatefix/nwp-consumer:1.1.28",
         command=["archive", "-y", str(it.year), "-m", str(it.month)],
         env={
-            "NWP_CONSUMER_MODEL_REPOSITORY": "ceda",
-            "NWP_CONSUMER_NOTIFICATION_REPOSITORY": "dagster-pipes",
+            "MODEL_REPOSITORY": "ceda",
+            "NOTIFICATION_REPOSITORY": "dagster-pipes",
             "CEDA_USER": os.environ["CEDA_USER"],
             "CEDA_PASS": os.environ["CEDA_PASS"],
             "CONCURRENCY": "true",
