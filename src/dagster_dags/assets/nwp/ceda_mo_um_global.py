@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 ARCHIVE_FOLDER = "/var/dagster-storage/nwp/ceda-mo-um-global"
 if os.getenv("ENVIRONMENT", "local") == "leo":
-    ARCHIVE_FOLDER = "/mnt/storage_ssd_4tb/nwp/ceda-mo-um-global"
+    ARCHIVE_FOLDER = "/mnt/storage_b/nwp/ceda-mo-um-global"
 
 partitions_def: dg.TimeWindowPartitionsDefinition = dg.MonthlyPartitionsDefinition(
     start_date="2019-01-01",
